@@ -1,0 +1,12 @@
+# local
+node_modules/
+web/dist/*
+!web/dist/.gitkeep
+bin/
+*.db
+*.db-wal
+*.db-shm
+
+# GSD planning docs are local-only (commit_docs=false)
+.planning/
+.opencode/
