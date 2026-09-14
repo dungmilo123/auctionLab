@@ -20,7 +20,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path alias — shadcn component imports (`@/components/ui/*`).
+       Project-root-relative `paths` only; deliberately NO `baseUrl`
+       (deprecated under TS 6, a hard error under TS 7). */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

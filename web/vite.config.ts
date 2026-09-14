@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
@@ -20,7 +21,15 @@ function restoreDistPlaceholder(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [restoreDistPlaceholder(), react()],
+  plugins: [restoreDistPlaceholder(), react(), tailwindcss()],
+  resolve: {
+    // shadcn's `@/…` import alias, mirroring the `paths` entry in
+    // tsconfig.app.json. ESM-native resolution (no __dirname) because
+    // package.json is `"type": "module"`.
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   server: {
     // Fixed port + strictPort: the probe and the docs assume :5173, so a busy
     // port must fail fast instead of silently moving the URL.
