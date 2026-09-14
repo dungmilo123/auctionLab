@@ -21,4 +21,16 @@ function restoreDistPlaceholder(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [restoreDistPlaceholder(), react()],
+  server: {
+    // Fixed port + strictPort: the probe and the docs assume :5173, so a busy
+    // port must fail fast instead of silently moving the URL.
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': { target: 'http://localhost:8080', changeOrigin: false },
+      '/ws': { target: 'ws://localhost:8080', ws: true },
+      // Do NOT add rewriteWsOrigin: it opens CSRF, and gorilla's default
+      // same-origin CheckOrigin on the Go side is a real defence here.
+    },
+  },
 })
