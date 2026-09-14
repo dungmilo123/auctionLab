@@ -159,4 +159,13 @@
   html {
     @apply font-sans;
   }
+
+  /* 01-UI-SPEC.md §Interaction rules: every focusable element shows a visible
+     2px near-black ring offset by 2px on :focus-visible. Never `outline: none`
+     — the near-black ring (not the accent) is what clears WCAG 3:1 against the
+     cream background. Declared once here so no primitive can opt out. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }

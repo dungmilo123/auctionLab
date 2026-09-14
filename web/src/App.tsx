@@ -1,47 +1,27 @@
-import { useState } from 'react'
+import { routeFor } from '@/lib/route'
+import AdminView from '@/routes/admin/AdminView'
+import PlayerView from '@/routes/player/PlayerView'
+import ScreenView from '@/routes/screen/ScreenView'
 
-type HealthResult =
-  | { kind: 'ok'; body: string }
-  | { kind: 'error'; message: string }
-
-// Temporary walking-skeleton page (plan 01-05 replaces it with the route switch
-// and the real UI-SPEC widget). It exists to prove the dev chain end to end:
-// browser -> Vite :5173 -> proxy -> Go :8080 -> /api/health.
+// Route switch over the pure selector (D-04): no router dependency, no state
+// provider, no history handling. The pathname is passed down so every shell can
+// print its own `route: … · path: …` line — the human-verifiable proof of
+// BUILD-03 when /admin or /screen is refreshed inside the built binary.
+//
+// Anything that is not /admin or /screen renders the player route: that is the
+// walking-skeleton fallback (01-UI-SPEC.md §Routes), revisited when real
+// routing lands.
 function App() {
-  const [result, setResult] = useState<HealthResult | null>(null)
+  const path = window.location.pathname
 
-  async function checkConnection() {
-    try {
-      const response = await fetch('/api/health')
-      const body = await response.text()
-      if (!response.ok) {
-        setResult({
-          kind: 'error',
-          message: `/api/health trả về HTTP ${response.status}. Kiểm tra make dev đang chạy (Go :8080 + Vite :5173) rồi thử lại.`,
-        })
-        return
-      }
-      setResult({ kind: 'ok', body })
-    } catch {
-      setResult({
-        kind: 'error',
-        message:
-          'Không gọi được /api/health. Kiểm tra make dev đang chạy (Go :8080 + Vite :5173) rồi thử lại.',
-      })
-    }
+  switch (routeFor(path)) {
+    case 'admin':
+      return <AdminView path={path} />
+    case 'screen':
+      return <ScreenView path={path} />
+    default:
+      return <PlayerView path={path} />
   }
-
-  return (
-    <main>
-      <h1>Người chơi</h1>
-      <button type="button" onClick={checkConnection}>
-        Kiểm tra kết nối
-      </button>
-      {result !== null && (
-        <pre>{result.kind === 'ok' ? result.body : result.message}</pre>
-      )}
-    </main>
-  )
 }
 
 export default App
