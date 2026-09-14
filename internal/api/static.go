@@ -8,6 +8,21 @@ import (
 	"strings"
 )
 
+// Cache directives for the two classes of file the embedded build contains.
+const (
+	// indexCacheControl keeps the document uncached: index.html keeps its name
+	// across deploys, so a cached copy would keep serving yesterday's app after
+	// a tunnel restart — indistinguishable from a server bug mid-presentation.
+	indexCacheControl = "no-cache"
+
+	// assetCacheControl is safe only for Vite's content-hashed assets/ names,
+	// which change whenever their contents do.
+	assetCacheControl = "public, max-age=31536000, immutable"
+
+	// assetPrefix is the directory Vite emits content-hashed files into.
+	assetPrefix = "assets/"
+)
+
 // Static serves the embedded frontend build.
 type Static struct {
 	fsys  fs.FS
@@ -36,15 +51,22 @@ func NewStatic(fsys fs.FS) (*Static, error) {
 	}, nil
 }
 
-// ServeHTTP serves the boot-cached index for the root and for index.html
-// itself, and everything else that exists through http.FileServerFS (ranges,
-// conditional requests and Last-Modified keep working).
+// ServeHTTP serves the SPA document for every path that is not a real file in
+// the embedded build — the deep-link fallback that keeps /admin, /screen and
+// any nested route answering 200 text/html on a refresh, a bookmark or a QR
+// link instead of dead-ending on a 404.
 //
-// Wave 1 ships the thin form on purpose: a path with no matching file, and a
-// directory, both return 404. The deep-link fallback and the immutable
-// /assets/* cache header arrive in plan 01-02, test-first.
+// The decision is made by fs.Stat alone, so no user-supplied path is ever
+// built into a filesystem access: only names that resolve inside the embedded
+// build reach the file server. Real files go through http.FileServerFS, which
+// keeps range requests, conditional requests and Last-Modified intact.
 func (s *Static) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+
+	// "" and "." are the root; "index.html" itself is answered from the cached
+	// bytes so it never hits the file server's internal "/index.html" → "/"
+	// redirect (a 301 the browser would follow, but which breaks a direct
+	// assertion and any client that does not follow redirects).
 	if name == "" || name == "." || name == "index.html" {
 		s.serveIndex(w)
 		return
@@ -52,8 +74,17 @@ func (s *Static) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	info, err := fs.Stat(s.fsys, name)
 	if err != nil || info.IsDir() {
-		http.NotFound(w, r)
+		// Not a real file: /admin, /screen/anything/deep, a directory the build
+		// happens to contain. All of them are the SPA's business, not the file
+		// server's — and a directory is served as the document, never listed.
+		s.serveIndex(w)
 		return
+	}
+
+	// Only the content-hashed assets/ directory may be cached forever; every
+	// other real file is served without a cache directive.
+	if strings.HasPrefix(name, assetPrefix) {
+		w.Header().Set("Cache-Control", assetCacheControl)
 	}
 
 	s.files.ServeHTTP(w, r)
@@ -61,9 +92,7 @@ func (s *Static) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Static) serveIndex(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// index.html keeps its name across builds, so a cached copy would keep
-	// serving a stale app after a tunnel restart.
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", indexCacheControl)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(s.index)
