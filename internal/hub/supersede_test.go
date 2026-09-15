@@ -99,7 +99,7 @@ func TestSupersedeTeardownDoesNotEvictSuccessor(t *testing.T) {
 func clientsFor(h *Hub, playerID string) int {
 	count := 0
 	for _, c := range h.registry.snapshot() {
-		if c.playerID == playerID {
+		if c.playerID() == playerID {
 			count++
 		}
 	}

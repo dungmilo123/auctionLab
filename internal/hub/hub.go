@@ -173,7 +173,7 @@ func (r *registry) lookup(playerID string) *client {
 		return nil
 	}
 	for _, c := range r.snapshot() {
-		if c.playerID == playerID {
+		if c.playerID() == playerID {
 			return c
 		}
 	}
@@ -210,15 +210,66 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 // PRECONDITION: engine.mu is held exclusively. The registry is lock-free to
 // read, but the per-client seq counter and the send channel are only race-free
 // because no two enqueues for the same client can overlap — and only the engine
-// lock guarantees that.
-func (h *Hub) Enqueue(rev int64, v game.View) {}
+// lock guarantees that. Every enqueue is non-blocking: a client that cannot keep
+// up loses its message (and is fenced for repair), never the room's.
+func (h *Hub) Enqueue(rev int64, v game.View) {
+	for _, c := range h.registry.snapshot() {
+		if c.role() == "" {
+			continue // no handshake yet: this connection has no role projection
+		}
+		c.enqueue(rev, TypeStateSnapshot, c.snapshot(v))
+	}
+}
 
 // broadcast sends one already-built payload to every joined connection. It is
 // the sibling-message primitive: a single revision may legitimately produce
 // several messages (D-21), each taking its own seq.
 //
 // PRECONDITION: engine.mu is held exclusively — same rule as Enqueue.
-func (h *Hub) broadcast(rev int64, typ string, data any) {}
+func (h *Hub) broadcast(rev int64, typ string, data any) {
+	for _, c := range h.registry.snapshot() {
+		if c.role() == "" {
+			continue
+		}
+		c.enqueue(rev, typ, data)
+	}
+}
+
+// recover is the consumer half of D-41's fence, run by the connection's writer
+// when a producer has dropped a message.
+//
+// The order is the whole contract: discard the stale queue, then build the
+// projection and enqueue it under the engine's EXCLUSIVE lock, then clear the
+// fence under that same lock. Clearing it there is what guarantees the snapshot
+// is the first thing the client sees after the gap — no producer can slip a
+// message in between. Nothing here writes to the socket: the writer drains the
+// FIFO afterwards, so the snapshot cannot overtake queued messages either.
+func (h *Hub) recover(c *client) {
+	c.drain()
+
+	_ = h.engine.Section(func(v game.View) error {
+		if c.enqueueLocked(v.Rev(), TypeStateSnapshot, c.snapshot(v), true) {
+			c.fence.Store(false) // no producer can interleave: the lock is held
+		}
+		c.resyncN.Add(1)
+		h.resyncs.Add(1)
+		return nil
+	})
+}
+
+// applyResync is one writer pass over a pending resync request (D-42). It goes
+// through the same FIFO as every other message, so the snapshot cannot jump
+// ahead of — or fall behind — the events already queued for this connection.
+func (h *Hub) applyResync(c *client) {
+	c.wantsResync.Store(false)
+
+	_ = h.engine.Section(func(v game.View) error {
+		c.enqueue(v.Rev(), TypeStateSnapshot, c.snapshot(v))
+		c.resyncN.Add(1)
+		h.resyncs.Add(1)
+		return nil
+	})
+}
 
 // supersede retires the connection that used to hold an identity (D-31). It is
 // called with the engine's lock held, from the successor's handshake section, so
@@ -246,16 +297,16 @@ func (h *Hub) teardown(c *client) {
 	if !h.registry.remove(c) {
 		return
 	}
-	if c.playerID == "" {
+	if c.playerID() == "" {
 		return // never joined: no presence to flip
 	}
 	if c.superseded.Load() {
 		return // the identity moved on; its new connection owns presence now
 	}
-	if h.registry.lookup(c.playerID) != nil {
+	if h.registry.lookup(c.playerID()) != nil {
 		return // belt and braces: somebody else is registered for this identity
 	}
-	_ = h.engine.Disconnect(c.playerID)
+	_ = h.engine.Disconnect(c.playerID())
 }
 
 // Drops reports how many messages the hub dropped because a client's FIFO was

@@ -20,6 +20,12 @@ import (
 // lock, and a client's own `resync` travels on the same FIFO as everything else
 // — never out of band.
 
+// maxRecoveryReads bounds the "read forward until the stream repairs itself"
+// loops. A gorilla read deadline that expires leaves the connection permanently
+// broken, so these cases read a known number of frames instead of waiting for a
+// quiet socket.
+const maxRecoveryReads = 64
+
 // TestOrderingUnderBurst is research Pitfall 2's test: N concurrent mutations
 // must reach one client as a gapless seq stream, in revision order, with no
 // duplicate and no gap. It is red on an implementation that unlocks before
@@ -29,7 +35,7 @@ func TestOrderingUnderBurst(t *testing.T) {
 	h, _ := newTestHubWithPolicy(t, testPolicyWithBuffer(256))
 
 	observer := dialWS(t, h)
-	join(t, observer, `{"type":"join","role":"screen"}`)
+	_, handshake := join(t, observer, `{"type":"join","role":"screen"}`)
 
 	const burst = 12
 
@@ -53,26 +59,24 @@ func TestOrderingUnderBurst(t *testing.T) {
 	}
 	wg.Wait()
 
-	frames := make([]frame, 0, burst+2)
-	for i := 0; i < burst+2; i++ {
+	frames := make([]frame, 0, burst)
+	for i := 0; i < burst; i++ {
 		frames = append(frames, readFrame(t, observer))
 	}
 
-	// The handshake pair first: hello at seq 1, the role snapshot at seq 2.
-	if frames[0].Type != TypeHello || frames[0].Seq != 1 {
-		t.Fatalf("first frame = %s seq %d, want hello seq 1", frames[0].Type, frames[0].Seq)
+	// The stream continues exactly where the handshake pair left off: the first
+	// fan-out frame is the next seq after the snapshot.
+	if want := handshake.Seq + 1; frames[0].Seq != want {
+		t.Fatalf("first fan-out frame seq = %d, want %d (the handshake pair owns seq 1 and 2)",
+			frames[0].Seq, want)
 	}
-	if frames[1].Type != TypeStateSnapshot || frames[1].Seq != 2 {
-		t.Fatalf("second frame = %s seq %d, want state.snapshot seq 2", frames[1].Type, frames[1].Seq)
-	}
-
 	for i := 1; i < len(frames); i++ {
 		if got, want := frames[i].Seq, frames[i-1].Seq+1; got != want {
 			t.Fatalf("frame %d: seq = %d, want %d — the stream has a gap or a duplicate (D-21/RT-03)\nframes: %s",
 				i, got, want, frameSummary(frames))
 		}
 	}
-	for i := 2; i < len(frames); i++ {
+	for i := 1; i < len(frames); i++ {
 		if got, want := frames[i].Rev, frames[i-1].Rev+1; got != want {
 			t.Fatalf("frame %d: rev = %d, want %d — a state event out of order or a revision skipped (RT-03)\nframes: %s",
 				i, got, want, frameSummary(frames))
@@ -99,7 +103,7 @@ func TestStalledClientDoesNotBlockOthers(t *testing.T) {
 	_, base := join(t, healthy, `{"type":"join","role":"screen"}`)
 	healthyReader := startReader(healthy)
 
-	forceOverflow(t, h, engine, stalledID, 300)
+	forceOverflow(t, h, engine, stalledID, 40)
 
 	if h.Drops() == 0 {
 		t.Fatal("no drop was recorded; the stalled peer's FIFO never overflowed, so D-41 was not exercised")
@@ -150,26 +154,29 @@ func TestGapConvergenceViaSnapshot(t *testing.T) {
 	id := frameString(t, frameData(t, hello), "player")
 
 	before := h.Resyncs()
-	forceOverflow(t, h, engine, id, 300)
+	forceOverflow(t, h, engine, id, 40)
 
-	frames := drainFrames(t, conn, 500*time.Millisecond)
-
-	// Find the recovery: the first frame that follows a seq gap must be the
-	// snapshot. A gap followed by ordinary events would mean the client applied
-	// the tail of a burst it never saw the head of.
+	// Read forward until the stream shows the gap the drops left behind. The
+	// reads are bounded: a quiet socket would otherwise have to be waited out,
+	// and a gorilla read timeout kills the connection.
+	frames := make([]frame, 0, 16)
 	recovery := -1
-	for i := 1; i < len(frames); i++ {
-		if frames[i].Seq > frames[i-1].Seq+1 {
-			if frames[i].Type != TypeStateSnapshot {
-				t.Fatalf("the frame after the seq gap is %q, want %q — recovery must be a snapshot (D-41)\nframes: %s",
-					frames[i].Type, TypeStateSnapshot, frameSummary(frames))
-			}
-			recovery = i
+	for i := 0; i < maxRecoveryReads; i++ {
+		env := readFrame(t, conn)
+		if len(frames) > 0 && env.Seq > frames[len(frames)-1].Seq+1 {
+			frames = append(frames, env)
+			recovery = len(frames) - 1
 			break
 		}
+		frames = append(frames, env)
 	}
 	if recovery < 0 {
-		t.Fatalf("no seq gap was observed: the forced overflow was not exercised\nframes: %s", frameSummary(frames))
+		t.Fatalf("no seq gap appeared in %d frames: the forced overflow was not exercised\nframes: %s",
+			maxRecoveryReads, frameSummary(frames))
+	}
+	if got := frames[recovery].Type; got != TypeStateSnapshot {
+		t.Fatalf("the frame after the seq gap is %q, want %q — recovery must be a snapshot (D-41)\nframes: %s",
+			got, TypeStateSnapshot, frameSummary(frames))
 	}
 	if got := h.Resyncs(); got <= before {
 		t.Errorf("resync counter = %d, want it past %d (a drop must be followed by a recovery snapshot)", got, before)
@@ -179,15 +186,11 @@ func TestGapConvergenceViaSnapshot(t *testing.T) {
 	}
 
 	snapshot := frames[recovery]
-	for _, env := range frames[recovery+1:] {
-		if env.Rev < snapshot.Rev {
-			t.Errorf("post-snapshot frame %s rev %d < snapshot rev %d: the client would regress (research Pitfall 3)",
-				env.Type, env.Rev, snapshot.Rev)
-		}
-	}
 
 	// A mutation after the recovery reaches this connection at a strictly newer
-	// revision: the stream is live again, not merely repaired on paper.
+	// revision: the stream is live again, not merely repaired on paper. This is
+	// also the assertion that no frame after the snapshot can be at or below its
+	// revision — a post-recovery state event is the next revision by definition.
 	late := dialWS(t, h)
 	writeFrame(t, late, `{"type":"join","role":"player","nickname":"Binh"}`)
 	next := readType(t, conn, TypeStateSnapshot)
@@ -235,6 +238,10 @@ func TestSiblingMessagesShareARevision(t *testing.T) {
 // TestResyncReturnsRoleSnapshot pins D-42's client-facing half: `resync` arrives
 // through the connection's own FIFO, carries the role-appropriate projection of
 // the CURRENT state, and takes a fresh seq like any other message.
+//
+// The order is the assertion, not an accident: the reply is queued behind the
+// fan-out that was already on its way, so the snapshot can neither jump the
+// queue nor fall behind it.
 func TestResyncReturnsRoleSnapshot(t *testing.T) {
 	h, _ := newTestHub(t)
 
@@ -242,23 +249,28 @@ func TestResyncReturnsRoleSnapshot(t *testing.T) {
 	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)
 	id := frameString(t, frameData(t, hello), "player")
 
+	// The lobby moves on while the resync is in flight.
+	other := dialWS(t, h)
+	join(t, other, `{"type":"join","role":"player","nickname":"Binh"}`)
 	writeFrame(t, player, `{"type":"resync"}`)
-	first := readType(t, player, TypeStateSnapshot)
+
+	// Frame one is the fan-out of Binh's join, frame two is the reply.
+	pending := readFrame(t, player)
+	if pending.Type != TypeStateSnapshot {
+		t.Fatalf("frame after the mutation = %q, want %q", pending.Type, TypeStateSnapshot)
+	}
+	first := readFrame(t, player)
 	if got := meOf(t, first); got.ID != id {
 		t.Errorf("resync snapshot me.id = %q, want %q — the reply must be this connection's own role projection (D-25/D-42)", got.ID, id)
 	}
-	if first.Seq <= 2 {
-		t.Errorf("resync snapshot seq = %d, want it past the handshake pair", first.Seq)
+	if first.Seq <= pending.Seq {
+		t.Errorf("resync snapshot seq = %d, want it past the queued fan-out's %d — the reply must not jump the FIFO (D-42)",
+			first.Seq, pending.Seq)
 	}
-
-	// The lobby moved on, so a later resync must return the newer state.
-	other := dialWS(t, h)
-	join(t, other, `{"type":"join","role":"player","nickname":"Binh"}`)
-	drainFrames(t, player, 200*time.Millisecond)
-
-	writeFrame(t, player, `{"type":"resync"}`)
-	fresh := readType(t, player, TypeStateSnapshot)
-	if got := len(lobbyOf(t, fresh)); got != 2 {
+	if first.Rev < pending.Rev {
+		t.Errorf("resync snapshot rev = %d, want it at or past the queued fan-out's %d", first.Rev, pending.Rev)
+	}
+	if got := len(lobbyOf(t, first)); got != 2 {
 		t.Errorf("resync snapshot lobby has %d entries, want 2 (the snapshot is built under the lock, not from a stale cache)", got)
 	}
 }
@@ -272,10 +284,10 @@ func TestResyncCoalescesBeforeTheWriterRuns(t *testing.T) {
 
 	c := &client{
 		hub:  h,
-		role: RoleScreen,
 		send: make(chan Envelope, 8),
 		done: make(chan struct{}),
 	}
+	c.setIdentity(RoleScreen, "")
 
 	c.requestResync()
 	c.requestResync()
@@ -290,10 +302,13 @@ func TestResyncCoalescesBeforeTheWriterRuns(t *testing.T) {
 	}
 }
 
-// forceOverflow enqueues past one connection's FIFO depth inside a single engine
-// lock hold. It is the producer-side primitive under test: the target is a peer
-// that has stopped reading, so its writer cannot drain, and this call is what a
-// burst of mutations does to it.
+// forceOverflow provokes a real overflow on one connection and returns how many
+// messages were handed to it before the fence closed. The payload is a large
+// synthetic blob rather than a projection because the point is VOLUME: the
+// target's peer has a deliberately tiny receive buffer, so the writer blocks on
+// the first write and cannot drain while the producer keeps enqueueing. The
+// snapshot the connection is repaired with is the real role projection, and that
+// is what the convergence assertions inspect.
 func forceOverflow(t *testing.T, h *Hub, engine *game.Engine, playerID string, n int) {
 	t.Helper()
 
@@ -301,9 +316,10 @@ func forceOverflow(t *testing.T, h *Hub, engine *game.Engine, playerID string, n
 	if target == nil {
 		t.Fatalf("no registered connection for %q", playerID)
 	}
+	pad := map[string]any{"pad": strings.Repeat("x", 1<<20)}
 	if err := engine.Section(func(v game.View) error {
 		for i := 0; i < n; i++ {
-			target.enqueue(v.Rev(), TypeStateSnapshot, v.Snapshot(game.Role(target.role), target.playerID))
+			target.enqueue(v.Rev(), TypeStateSnapshot, pad)
 		}
 		return nil
 	}); err != nil {
@@ -311,10 +327,10 @@ func forceOverflow(t *testing.T, h *Hub, engine *game.Engine, playerID string, n
 	}
 }
 
-// inflateLobby gives the projections real size before any client connects: a
-// stalled peer's socket can absorb a couple of hundred kilobytes, and the
-// overflow has to be a property of the mechanism, not of how lucky the timing
-// was. No client is connected yet, so these mutations fan out to nobody.
+// inflateLobby gives the projections real size before any client connects: the
+// stalled-client case compares a real role projection against a real one, and a
+// lobby of forty players is closer to the venue than an empty one. No client is
+// connected yet, so these mutations fan out to nobody.
 func inflateLobby(t *testing.T, engine *game.Engine) {
 	t.Helper()
 

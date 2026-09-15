@@ -282,8 +282,12 @@ func readFrameErr(conn *websocket.Conn) (frame, error) {
 }
 
 // drainFrames reads until the socket has been quiet for quiet and returns
-// everything it saw. Used where the exact frame count is an implementation
-// detail (how many mutations a case performed) but the bytes still matter.
+// everything it saw.
+//
+// TERMINAL: a gorilla read deadline that expires leaves the connection in a
+// permanent error state ("errors returned from this method are permanent"), so
+// the quiet window this helper waits for also ends the connection. Only call it
+// when nothing else needs that socket afterwards.
 func drainFrames(t *testing.T, conn *websocket.Conn, quiet time.Duration) []frame {
 	t.Helper()
 

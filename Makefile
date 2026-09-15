@@ -6,7 +6,7 @@ SERVER_PORT ?= 8080
 VITE_PORT   ?= 5173
 DB_PATH     ?= ./auction.db
 
-.PHONY: dev dev-go dev-web build run tunnel loadtest test test-go test-web test-lint clean
+.PHONY: dev dev-go dev-web build run tunnel loadtest test test-go test-web test-race test-lint clean
 
 # One command, two processes, zero extra dependencies. `kill 0` reaps the whole
 # process group — including the binary `go run` spawns, which a PID-based kill
@@ -47,6 +47,12 @@ test: test-go test-web test-lint
 
 test-go:
 	$(GO) test ./...
+
+# D-43: the ordering and resync contracts are only meaningful under the race
+# detector. -timeout is not optional — a lock-order mistake deadlocks, and a
+# hung gate with no goroutine dump is undiagnosable (research Pitfall 11).
+test-race:
+	$(GO) test -race -timeout 120s ./...
 
 test-web: web/node_modules
 	cd web && npm run test

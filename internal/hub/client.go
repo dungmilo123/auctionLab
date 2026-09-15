@@ -17,17 +17,23 @@ import (
 // client frames, the single write pump that owns every application write, the
 // keepalive, and the FIFO the engine's fan-out enqueues into.
 
+// identity is a connection's resolved role and player id. It is published once,
+// inside the engine's critical section, and read from paths that hold no lock at
+// all (the registry lookup, a teardown, a test's white-box probe), so it lives
+// behind an atomic pointer and is never mutated afterwards.
+type identity struct {
+	role     string
+	playerID string
+}
+
 // client is one live connection.
 type client struct {
 	hub  *Hub
 	conn *websocket.Conn
 
-	// Identity. It is written once, inside the engine's critical section by the
-	// handshake (D-23), and read on the two paths that hold the same lock: the
-	// fan-out and the resync snapshot. The read pump's own goroutine is the
-	// writer, which is why no other goroutine may touch these fields.
-	role     string
-	playerID string
+	// who is the resolved identity (D-23). It is written once by the handshake
+	// and read by the fan-out, the resync paths and the registry.
+	who atomic.Pointer[identity]
 
 	// seq is this connection's stream counter (D-21). It is consumed at every
 	// enqueue ATTEMPT — a drop leaves a visible gap, which is the signal the
@@ -57,6 +63,15 @@ type client struct {
 
 	// superseded records that a newer connection took this identity (D-31).
 	superseded atomic.Bool
+
+	// fence is D-41's producer latch: a dropped message arms it, every later
+	// producer suppresses instead of delivering half a burst, and only the
+	// writer's recovery pass clears it (under the engine lock).
+	fence atomic.Bool
+
+	// wantsResync is D-42's client request, kept as a flag so that several rapid
+	// `resync` commands coalesce into one snapshot.
+	wantsResync atomic.Bool
 
 	// Counters for D-41's accounting.
 	drops      atomic.Int64
@@ -120,11 +135,48 @@ func (c *client) retire() { c.retiring.Store(true) }
 // requestResync asks the writer to enqueue a fresh snapshot (D-42). It is a
 // flag rather than a queue on purpose: two requests arriving before the writer
 // runs must coalesce into one snapshot.
-func (c *client) requestResync() {}
+func (c *client) requestResync() { c.wantsResync.Store(true) }
 
-// applyResync is one writer pass over a pending resync request: it enqueues the
-// role projection built under the engine's exclusive lock and clears the request.
-func (h *Hub) applyResync(c *client) {}
+// setIdentity publishes this connection's resolved identity. It runs inside the
+// engine's critical section, before the first enqueue of the handshake, so the
+// fan-out of that same mutation already sees it.
+func (c *client) setIdentity(role, playerID string) {
+	c.who.Store(&identity{role: role, playerID: playerID})
+}
+
+// role is the connection's resolved role, or "" before a successful handshake.
+func (c *client) role() string {
+	if id := c.who.Load(); id != nil {
+		return id.role
+	}
+	return ""
+}
+
+// playerID is the connection's player id: empty for screen, admin and any
+// connection that has not joined.
+func (c *client) playerID() string {
+	if id := c.who.Load(); id != nil {
+		return id.playerID
+	}
+	return ""
+}
+
+// snapshot builds this connection's own role projection from a lock-held view
+// (D-25/D-26). It is the only way this package asks for a payload.
+func (c *client) snapshot(v game.View) any {
+	return v.Snapshot(game.Role(c.role()), c.playerID())
+}
+
+// describe names the connection in a log line without leaking a token.
+func (c *client) describe() string {
+	if id := c.playerID(); id != "" {
+		return c.role() + " " + id
+	}
+	if role := c.role(); role != "" {
+		return role
+	}
+	return "unjoined"
+}
 
 // readPump routes client frames until the socket ends. It is the only reader,
 // and it is where the per-connection protocol state lives: nothing it does ever
@@ -164,7 +216,7 @@ func (c *client) handle(payload []byte) {
 	// D-23: every command except join is refused before a successful join — and
 	// the socket stays open, so the client can fix its nickname and retry
 	// without a reload.
-	if c.role == "" && in.Type != TypeJoin {
+	if c.role() == "" && in.Type != TypeJoin {
 		c.sendError(CodeNotJoined, "join first")
 		return
 	}
@@ -174,12 +226,10 @@ func (c *client) handle(payload []byte) {
 		c.handleJoin(in)
 	case TypeResync:
 		// D-42: the snapshot is built under the engine's exclusive lock and
-		// enqueued into this connection's own FIFO, never written to the socket
-		// from here.
-		_ = c.hub.engine.Section(func(v game.View) error {
-			c.resync(v)
-			return nil
-		})
+		// enqueued into this connection's own FIFO by the writer — never written
+		// to the socket from here, so it cannot jump the queue, and coalesced so
+		// two rapid requests do not queue two snapshots.
+		c.requestResync()
 	default:
 		// D-24: the Phase 3–6 commands are already in the catalog, so a client
 		// that sends one now gets a typed answer instead of silence.
@@ -193,7 +243,7 @@ func (c *client) handle(payload []byte) {
 // "no event can slip between hello and the snapshot" a structural property
 // rather than a hope.
 func (c *client) handleJoin(in inbound) {
-	if c.role != "" {
+	if c.role() != "" {
 		c.sendError(CodeUnsupported, "this connection has already joined")
 		return
 	}
@@ -236,8 +286,7 @@ func (c *client) handleJoin(in inbound) {
 // mutation. hello goes out first (seq 1) and the role projection second (seq 2),
 // and no producer can enqueue between them.
 func (c *client) handshake(hello game.Hello, snapshot any) {
-	c.role = string(hello.Role)
-	c.playerID = hello.PlayerID
+	c.setIdentity(string(hello.Role), hello.PlayerID)
 
 	// D-31: a valid token means this connection now owns the identity, so any
 	// earlier connection holding it is retired — with the dedicated close code,
@@ -253,13 +302,18 @@ func (c *client) handshake(hello game.Hello, snapshot any) {
 	c.enqueue(hello.Rev, TypeStateSnapshot, snapshot)
 }
 
-// resync enqueues one fresh role projection into this connection's own FIFO.
-// It runs inside engine.Section, so the snapshot cannot be built at a revision
-// a concurrent mutation has already overtaken (D-42).
-func (c *client) resync(v game.View) {
-	c.resyncN.Add(1)
-	c.hub.resyncs.Add(1)
-	c.enqueue(v.Rev(), TypeStateSnapshot, v.Snapshot(game.Role(c.role), c.playerID))
+// drain discards everything already queued. The messages belong to a burst this
+// connection can no longer reconstruct, and the snapshot that follows
+// supersedes them (D-41).
+func (c *client) drain() {
+	for {
+		select {
+		case <-c.send:
+			c.queued.Add(-1)
+		default:
+			return
+		}
+	}
 }
 
 // enqueue hands one message to this connection's FIFO. It never blocks and
@@ -270,7 +324,23 @@ func (c *client) resync(v game.View) {
 // enqueues for the same client can overlap only because every producer is
 // inside the engine's critical section.
 func (c *client) enqueue(rev int64, typ string, data any) {
+	c.enqueueLocked(rev, typ, data, false)
+}
+
+// enqueueLocked is enqueue with the fence bypassed for the recovery snapshot.
+// recovery also skips re-arming the fence: it is the message that ends the
+// episode.
+func (c *client) enqueueLocked(rev int64, typ string, data any, recovery bool) bool {
 	next := c.seq + 1
+
+	// D-41: while the fence is up this connection is owed a snapshot, so every
+	// later message is suppressed rather than delivered as half a burst. seq is
+	// still consumed, which is what makes the gap visible to the client.
+	if !recovery && c.fence.Load() {
+		c.seq = next
+		c.suppressed.Add(1)
+		return false
+	}
 
 	payload, err := json.Marshal(data)
 	if err != nil {
@@ -278,7 +348,7 @@ func (c *client) enqueue(rev int64, typ string, data any) {
 		// client error. The seq is still consumed so the client sees the gap.
 		c.seq = next
 		log.Printf("ws: marshaling %s: %v", typ, err)
-		return
+		return false
 	}
 
 	c.seq = next
@@ -287,11 +357,16 @@ func (c *client) enqueue(rev int64, typ string, data any) {
 	select {
 	case c.send <- Envelope{Type: typ, Seq: next, Rev: rev, TS: c.hub.now().UnixMilli(), Data: payload}:
 		c.queued.Add(1)
+		return true
 	default:
-		// The FIFO is full: this client is not keeping up. Count it and drop
-		// the message; 02-03 Task 2 owns the fence that repairs the stream.
 		c.drops.Add(1)
 		c.hub.drops.Add(1)
+		if !recovery && !c.fence.Swap(true) {
+			// Logged once per episode: the fence keeps every later drop from
+			// coming back through here (research: drops logged at most once).
+			log.Printf("ws: %s fell behind; scheduling a resync snapshot", c.describe())
+		}
+		return false
 	}
 }
 
@@ -313,6 +388,16 @@ func (c *client) writePump() {
 		if c.retiring.Load() && len(c.send) == 0 {
 			c.close()
 			return
+		}
+		// D-41: recovery runs here, in the only goroutine that could have made
+		// room in the FIFO, and never on the producer's path.
+		if c.fence.Load() {
+			c.hub.recover(c)
+			continue
+		}
+		if c.wantsResync.Load() {
+			c.hub.applyResync(c)
+			continue
 		}
 		select {
 		case <-c.done:
