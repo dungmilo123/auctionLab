@@ -5,8 +5,11 @@ package hub
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -47,6 +50,35 @@ var defaultKeepalive = keepalive{
 	pingPeriod: 54 * time.Second, // 90% of pongWait
 }
 
+// originRejectLogInterval bounds how often the routine cross-origin rejection
+// is logged: /ws is unauthenticated, so once the app is published any scanner
+// can otherwise drive unbounded log writes at one line per 403.
+const originRejectLogInterval = time.Minute
+
+// lastOriginRejectLog is the unix-nanosecond time of the last logged origin
+// rejection; 0 means none has been logged yet.
+var lastOriginRejectLog atomic.Int64
+
+// logUpgradeFailure logs a failed upgrade, collapsing the routine cross-origin
+// rejection to at most one line per interval. Every other upgrade failure (a
+// plain GET reaching /ws, a malformed handshake) is still logged every time —
+// those are unexpected and worth the line.
+func logUpgradeFailure(err error) {
+	// gorilla answers a failed same-origin check with a HandshakeError whose
+	// message names CheckOrigin; the wording is pinned by go.mod's v1.5.3. If it
+	// ever changes, the fallback is one extra line per minute — never a missed
+	// error.
+	var handshake websocket.HandshakeError
+	if errors.As(err, &handshake) && strings.Contains(err.Error(), "origin not allowed") {
+		now := time.Now().UnixNano()
+		if last := lastOriginRejectLog.Load(); last != 0 && now-last < int64(originRejectLogInterval) {
+			return
+		}
+		lastOriginRejectLog.Store(now)
+	}
+	log.Printf("ws: upgrade failed: %v", err)
+}
+
 // upgrader leaves CheckOrigin nil on purpose: gorilla's default requires the
 // Origin host to equal the Host header, and that same-origin check is this
 // project's cross-site WebSocket hijacking defence. Never blanket-allow it for
@@ -71,7 +103,7 @@ func echo(w http.ResponseWriter, r *http.Request, ka keepalive) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// Upgrade already wrote an HTTP error response.
-		log.Printf("ws: upgrade failed: %v", err)
+		logUpgradeFailure(err)
 		return
 	}
 	defer func() { _ = conn.Close() }()
