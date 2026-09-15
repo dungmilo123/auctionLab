@@ -116,20 +116,12 @@ func (s *Store) Commit(m Mutation) error {
 	// on any error path above.
 	defer func() { _ = tx.Rollback() }()
 
-	const updateGame = `
-UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ? WHERE id = 1`
-	res, err := tx.Exec(updateGame, m.Phase, nullableItemID(m.CurrentItemID), m.Revision, m.UpdatedAt)
-	if err != nil {
-		return fmt.Errorf("store: updating the game row: %w", err)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("store: checking the game row update: %w", err)
-	}
-	if affected == 0 {
-		return fmt.Errorf("store: game row missing — Bootstrap must run before the first mutation")
-	}
-
+	// The statement order below satisfies `PRAGMA foreign_keys(1)` for the whole
+	// write set: players (referenced by bids), then items (referenced by the
+	// game row's current_item_id, the runtime row and bids), then the game row
+	// update (which may point at a row created in this very mutation), then the
+	// deletes (safe only after the game row stopped referencing the old item),
+	// then the runtime row, then the append-only bids.
 	const upsertPlayer = `
 INSERT INTO players (id, nickname, nickname_key, token, budget, total_value, joined_at, last_seen_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -144,6 +136,91 @@ ON CONFLICT(id) DO UPDATE SET
 	for _, p := range m.Players {
 		if _, err := tx.Exec(upsertPlayer, p.ID, p.Nickname, p.NicknameKey, p.Token, p.Budget, p.TotalValue, p.JoinedAt, p.LastSeenAt); err != nil {
 			return fmt.Errorf("store: upserting player %q: %w", p.ID, err)
+		}
+	}
+
+	// Phase 3 (D-49): the auction write set rides the SAME transaction.
+	const upsertItem = `
+INSERT INTO items (id, order_index, name, description, image_url, auction_type, truth_value,
+                   hint_min, hint_max, start_price, min_increment, floor_price, decrement_step,
+                   decrement_interval_ms, duration_ms, anti_snipe_mode, anti_snipe_window_ms,
+                   max_extensions, status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  order_index           = excluded.order_index,
+  name                  = excluded.name,
+  description           = excluded.description,
+  image_url             = excluded.image_url,
+  auction_type          = excluded.auction_type,
+  truth_value           = excluded.truth_value,
+  hint_min              = excluded.hint_min,
+  hint_max              = excluded.hint_max,
+  start_price           = excluded.start_price,
+  min_increment         = excluded.min_increment,
+  floor_price           = excluded.floor_price,
+  decrement_step        = excluded.decrement_step,
+  decrement_interval_ms = excluded.decrement_interval_ms,
+  duration_ms           = excluded.duration_ms,
+  anti_snipe_mode       = excluded.anti_snipe_mode,
+  anti_snipe_window_ms  = excluded.anti_snipe_window_ms,
+  max_extensions        = excluded.max_extensions,
+  status                = excluded.status`
+	for _, it := range m.Items {
+		if _, err := tx.Exec(upsertItem,
+			it.ID, it.OrderIndex, it.Name, it.Description, it.ImageURL, it.AuctionType, it.TruthValue,
+			nullableInt64(it.HintMin), nullableInt64(it.HintMax), it.StartPrice,
+			nullableInt64(it.MinIncrement), nullableInt64(it.FloorPrice), nullableInt64(it.DecrementStep),
+			nullableInt64(it.DecrementIntervalMS), nullableInt64(it.DurationMS), it.AntiSnipeMode,
+			nullableInt64(it.AntiSnipeWindowMS), nullableInt64(it.MaxExtensions), it.Status,
+		); err != nil {
+			return fmt.Errorf("store: upserting item %q: %w", it.ID, err)
+		}
+	}
+
+	const updateGame = `
+UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ? WHERE id = 1`
+	res, err := tx.Exec(updateGame, m.Phase, nullableItemID(m.CurrentItemID), m.Revision, m.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("store: updating the game row: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("store: checking the game row update: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("store: game row missing — Bootstrap must run before the first mutation")
+	}
+
+	const deleteItem = `DELETE FROM items WHERE id = ?`
+	for _, id := range m.DeletedItems {
+		if _, err := tx.Exec(deleteItem, id); err != nil {
+			return fmt.Errorf("store: deleting item %q: %w", id, err)
+		}
+	}
+
+	if m.Runtime != nil {
+		const upsertRuntime = `
+INSERT INTO auction_runtime (item_id, started_at, deadline_at, settled_at, revision, extensions_used)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(item_id) DO UPDATE SET
+  started_at      = excluded.started_at,
+  deadline_at     = excluded.deadline_at,
+  settled_at      = excluded.settled_at,
+  revision        = excluded.revision,
+  extensions_used = excluded.extensions_used`
+		if _, err := tx.Exec(upsertRuntime,
+			m.Runtime.ItemID, m.Runtime.StartedAt, nullableInt64(m.Runtime.DeadlineAt),
+			nullableInt64(m.Runtime.SettledAt), m.Runtime.Revision, m.Runtime.ExtensionsUsed,
+		); err != nil {
+			return fmt.Errorf("store: upserting the runtime row for item %q: %w", m.Runtime.ItemID, err)
+		}
+	}
+
+	// Bids are append-only (D-51): a row is only ever inserted, never updated.
+	const insertBid = `INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES (?, ?, ?, ?, ?)`
+	for _, b := range m.Bids {
+		if _, err := tx.Exec(insertBid, b.ItemID, b.PlayerID, b.Amount, b.Kind, b.CreatedAt); err != nil {
+			return fmt.Errorf("store: appending a bid for item %q: %w", b.ItemID, err)
 		}
 	}
 

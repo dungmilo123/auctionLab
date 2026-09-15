@@ -8,8 +8,10 @@ import (
 )
 
 // planTables is the complete PLAN.md §5 table list, written here as literals:
-// the point of TestSchema is that Phase 3-6 never need a migration, so the
-// expectation must not be derived from schema.go.
+// the point of TestSchema is that the table set is complete and the version
+// string is explicit, so the expectation must not be derived from schema.go.
+// (Phase 3 extends the schema only through the guarded migration in migrate.go's
+// tests — this test still pins the tables and the bootstrap.)
 var planTables = []string{
 	"players", "items", "sealed_bids", "bids", "auction_runtime", "game", "events",
 }
@@ -18,9 +20,9 @@ var planTables = []string{
 // fails here rather than in a query nobody runs until the venue.
 const nicknameKeyIndex = "idx_players_nickname_key"
 
-// TestSchema pins D-36: one idempotent DDL pass, user_version 1, the complete
-// PLAN.md §5 schema plus the players.nickname_key UNIQUE index, and the single
-// bootstrapped game row.
+// TestSchema pins D-36: one idempotent DDL pass, the current user_version, the
+// complete PLAN.md §5 schema plus the players.nickname_key UNIQUE index, and the
+// single bootstrapped game row.
 func TestSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	st, err := Open(path)
@@ -54,7 +56,7 @@ func TestSchema(t *testing.T) {
 		}
 	})
 
-	t.Run("reports user_version 1", func(t *testing.T) {
+	t.Run("reports the current user_version", func(t *testing.T) {
 		var got int
 		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 			t.Fatalf("PRAGMA user_version: %v", err)

@@ -6,11 +6,13 @@ import (
 	"time"
 )
 
-// UserVersion is D-36's schema version. The bootstrap is one idempotent DDL
-// pass plus this pragma — deliberately no migration framework, because the
-// Phase 2 schema is the complete PLAN.md §5 schema and a demo database is
-// disposable (delete auction.db to reset).
-const UserVersion = 1
+// UserVersion is D-36's schema version, raised to 2 by D-50: Phase 3 adds
+// `auction_runtime.extensions_used` because the anti-snipe cap must survive a
+// crash exactly (deriving it from deadline arithmetic does not reconstruct the
+// number of extends). The bootstrap stays one idempotent DDL pass plus one
+// guarded migration — deliberately no migration framework, because a demo
+// database is disposable (delete auction.db to reset).
+const UserVersion = 2
 
 // gameConfigJSON is the bootstrapped game row's default configuration (D-36 /
 // PLAN.md §5: starting_budget 1.000.000 VND). It is written by the schema
@@ -82,11 +84,12 @@ CREATE TABLE IF NOT EXISTS bids (
 );
 
 CREATE TABLE IF NOT EXISTS auction_runtime (
-  item_id     TEXT PRIMARY KEY REFERENCES items(id),
-  started_at  INTEGER NOT NULL,
-  deadline_at INTEGER,
-  settled_at  INTEGER,
-  revision    INTEGER NOT NULL
+  item_id         TEXT PRIMARY KEY REFERENCES items(id),
+  started_at      INTEGER NOT NULL,
+  deadline_at     INTEGER,
+  settled_at      INTEGER,
+  revision        INTEGER NOT NULL,
+  extensions_used INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS game (
@@ -106,21 +109,36 @@ CREATE TABLE IF NOT EXISTS events (
 );
 `
 
-// Schema applies the complete PLAN.md §5 schema (D-36) and asserts
-// user_version 1. It is idempotent: a second call on an existing file changes
-// nothing and still reports 1.
+// Schema applies the complete schema (D-36) and brings the file to
+// UserVersion. It is idempotent: a second call on an existing file changes
+// nothing and still reports the same version.
+//
+// It never LOWERS a version. The Phase 2 bootstrap wrote the pragma
+// unconditionally, which would drag a v2 file back to 1 and re-run the
+// migration; a file written by a newer build is refused outright instead
+// (research Pitfall 10).
 //
 // This is the only place in the project where DDL or PRAGMA statements may
 // live (research Pitfall 12): the mutation path executes no schema work.
 func Schema(db *sql.DB) error {
+	var current int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&current); err != nil {
+		return fmt.Errorf("store: reading user_version: %w", err)
+	}
+	if current > UserVersion {
+		return fmt.Errorf("store: schema version %d is newer than this build supports (%d) — refusing to touch the file", current, UserVersion)
+	}
+
 	if _, err := db.Exec(schemaDDL); err != nil {
 		return fmt.Errorf("store: applying schema: %w", err)
 	}
 
-	// PRAGMA cannot be parameterized; UserVersion is a compile-time constant.
-	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", UserVersion)); err != nil {
-		return fmt.Errorf("store: setting user_version: %w", err)
+	if current < UserVersion {
+		if err := migrate(db); err != nil {
+			return err
+		}
 	}
+
 	var got int
 	if err := db.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 		return fmt.Errorf("store: reading user_version: %w", err)
@@ -129,6 +147,74 @@ func Schema(db *sql.DB) error {
 		return fmt.Errorf("store: user_version is %d after the bootstrap, want %d", got, UserVersion)
 	}
 	return nil
+}
+
+// migrate brings a v1 (or brand-new) file to UserVersion. Two properties are
+// the contract (D-50, research §1–2):
+//
+//   - the ALTER and `PRAGMA user_version` commit in ONE transaction, so a crash
+//     can never leave the column and the version disagreeing about the schema;
+//   - the `PRAGMA table_info` probe runs first, because a boot that crashed
+//     exactly between the ALTER and the pragma leaves a file where the column
+//     exists but the version is still 1 — a version-only guard would re-issue
+//     the ALTER and fail forever with "duplicate column name" (a plain error,
+//     not a UNIQUE violation, so D-34 would escalate it to a process exit).
+func migrate(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("store: beginning the schema migration: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	has, err := columnExists(tx, "auction_runtime", "extensions_used")
+	if err != nil {
+		return err
+	}
+	if !has {
+		if _, err := tx.Exec(`ALTER TABLE auction_runtime ADD COLUMN extensions_used INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("store: adding auction_runtime.extensions_used: %w", err)
+		}
+	}
+
+	// PRAGMA cannot be parameterized; UserVersion is a compile-time constant.
+	if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", UserVersion)); err != nil {
+		return fmt.Errorf("store: setting user_version: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("store: committing the schema migration: %w", err)
+	}
+	return nil
+}
+
+// columnExists probes one table's columns. The names here are compile-time
+// literals, never caller input, so the concatenation cannot be injected into.
+func columnExists(tx *sql.Tx, table, column string) (bool, error) {
+	rows, err := tx.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return false, fmt.Errorf("store: probing %s columns: %w", table, err)
+	}
+
+	found := false
+	for rows.Next() {
+		var (
+			cid, notNull, pk int
+			name, typ        string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			_ = rows.Close()
+			return false, fmt.Errorf("store: scanning %s columns: %w", table, err)
+		}
+		if name == column {
+			found = true
+		}
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return false, fmt.Errorf("store: reading %s columns: %w", table, err)
+	}
+	return found, nil
 }
 
 // Bootstrap inserts the single `game` row if it does not exist (D-36). The

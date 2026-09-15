@@ -1,20 +1,16 @@
 package store
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 )
 
 // This file is the Phase 3 item/runtime/bid repository: the row types and the
 // load queries that make the auction half of one mutation durable (D-49/D-50,
-// RT-06). It mirrors snapshot.go's discipline — parameterless ordered SELECTs,
-// rows.Err() checked, every error wrapped with "store: …" — and keeps all
-// schema work out of the mutation path (research Pitfall 12).
-
-// errREDPhase3Store is the RED-phase scaffold of plan 03-01: the loaders below
-// return it until the GREEN commit implements them. It exists only so the
-// failing tests compile as tests (a load failure would be INVALID_RED, #3770).
-var errREDPhase3Store = errors.New("store: Phase 3 loaders are not implemented yet")
+// RT-06). It mirrors snapshot.go's discipline — ordered SELECTs, rows.Err()
+// checked, every error wrapped with "store: …" — and keeps all schema work out
+// of the mutation path (research Pitfall 12).
 
 // ItemRow is one row of the `items` table (PLAN.md §5). Nullable columns are
 // pointers so SQL NULL and a legitimate 0 stay distinguishable: `hint_min` may
@@ -68,23 +64,90 @@ type BidRow struct {
 // LoadItems returns every item row in presentation order (order_index, then id,
 // so the order is total and a restart reproduces the list exactly).
 func (s *Store) LoadItems() ([]ItemRow, error) {
-	return nil, fmt.Errorf("store: LoadItems: %w", errREDPhase3Store)
+	const query = `
+SELECT id, order_index, name, COALESCE(description, ''), COALESCE(image_url, ''),
+       auction_type, truth_value, hint_min, hint_max, start_price, min_increment, floor_price,
+       decrement_step, decrement_interval_ms, duration_ms, COALESCE(anti_snipe_mode, ''),
+       anti_snipe_window_ms, max_extensions, status
+FROM items ORDER BY order_index, id`
+
+	rows, err := s.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("store: loading items: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []ItemRow
+	for rows.Next() {
+		var it ItemRow
+		// The nullable columns scan into *int64 fields: database/sql allocates
+		// for a value and leaves nil for SQL NULL (probed against this driver).
+		if err := rows.Scan(
+			&it.ID, &it.OrderIndex, &it.Name, &it.Description, &it.ImageURL,
+			&it.AuctionType, &it.TruthValue, &it.HintMin, &it.HintMax, &it.StartPrice,
+			&it.MinIncrement, &it.FloorPrice, &it.DecrementStep, &it.DecrementIntervalMS,
+			&it.DurationMS, &it.AntiSnipeMode, &it.AntiSnipeWindowMS, &it.MaxExtensions, &it.Status,
+		); err != nil {
+			return nil, fmt.Errorf("store: scanning an item row: %w", err)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("store: reading items: %w", err)
+	}
+	return items, nil
 }
 
 // LoadRuntime returns the runtime row of one item. The bool distinguishes "no
 // row" (an item that has never gone live — legitimate outside LIVE) from a
 // zero-valued row, which would look exactly like `started_at = 0`.
 func (s *Store) LoadRuntime(itemID string) (RuntimeRow, bool, error) {
-	return RuntimeRow{}, false, fmt.Errorf("store: LoadRuntime: %w", errREDPhase3Store)
+	const query = `
+SELECT item_id, started_at, deadline_at, settled_at, revision, extensions_used
+FROM auction_runtime WHERE item_id = ?`
+
+	var rt RuntimeRow
+	err := s.DB.QueryRow(query, itemID).Scan(
+		&rt.ItemID, &rt.StartedAt, &rt.DeadlineAt, &rt.SettledAt, &rt.Revision, &rt.ExtensionsUsed,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return RuntimeRow{}, false, nil
+	}
+	if err != nil {
+		return RuntimeRow{}, false, fmt.Errorf("store: loading the runtime row for item %q: %w", itemID, err)
+	}
+	return rt, true, nil
 }
 
-// LoadBids returns every bid row in append order (id, then nothing — the id IS
-// the order).
+// LoadBids returns every bid row in append order: the AUTOINCREMENT id IS the
+// order, so a restart reproduces the trail exactly (research §4 uses this to
+// reconstruct the running item's top bid).
 func (s *Store) LoadBids() ([]BidRow, error) {
-	return nil, fmt.Errorf("store: LoadBids: %w", errREDPhase3Store)
+	const query = `
+SELECT id, item_id, player_id, amount, kind, created_at FROM bids ORDER BY id`
+
+	rows, err := s.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("store: loading bids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var bids []BidRow
+	for rows.Next() {
+		var b BidRow
+		if err := rows.Scan(&b.ID, &b.ItemID, &b.PlayerID, &b.Amount, &b.Kind, &b.CreatedAt); err != nil {
+			return nil, fmt.Errorf("store: scanning a bid row: %w", err)
+		}
+		bids = append(bids, b)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("store: reading bids: %w", err)
+	}
+	return bids, nil
 }
 
-// nullableInt64 turns the row types' pointers into the driver's NULL contract.
+// nullableInt64 turns the row types' pointers into the driver's NULL contract:
+// nil is SQL NULL, a pointer is its value — including a legitimate 0.
 func nullableInt64(v *int64) any {
 	if v == nil {
 		return nil
