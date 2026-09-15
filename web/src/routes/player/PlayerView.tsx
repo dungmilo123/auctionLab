@@ -8,16 +8,29 @@ import {
   type ConnectionStatus,
   type PlayerConnection,
 } from '@/ws/client'
-import type { ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
+import type { BidRejected, ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
+import { initialViewState, type ViewState } from '@/ws/view'
+import FinalePlaceholder from './FinalePlaceholder'
+import ItemIntro from './ItemIntro'
 import JoinForm from './JoinForm'
+import LiveEnglish from './LiveEnglish'
 import Lobby from './Lobby'
+import SettledReveal from './SettledReveal'
 
-// The player route (02-UI-SPEC.md §Player Route & Interaction Contract).
+// The player route (02/03-UI-SPEC.md §Player Route & Interaction Contract).
 //
-// One card, two screens, and one polite status line above them. Everything the
-// player sees is either the dictionary (bilingual, EN default) or a value from
-// the server's self-sufficient snapshot (D-25) — never a server message and
-// never a string invented at the call site.
+// One card, one header row, one polite status line, and a body that switches on
+// the phase of the reduced socket state (D-70). Everything the player sees is
+// either the dictionary (bilingual, EN default) or a value the server sent —
+// never a server message and never a string invented at the call site.
+//
+// Two socket callbacks feed this route, and they are the same decoded frame:
+//   - `onView` is the authoritative reduction (`ViewState`) and the ONLY source
+//     of the phase switch, the item, the player's own row and the LIVE overlay;
+//   - `onSnapshot` carries the Phase-2 self-sufficient snapshot that the shipped
+//     LOBBY body renders from (its prop type is deliberately unchanged, so the
+//     Phase 2 screen stays byte-identical).
+// Both are set from one frame in one React batch, so they can never disagree.
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
   connecting: 'status.connecting',
@@ -53,6 +66,7 @@ function errorCopyKey(code: string): CopyKey {
 }
 
 function PlayerView() {
+  const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [nickname, setNickname] = useState('')
   const [joining, setJoining] = useState(false)
@@ -61,8 +75,12 @@ function PlayerView() {
   const [restoring, setRestoring] = useState(() => readStoredToken() !== '')
   const [errorKey, setErrorKey] = useState<CopyKey | null>(null)
   const [snapshot, setSnapshot] = useState<PlayerSnapshot | null>(null)
+  // The phase body's state, reduced from every admitted frame (D-57/D-70).
+  const [view, setView] = useState<ViewState>(() => initialViewState())
+  // D-53's private refusal, held only long enough for the feedback row: it is
+  // not view state, and it clears on the next edit or the next snapshot.
+  const [rejection, setRejection] = useState<BidRejected | null>(null)
   const connectionRef = useRef<PlayerConnection | null>(null)
-  const { t } = useLanguage()
 
   // The socket is created INSIDE this effect and closed in its cleanup. At
   // module scope it would open twice under StrictMode and supersede itself —
@@ -70,12 +88,15 @@ function PlayerView() {
   useEffect(() => {
     const connection = openPlayerSocket({
       onStatus: setStatus,
+      onView: setView,
       onSnapshot: (next) => {
         setSnapshot(next)
         setJoining(false)
         setRestoring(false)
         setErrorKey(null)
+        setRejection(null)
       },
+      onBidRejected: setRejection,
       onError: (error: ErrorPayload) => {
         setJoining(false)
         setRestoring(false)
@@ -90,7 +111,14 @@ function PlayerView() {
     }
   }, [])
 
-  function submit() {
+  function changeNickname(value: string) {
+    setNickname(value)
+    // The nickname rejection replaces itself as soon as the player starts
+    // fixing the value (UI-SPEC §Join/mutation states).
+    setErrorKey(null)
+  }
+
+  function submitJoin() {
     const connection = connectionRef.current
     if (connection === null) return
     setJoining(true)
@@ -101,21 +129,61 @@ function PlayerView() {
     connection.join(nickname)
   }
 
+  function placeBid(amount: number) {
+    // The amount is the raw integer the field parsed (D-71): no grouping dots
+    // ever reach the wire.
+    connectionRef.current?.send({ type: 'bid.place', amount })
+  }
+
   function renderBody() {
-    // The last known lobby stays on screen through a lost or superseded
-    // connection — a phone that lost signal must not lose the room it is in.
-    if (snapshot !== null) return <Lobby snapshot={snapshot} />
-    if (restoring) return <p className="text-base leading-[1.5]">{t('session.restoring')}</p>
-    return (
-      <JoinForm
-        open={status === 'open'}
-        joining={joining}
-        nickname={nickname}
-        onNicknameChange={setNickname}
-        onSubmit={submit}
-        errorKey={errorKey}
-      />
-    )
+    // No snapshot has been applied yet: the player has not joined (or is
+    // resuming), so the join screen is the only body that exists.
+    if (view.me === null) {
+      if (restoring) return <p className="text-base leading-[1.5]">{t('session.restoring')}</p>
+      return (
+        <JoinForm
+          open={status === 'open'}
+          joining={joining}
+          nickname={nickname}
+          onNicknameChange={changeNickname}
+          onSubmit={submitJoin}
+          errorKey={errorKey}
+        />
+      )
+    }
+
+    switch (view.phase) {
+      case 'LIVE':
+        // The LIVE body must render `price.tick` and `bid.accepted` updates as
+        // well as the snapshot, so an anti-snipe deadline jump and a moving
+        // `min_next_bid` are visible without waiting for a snapshot (D-56/D-71).
+        return (
+          <LiveEnglish
+            view={view}
+            status={status}
+            rejection={rejection}
+            onClearRejection={() => setRejection(null)}
+            onPlaceBid={placeBid}
+          />
+        )
+      case 'SETTLED':
+        return <SettledReveal item={view.item} me={view.me} />
+      case 'FINALE':
+        return <FinalePlaceholder />
+      case 'ITEM_INTRO':
+        if (view.item !== null) return <ItemIntro item={view.item} budget={view.me.budget} />
+        break
+      default:
+        break
+    }
+
+    // LOBBY keeps its shipped Phase-2 body, rendered from the snapshot it was
+    // written for. The last known body deliberately stays on screen through a
+    // `lost` or `superseded` connection: a phone that lost signal must not lose
+    // the room it is in. (The `null` arm is unreachable — `me` and the snapshot
+    // arrive from the same frame — and is written out only to keep this
+    // function total.)
+    return snapshot === null ? null : <Lobby snapshot={snapshot} />
   }
 
   return (

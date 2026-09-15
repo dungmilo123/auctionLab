@@ -122,6 +122,13 @@ export type PlayerConnection = {
   join(nickname: string): void
   /** Ask the server for a fresh self-sufficient snapshot (D-42). */
   resync(): void
+  /**
+   * Send one player command built by the caller (`bid.place` is the Phase-3
+   * one, D-52/D-71); a no-op while the socket is not open. It is the player's
+   * counterpart to the admin connection's `send`, so both roles drive their
+   * commands through the same shared core.
+   */
+  send(frame: unknown): void
   /** Detach and close. Safe to call twice. */
   close(): void
 }
@@ -450,6 +457,9 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
     },
     resync(): void {
       socket.send({ type: 'resync' })
+    },
+    send(frame: unknown): void {
+      socket.send(frame)
     },
     close(): void {
       socket.close()
