@@ -256,6 +256,67 @@ func TestCommitFailureFailsHard(t *testing.T) {
 	}
 }
 
+// TestBootRefusesStateTheMachineCannotUse is D-39's fail-hard half: a persisted
+// row that the engine cannot turn into a valid state must abort the boot instead
+// of starting a lobby that quietly disagrees with the database.
+func TestBootRefusesStateTheMachineCannotUse(t *testing.T) {
+	newEngineAt := func(t *testing.T, path string) (*Engine, error) {
+		t.Helper()
+		st, err := store.Open(path)
+		if err != nil {
+			t.Fatalf("store.Open(%q): %v", path, err)
+		}
+		t.Cleanup(func() { _ = st.Close() })
+		if err := store.Schema(st.DB); err != nil {
+			t.Fatalf("store.Schema: %v", err)
+		}
+		return New(Config{Store: st, Now: func() time.Time { return testStart }, Fatal: func(error) {}})
+	}
+
+	t.Run("a phase outside the section 6 machine", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		st := openTestStore(t, path)
+		if err := store.Bootstrap(st.DB, testStart); err != nil {
+			t.Fatalf("Bootstrap: %v", err)
+		}
+		// The store does not validate the phase — that is the machine's job —
+		// so writing a bogus one simulates a database edited by hand or by a
+		// future phase that forgot to migrate.
+		if err := st.Commit(store.Mutation{Phase: "PAUSED", Revision: 1, UpdatedAt: testStart.UnixMilli()}); err != nil {
+			t.Fatalf("Commit: %v", err)
+		}
+		if err := st.Close(); err != nil {
+			t.Fatalf("closing: %v", err)
+		}
+
+		eng, err := newEngineAt(t, path)
+		if err == nil {
+			t.Fatalf("New accepted phase %q; want a boot failure (D-39)", eng.Phase())
+		}
+		if !strings.Contains(err.Error(), "PAUSED") {
+			t.Errorf("boot error = %v, want it to name the offending phase", err)
+		}
+	})
+
+	t.Run("a config_json without a usable budget", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		st := openTestStore(t, path)
+		if err := store.Bootstrap(st.DB, testStart); err != nil {
+			t.Fatalf("Bootstrap: %v", err)
+		}
+		if _, err := st.DB.Exec(`UPDATE game SET config_json = ? WHERE id = 1`, `{"starting_budget":0,"currency":"VND"}`); err != nil {
+			t.Fatalf("corrupting the config: %v", err)
+		}
+		if err := st.Close(); err != nil {
+			t.Fatalf("closing: %v", err)
+		}
+
+		if _, err := newEngineAt(t, path); err == nil {
+			t.Fatal("New accepted a starting_budget of 0; every join would be unplayable")
+		}
+	})
+}
+
 // TestPresenceDoesNotBumpRevision is D-37's contract: presence lives in memory,
 // rides the current revision, still fans out, and is a no-op for an unknown id
 // so a teardown can never depend on the row still existing.
