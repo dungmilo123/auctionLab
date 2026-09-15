@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // This file is the permanent leak lock (D-26). It is deliberately written
@@ -415,6 +416,265 @@ func TestPlayerAndScreenPayloadsLeakNothing(t *testing.T) {
 			}
 		})
 	}
+}
+
+// assertKeySet fails when a decoded JSON object's keys are not exactly want:
+// both a missing key (the body cannot render) and an unexpected one (a field
+// nobody decided to ship) are failures.
+func assertKeySet(t *testing.T, what string, obj map[string]any, want ...string) {
+	t.Helper()
+
+	allowed := make(map[string]bool, len(want))
+	for _, key := range want {
+		allowed[key] = true
+	}
+	for key := range obj {
+		if !allowed[key] {
+			t.Errorf("%s carries the unexpected key %q (allowed: %v)", what, key, want)
+		}
+	}
+	for _, key := range want {
+		if _, ok := obj[key]; !ok {
+			t.Errorf("%s is missing the required key %q", what, key)
+		}
+	}
+}
+
+// lateJoinFixture is auctionFixture plus a genuine late joiner: a third player
+// who joined after every bid and has never bid. LOBBY and FINALE additionally
+// carry no current item, which is the invariant the boot enforces (D-62).
+func lateJoinFixture(phase Phase) *state {
+	s := auctionFixture(phase)
+	switch phase {
+	case PhaseLobby, PhaseFinale:
+		s.phase = phase
+		s.currentItemID = ""
+		s.currentAuction = nil
+	}
+	s.players["p-cuong"] = &player{
+		id: "p-cuong", nickname: "Cường", nicknameKey: "cường", token: strings.Repeat("c", 64),
+		budget: 1_000_000, joinedAt: testStart.Add(6_000).UnixMilli(), lastSeenAt: testStart.Add(6_000).UnixMilli(),
+	}
+	s.order = append(s.order, "p-cuong")
+	s.connected["p-cuong"] = true
+	return s
+}
+
+// TestLateJoinSnapshotIsSelfSufficientAtEveryPhase is SESS-04/D-63's contract:
+// one snapshot has to be enough for a client that just arrived. The table walks
+// every phase — including LOBBY/FINALE with no item, and both a sold and an
+// unsold SETTLED — and asserts each role's exact key set, so a body can only
+// render from data the snapshot actually carries.
+//
+// The last two cases are the hard half: a process that restarts on a SETTLED
+// file rebuilds the reveal from the trail (the runtime row persists timing, and
+// the `settle` object is not a second source of truth), so a player who joins
+// after the crash still sees the outcome, the winner and the truth value.
+func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+	// --- every phase, from a snapshot alone -----------------------------------
+	introKeys := []string{"id", "name", "description", "auction_type", "hint_min", "hint_max", "start_price", "status"}
+	runKeys := []string{"current_price", "top_bidder", "deadline_at", "extensions_used"}
+
+	cases := []struct {
+		name   string
+		phase  Phase
+		status string // "" means: this phase has no current item
+		run    bool   // the live fields a run carries
+		next   bool   // min_next_bid is advertised only while LIVE
+		settle bool
+	}{
+		{name: "LOBBY has no current item", phase: PhaseLobby},
+		{name: "ITEM_INTRO renders the intro body", phase: PhaseItemIntro, status: "intro"},
+		{name: "LIVE renders the English body", phase: PhaseLive, status: "live", run: true, next: true},
+		{name: "SETTLED renders the reveal", phase: PhaseSettled, status: "settled", run: true, settle: true},
+		{name: "FINALE has no current item", phase: PhaseFinale},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env.installState(lateJoinFixture(tc.phase))
+
+			for _, role := range []struct {
+				name     string
+				role     Role
+				playerID string
+			}{
+				{name: "player late join", role: RolePlayer, playerID: "p-cuong"},
+				{name: "screen late join", role: RoleScreen},
+			} {
+				t.Run(role.name, func(t *testing.T) {
+					doc := decodeObject(t, env.engine.Snapshot(role.role, role.playerID))
+					assertNoSecrets(t, role.name, doc)
+
+					if doc["phase"] != string(tc.phase) {
+						t.Fatalf("phase = %#v, want %q", doc["phase"], tc.phase)
+					}
+
+					item, hasItem := doc["item"]
+					if tc.status == "" {
+						if hasItem && item != nil {
+							t.Fatalf("item = %#v, want an explicit null: %s has no current item", item, tc.phase)
+						}
+					} else {
+						obj := asObject(t, item, "item")
+						if obj["status"] != tc.status {
+							t.Errorf("item.status = %#v, want %q", obj["status"], tc.status)
+						}
+						// Every key the phase body reads, and nothing else.
+						want := append([]string(nil), introKeys...)
+						if tc.run {
+							want = append(want, runKeys...)
+						}
+						if tc.next {
+							want = append(want, "min_next_bid")
+						}
+						if tc.settle {
+							want = append(want, "settle")
+						}
+						assertKeySet(t, "item", obj, want...)
+
+						if tc.run {
+							top := asObject(t, obj["top_bidder"], "item.top_bidder")
+							assertKeySet(t, "item.top_bidder", top, "nickname")
+						}
+					}
+
+					if tc.settle {
+						reveal := asObject(t, asObject(t, item, "item")["settle"], "item.settle")
+						assertKeySet(t, "item.settle", reveal, "outcome", "winner", "price", "truth_value", "budget_delta")
+					}
+
+					if role.role == RoleScreen {
+						if _, present := doc["me"]; present {
+							t.Errorf("the screen view carries a `me` section: the projector has no identity")
+						}
+					} else {
+						me := asObject(t, doc["me"], "me")
+						assertKeySet(t, "me", me, "id", "nickname", "budget", "total_value", "connected", "is_top_bidder")
+						if me["is_top_bidder"] != false {
+							t.Errorf("a never-bid late joiner shows is_top_bidder = %#v, want an explicit false", me["is_top_bidder"])
+						}
+						if me["id"] != "p-cuong" || me["budget"] != float64(1_000_000) {
+							t.Errorf("me = %#v, want the late joiner's own identity and budget", me)
+						}
+					}
+
+					// The public lists must not grow a private column: the lobby
+					// is nickname + presence, the standings are the PLAN §6
+					// public ranking.
+					for _, entry := range asArray(t, doc["lobby"], "lobby") {
+						assertKeySet(t, "lobby entry", asObject(t, entry, "lobby entry"), "nickname", "connected")
+					}
+					for _, entry := range asArray(t, doc["leaderboard"], "leaderboard") {
+						assertKeySet(t, "leaderboard entry", asObject(t, entry, "leaderboard entry"), "rank", "nickname", "total_value", "budget")
+					}
+				})
+			}
+		})
+	}
+
+	// --- a restart at SETTLED: the reveal is rebuilt from the trail -----------
+	t.Run("a restart at SETTLED keeps the sold reveal a late joiner renders", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		base := testStart
+
+		first := newTestEnvAt(t, path, &testClock{t: base})
+		an := mustJoin(t, first, "An")
+		binh := mustJoin(t, first, "Bình")
+		itemID := mustUpsertItem(t, first, validEnglishInput())
+		mustOpenLive(t, first, itemID)
+		mustExtendOnce(t, first, base, an.PlayerID, binh.PlayerID)
+		if err := first.store.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+
+		// The process comes back after the deadline: the boot settles once.
+		second := newTestEnvAt(t, path, &testClock{t: base.Add(40 * time.Second)})
+		if got := second.engine.Phase(); got != PhaseSettled {
+			t.Fatalf("phase after a past-deadline boot = %s, want SETTLED", got)
+		}
+		if err := second.store.Close(); err != nil {
+			t.Fatalf("closing the settled store: %v", err)
+		}
+
+		// A THIRD process boots the settled file, and a player who never bid
+		// joins it — a late join after a crash.
+		third := newTestEnvAt(t, path, &testClock{t: base.Add(41 * time.Second)})
+		late := mustJoin(t, third, "Cường")
+
+		doc := decodeObject(t, third.engine.Snapshot(RolePlayer, late.PlayerID))
+		assertNoSecrets(t, "restarted SETTLED late join", doc)
+		item := asObject(t, doc["item"], "item")
+		if item["status"] != "settled" {
+			t.Fatalf("item.status after a restart at SETTLED = %#v, want settled", item["status"])
+		}
+		reveal := asObject(t, item["settle"], "item.settle after a restart at SETTLED")
+		if reveal["outcome"] != "sold" || reveal["price"] != float64(110_000) {
+			t.Errorf("rebuilt settle = %#v, want sold at 110000", reveal)
+		}
+		if reveal["truth_value"] != float64(fixtureTruthValue) {
+			t.Errorf("rebuilt settle.truth_value = %#v, want the reveal %d — the only moment it crosses the boundary", reveal["truth_value"], fixtureTruthValue)
+		}
+		if want := float64(fixtureTruthValue - 110_000); reveal["budget_delta"] != want {
+			t.Errorf("rebuilt settle.budget_delta = %#v, want truth_value − price = %v", reveal["budget_delta"], want)
+		}
+		winner := asObject(t, reveal["winner"], "settle.winner")
+		if winner["nickname"] != "Bình" {
+			t.Errorf("rebuilt settle.winner = %#v, want Bình", winner)
+		}
+
+		// The settlement's own effects are durable, so the late joiner reads
+		// them from the same snapshot (D-63): the winner's budget is post-settle.
+		secondSnapshot := decodeObject(t, third.engine.Snapshot(RolePlayer, binh.PlayerID))
+		me := asObject(t, secondSnapshot["me"], "the winner's me")
+		if want := float64(1_000_000 - 110_000 + fixtureTruthValue); me["budget"] != want {
+			t.Errorf("the winner's budget after the restart = %#v, want %v", me["budget"], want)
+		}
+	})
+
+	t.Run("a restart at SETTLED keeps an unsold reveal with a null winner", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		base := testStart
+
+		first := newTestEnvAt(t, path, &testClock{t: base})
+		itemID := mustUpsertItem(t, first, validEnglishInput())
+		mustOpenLive(t, first, itemID) // nobody bids
+		if err := first.store.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+
+		second := newTestEnvAt(t, path, &testClock{t: base.Add(40 * time.Second)})
+		if got := second.engine.Phase(); got != PhaseSettled {
+			t.Fatalf("phase after a past-deadline boot = %s, want SETTLED", got)
+		}
+		if err := second.store.Close(); err != nil {
+			t.Fatalf("closing the settled store: %v", err)
+		}
+
+		third := newTestEnvAt(t, path, &testClock{t: base.Add(41 * time.Second)})
+		late := mustJoin(t, third, "Cường")
+
+		doc := decodeObject(t, third.engine.Snapshot(RoleScreen, ""))
+		assertNoSecrets(t, "restarted unsold SETTLED screen", doc)
+		item := asObject(t, doc["item"], "item")
+		reveal := asObject(t, item["settle"], "item.settle after a restart at SETTLED")
+		if reveal["outcome"] != "unsold" {
+			t.Errorf("rebuilt settle.outcome = %#v, want unsold", reveal["outcome"])
+		}
+		if winner, present := reveal["winner"]; !present || winner != nil {
+			t.Errorf("rebuilt settle.winner = %#v (present=%t), want an explicit null", winner, present)
+		}
+		if reveal["price"] != float64(0) || reveal["budget_delta"] != float64(0) {
+			t.Errorf("rebuilt unsold settle = %#v, want price 0 and delta 0", reveal)
+		}
+		if reveal["truth_value"] != float64(fixtureTruthValue) {
+			t.Errorf("rebuilt settle.truth_value = %#v, want %d", reveal["truth_value"], fixtureTruthValue)
+		}
+		if got := third.player(t, late.PlayerID); got.budget != 1_000_000 {
+			t.Errorf("the late joiner's budget = %d, want the untouched starting budget: an unsold item moves nothing (ECON-03)", got.budget)
+		}
+	})
 }
 
 // TestAdminViewPositiveControl proves the fixture really is populated: the admin
