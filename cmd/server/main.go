@@ -90,6 +90,16 @@ func run() error {
 	ws := hub.New(engine)
 	engine.SetPublisher(ws.Fanout)
 
+	// Boot step 4 — the D-56 ticker. It starts only after the publisher is
+	// installed (a beat before that would have no fan-out edge to deliver
+	// through) and after game.New returned, which is where a deadline that
+	// passed while the process was down already settled. The deferred stop runs
+	// before the store's own deferred Close — defers are LIFO and st.Close was
+	// registered first — so no beat can outlive the database it reads (Pitfall
+	// 11).
+	stopTicker := ws.StartTicker()
+	defer stopTicker()
+
 	// Boot step 3 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()
 	if err != nil {

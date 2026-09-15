@@ -238,3 +238,42 @@ func TestTickPeriodIsPinned(t *testing.T) {
 		t.Errorf("DefaultPolicy.TickPeriod = %s, want 250ms (D-56: the client interpolates between beats)", got)
 	}
 }
+
+// TestStartTickerStopsTheBeat pins the lifecycle half of D-56: the stop function
+// cmd/server defers really ends the goroutine, so a stopping server cannot keep
+// writing beats into a store it is about to close (Pitfall 11), and calling stop
+// twice is safe.
+func TestStartTickerStopsTheBeat(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	clock := &testClock{t: base}
+	policy := testPolicyWithBuffer(64)
+	policy.TickPeriod = 5 * time.Millisecond
+	h, engine := newTestHubWithClock(t, policy, clock)
+	startLiveItem(t, engine, 60_000) // an open window, so every beat produces a frame
+
+	// A connection built directly: the assertion is about the beat, not about a
+	// socket, so nothing drains the FIFO.
+	c := &client{hub: h, send: make(chan Envelope, 64), done: make(chan struct{})}
+	c.setIdentity(RoleScreen, "")
+	h.registry.add(c)
+
+	stop := h.StartTicker()
+	if !waitFor(2*time.Second, func() bool { return len(c.send) >= 3 }) {
+		t.Fatalf("the ticker produced %d beat(s) in 2s; it never started", len(c.send))
+	}
+	stop()
+
+	// At most one beat can be in flight when stop() returns (the goroutine
+	// finishes the beat it is inside, then sees the closed done channel). Let it
+	// land, drain, and require the FIFO to stay empty across several periods.
+	time.Sleep(20 * time.Millisecond)
+	for len(c.send) > 0 {
+		<-c.send
+	}
+	time.Sleep(40 * time.Millisecond) // eight periods at 5ms
+
+	if got := len(c.send); got != 0 {
+		t.Errorf("the ticker enqueued %d beat(s) after stop: the goroutine outlived its stop function (Pitfall 11)", got)
+	}
+	stop() // idempotent
+}

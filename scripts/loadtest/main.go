@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -108,18 +109,27 @@ func (r result) ok() bool { return len(r.errs) == 0 }
 // is deliberately separate from the socket, so the whole D-21/D-22 contract is
 // testable without a server.
 type stream struct {
-	want    int64 // the seq the next frame must carry; 1 at hello
-	lastRev int64 // the last revision a state.snapshot carried; -1 before the first
+	role    string // the role this stream validates: player, screen or admin
+	want    int64  // the seq the next frame must carry; 1 at hello
+	lastRev int64  // the last revision a state event carried; -1 before the first
 	seen    map[string]bool
 }
 
-// newStream starts a stream at its first expected frame.
-func newStream() *stream {
-	return &stream{want: 1, lastRev: -1, seen: make(map[string]bool)}
+// newStream starts a stream at its first expected frame, validating the player
+// role — the shape every Phase 2 case and both smoke bots use.
+func newStream() *stream { return newStreamAs("player") }
+
+// newStreamAs starts a stream for one connection role: the same D-21/D-22
+// contract, with the role-specific parts of the handshake and the snapshot
+// (`me` exists only for a player; the admin and screen snapshots have no such
+// block, and their hello carries no player id or token).
+func newStreamAs(role string) *stream {
+	return &stream{role: role, want: 1, lastRev: -1, seen: make(map[string]bool)}
 }
 
-// observe validates one frame against D-21/D-22/D-23 and folds it in. It
-// returns nil only for a frame that fits the stream exactly.
+// observe validates one frame against D-21/D-22/D-23 and the auction payload
+// shapes, and folds it in. It returns nil only for a frame that fits the stream
+// exactly.
 func (s *stream) observe(env envelope) error {
 	if env.Type == "" {
 		return fmt.Errorf("frame %d: envelope has no type", s.want)
@@ -143,14 +153,16 @@ func (s *stream) observe(env envelope) error {
 		if err := json.Unmarshal(env.Data, &hello); err != nil {
 			return fmt.Errorf("frame %d: hello payload is not JSON: %v (%s)", s.want, err, env.Data)
 		}
-		if hello.Role != "player" {
-			return fmt.Errorf("frame %d: hello role = %q, want %q", s.want, hello.Role, "player")
+		if hello.Role != s.role {
+			return fmt.Errorf("frame %d: hello role = %q, want %q", s.want, hello.Role, s.role)
 		}
-		if hello.PlayerID == "" {
-			return fmt.Errorf("frame %d: hello carries no player id (D-23)", s.want)
-		}
-		if hello.Token == "" {
-			return fmt.Errorf("frame %d: hello carries no token (D-29)", s.want)
+		if s.role == "player" {
+			if hello.PlayerID == "" {
+				return fmt.Errorf("frame %d: hello carries no player id (D-23)", s.want)
+			}
+			if hello.Token == "" {
+				return fmt.Errorf("frame %d: hello carries no token (D-29)", s.want)
+			}
 		}
 		if hello.Rev != env.Rev {
 			return fmt.Errorf("frame %d: hello rev %d disagrees with the envelope rev %d", s.want, hello.Rev, env.Rev)
@@ -163,11 +175,79 @@ func (s *stream) observe(env envelope) error {
 		if err := s.acceptRevision(env.Rev); err != nil {
 			return err
 		}
-		if snap.Me.Nickname == "" {
+		if s.role == "player" && snap.Me.Nickname == "" {
 			return fmt.Errorf("frame %d: snapshot carries no `me` row, so it is not self-sufficient (D-25)", s.want)
 		}
 		for _, entry := range snap.Lobby {
 			s.seen[entry.Nickname] = true
+		}
+	case "phase.changed":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		item, err := itemObj(env.Type, env.Data)
+		if err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+		if item != nil {
+			if _, err := stringKey(item, "status"); err != nil {
+				return fmt.Errorf("frame %d: phase.changed item is malformed: %v", s.want, err)
+			}
+		}
+	case "item.intro":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		if _, err := itemObj(env.Type, env.Data); err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+	case "item.live":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		item, err := itemObj(env.Type, env.Data)
+		if err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+		if err := liveItemShape(item); err != nil {
+			return fmt.Errorf("frame %d: item.live %v", s.want, err)
+		}
+	case "item.settled":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		item, err := itemObj(env.Type, env.Data)
+		if err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+		reveal, err := settleOf(item)
+		if err != nil {
+			return fmt.Errorf("frame %d: item.settled %v", s.want, err)
+		}
+		if reveal.Outcome != "sold" && reveal.Outcome != "unsold" {
+			return fmt.Errorf("frame %d: settle outcome = %q, want sold or unsold", s.want, reveal.Outcome)
+		}
+	case "leaderboard":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+	case "bid.accepted":
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		if err := acceptedShape(env.Data); err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+	case "price.tick":
+		// D-58: a tick carries the CURRENT revision and never moves it, so it
+		// deliberately does not go through acceptRevision.
+		if err := tickShape(env.Data); err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
+		}
+	case "bid.rejected":
+		// D-53: the private refusal is not a state event either.
+		if err := rejectedShape(env.Data); err != nil {
+			return fmt.Errorf("frame %d: %v", s.want, err)
 		}
 	case "error":
 		var problem struct {
@@ -204,6 +284,232 @@ func (s *stream) complete(peers []string) bool {
 		}
 	}
 	return true
+}
+
+// decodeObject unmarshals a payload into a raw-key object.
+func decodeObject(data json.RawMessage) (map[string]json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, fmt.Errorf("payload is not a JSON object: %v (%s)", err, data)
+	}
+	return object, nil
+}
+
+// stringKey reads one required string field.
+func stringKey(object map[string]json.RawMessage, key string) (string, error) {
+	raw, ok := object[key]
+	if !ok {
+		return "", fmt.Errorf("payload has no %q key", key)
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", fmt.Errorf("payload.%s is not a string: %v", key, err)
+	}
+	return value, nil
+}
+
+// intKey reads one required integer field.
+func intKey(object map[string]json.RawMessage, key string) (int64, error) {
+	raw, ok := object[key]
+	if !ok {
+		return 0, fmt.Errorf("payload has no %q key", key)
+	}
+	var value int64
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return 0, fmt.Errorf("payload.%s is not an integer: %v", key, err)
+	}
+	return value, nil
+}
+
+// optIntKey reads an optional integer field; an absent key and an explicit null
+// both report nil.
+func optIntKey(object map[string]json.RawMessage, key string) (*int64, error) {
+	raw, ok := object[key]
+	if !ok || string(raw) == "null" {
+		return nil, nil
+	}
+	var value int64
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, fmt.Errorf("payload.%s is not an integer: %v", key, err)
+	}
+	return &value, nil
+}
+
+// itemObj extracts the item object a frame carries, whatever its nesting:
+// `phase.changed` and `state.snapshot` nest it under `item` (an explicit null
+// when there is none), while `item.intro`/`item.live`/`item.settled` carry it
+// directly. It returns (nil, nil) for an explicit null item and an error for a
+// frame that carries no item at all.
+func itemObj(typ string, data json.RawMessage) (map[string]json.RawMessage, error) {
+	switch typ {
+	case "phase.changed", "state.snapshot":
+	case "item.intro", "item.live", "item.settled":
+	default:
+		return nil, fmt.Errorf("a %s frame carries no item", typ)
+	}
+
+	raw := data
+	if typ == "phase.changed" || typ == "state.snapshot" {
+		var payload struct {
+			Item *json.RawMessage `json:"item"`
+		}
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return nil, fmt.Errorf("%s payload is not JSON: %v", typ, err)
+		}
+		if payload.Item == nil {
+			return nil, fmt.Errorf("%s carries no item key", typ)
+		}
+		raw = *payload.Item
+	}
+	if string(raw) == "null" {
+		return nil, nil
+	}
+
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, fmt.Errorf("item is not a JSON object: %v (%s)", err, raw)
+	}
+	return object, nil
+}
+
+// settleOf decodes the reveal a settled item carries. A missing key is an ERROR
+// here on purpose: D-67's leak boundary is the presence of the whole object, so
+// an item that claims to be settled without one is malformed, never a
+// legitimate "no reveal".
+func settleOf(item map[string]json.RawMessage) (*settleInfo, error) {
+	raw, ok := item["settle"]
+	if !ok {
+		return nil, fmt.Errorf("carries no settle object (D-67's boundary)")
+	}
+	var reveal settleInfo
+	if err := json.Unmarshal(raw, &reveal); err != nil {
+		return nil, fmt.Errorf("settle object is not a reveal: %v", err)
+	}
+	return &reveal, nil
+}
+
+// liveItemShape validates the D-67 numbers a LIVE item must carry: a live
+// English item without a price would leave the bid form with nothing to show.
+func liveItemShape(item map[string]json.RawMessage) error {
+	if _, err := stringKey(item, "id"); err != nil {
+		return err
+	}
+	status, err := stringKey(item, "status")
+	if err != nil {
+		return err
+	}
+	if status != "live" {
+		return fmt.Errorf("status = %q, want live", status)
+	}
+	if _, err := intKey(item, "current_price"); err != nil {
+		return err
+	}
+	if _, err := intKey(item, "min_next_bid"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// acceptedShape validates D-54's broadcast: the accepted amount plus the
+// server-computed numbers a client renders.
+func acceptedShape(data json.RawMessage) error {
+	object, err := decodeObject(data)
+	if err != nil {
+		return err
+	}
+	for _, key := range []string{"player_id", "nickname"} {
+		if _, err := stringKey(object, key); err != nil {
+			return err
+		}
+	}
+	for _, key := range []string{"amount", "current_price", "min_next_bid"} {
+		if _, err := intKey(object, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// rejectionReasons is D-52's frozen reason vocabulary (D-53 carries it as a
+// payload-level string).
+var rejectionReasons = []string{
+	"invalid_amount", "window_closed", "below_minimum", "exceeds_budget", "already_leading",
+}
+
+// rejectedShape validates D-53's private payload.
+func rejectedShape(data json.RawMessage) error {
+	object, err := decodeObject(data)
+	if err != nil {
+		return err
+	}
+	reason, err := stringKey(object, "reason")
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(rejectionReasons, reason) {
+		return fmt.Errorf("bid.rejected reason %q is not one of the frozen reasons", reason)
+	}
+	for _, key := range []string{"budget", "amount"} {
+		if _, err := intKey(object, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// tickShape validates D-56's timing frame: the price, the server-computed
+// minimum, and the deadline/remaining pair that must agree with each other —
+// remaining_ms without a deadline has nothing to anchor on, and a negative
+// window would end the auction on the phone before the server settled it.
+func tickShape(data json.RawMessage) error {
+	object, err := decodeObject(data)
+	if err != nil {
+		return err
+	}
+	if _, err := stringKey(object, "item_id"); err != nil {
+		return err
+	}
+	if _, err := intKey(object, "current_price"); err != nil {
+		return err
+	}
+	if _, err := intKey(object, "min_next_bid"); err != nil {
+		return err
+	}
+	deadline, err := optIntKey(object, "deadline_at")
+	if err != nil {
+		return err
+	}
+	remaining, err := optIntKey(object, "remaining_ms")
+	if err != nil {
+		return err
+	}
+	if deadline == nil && remaining == nil {
+		return nil // a run without a deadline carries neither
+	}
+	if deadline == nil || remaining == nil {
+		return fmt.Errorf("price.tick must carry deadline_at and remaining_ms together")
+	}
+	if *remaining < 0 {
+		return fmt.Errorf("price.tick remaining_ms = %d, want a non-negative window", *remaining)
+	}
+	return nil
+}
+
+// itemIDFromSnapshot reads the id of the last item an admin snapshot listed —
+// the round's way of learning the id the server minted for a create (H14).
+func itemIDFromSnapshot(data json.RawMessage) (string, error) {
+	var view struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(data, &view); err != nil {
+		return "", fmt.Errorf("admin snapshot is not JSON: %v", err)
+	}
+	if len(view.Items) == 0 {
+		return "", fmt.Errorf("admin snapshot lists no items")
+	}
+	return view.Items[len(view.Items)-1].ID, nil
 }
 
 func main() {
@@ -247,39 +553,32 @@ func main() {
 			fmt.Printf("  %s\n", e)
 		}
 	}
-	fmt.Printf("loadtest: %s — %d/%d bots joined and saw each other in %s\n",
-		target, okBots, bots, time.Since(start).Round(time.Millisecond))
+
+	// Phase 3: one bounded English round through the same protocol — an admin
+	// bot creates the item and drives the phase changes, two player bots bid
+	// (one accepted, one refused privately), and the round ends on the reveal.
+	round := runRound(target, run)
+	for _, line := range round.lines {
+		fmt.Printf("round: %s\n", line)
+	}
+	for _, problem := range round.errs {
+		fmt.Printf("round: FAILED — %s\n", problem)
+	}
+	roundVerdict := "completed"
+	if !round.passed() {
+		roundVerdict = "FAILED"
+		failed = true
+	}
+
+	fmt.Printf("loadtest: %s — %d/%d bots joined and saw each other, the English round %s, in %s\n",
+		target, okBots, bots, roundVerdict, time.Since(start).Round(time.Millisecond))
 
 	if failed {
 		os.Exit(1)
 	}
 }
 
-// newStreamAs starts a stream for one connection role: the same D-21/D-22
-// contract, with the role-specific parts of the handshake and the snapshot
-// (`me` exists only for a player; the admin and screen snapshots have no such
-// block, and the admin hello carries no player id or token).
-//
-// RED stub: the role-aware validation is the behaviour under test.
-func newStreamAs(role string) *stream { return newStream() }
-
-// stringKey reads one string out of a decoded object.
-//
-// RED stub: the accessor is part of the behaviour under test.
-func stringKey(object map[string]json.RawMessage, key string) (string, error) {
-	return "", fmt.Errorf("stringKey(%s): not implemented yet", key)
-}
-
-// itemIDFromSnapshot reads the id of the item an admin snapshot listed.
-//
-// RED stub: the lookup is the behaviour under test.
-func itemIDFromSnapshot(data json.RawMessage) (string, error) {
-	return "", fmt.Errorf("itemIDFromSnapshot: not implemented yet")
-}
-
 // settleInfo is D-67's reveal as the harness reads it off the wire.
-//
-// RED (declaration only): the decoder is the behaviour under test.
 type settleInfo struct {
 	Outcome string `json:"outcome"`
 	Winner  *struct {
@@ -290,21 +589,409 @@ type settleInfo struct {
 	BudgetDelta int64 `json:"budget_delta"`
 }
 
-// itemObj extracts the item object a frame carries, whatever its nesting:
-// `phase.changed` nests it under `item` (an explicit null when there is none),
-// while `item.intro`/`item.live`/`item.settled` carry it directly.
-//
-// RED stub: the extraction is the behaviour under test.
-func itemObj(typ string, data json.RawMessage) (map[string]json.RawMessage, error) {
-	return nil, fmt.Errorf("itemObj(%s): not implemented yet", typ)
+// --- Phase 3: the bounded English round ------------------------------------
+
+// roundIO bounds every read and write of the round, so a stalled server fails
+// the gate instead of hanging it (the same rule the Phase 2 bots follow).
+const roundIO = 10 * time.Second
+
+// roundBot is one live connection inside the round: its socket, the stream
+// contract every frame it receives is validated against, and how many frames it
+// has read.
+type roundBot struct {
+	label  string
+	role   string
+	conn   *websocket.Conn
+	s      *stream
+	frames int
 }
 
-// settleOf decodes the reveal a settled item carries, or reports that the
-// boundary is intact (no `settle` key at all).
-//
-// RED stub: the boundary check is the behaviour under test.
-func settleOf(item map[string]json.RawMessage) (*settleInfo, error) {
-	return nil, fmt.Errorf("settleOf: not implemented yet")
+// dialRound connects one role and completes its handshake. A player's join is a
+// mutation, so its own fan-out snapshot follows the handshake pair (H2) — it is
+// consumed here so every bot starts the round with nothing queued.
+func dialRound(target, label, role, nickname string) (*roundBot, error) {
+	conn, resp, err := websocket.DefaultDialer.Dial(target, nil)
+	if err != nil {
+		status := "no response"
+		if resp != nil {
+			status = resp.Status
+			_ = resp.Body.Close()
+		}
+		return nil, fmt.Errorf("dial %s as %s: %v (%s)", target, label, err, status)
+	}
+
+	b := &roundBot{label: label, role: role, conn: conn, s: newStreamAs(role)}
+
+	join := map[string]string{"type": "join", "role": role}
+	if nickname != "" {
+		join["nickname"] = nickname
+	}
+	frame, err := json.Marshal(join)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%s: marshaling the join: %v", label, err)
+	}
+	if err := b.send(string(frame)); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
+	if _, err := b.await(roundIO, func(env envelope) (bool, error) { return env.Type == "hello", nil }); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%s: waiting for the handshake: %w", label, err)
+	}
+	if _, err := b.awaitTypes(roundIO, "state.snapshot"); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%s: waiting for the handshake: %w", label, err)
+	}
+	if role == "player" {
+		if _, err := b.awaitTypes(roundIO, "state.snapshot"); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("%s: waiting for its own join fan-out: %w", label, err)
+		}
+	}
+	return b, nil
+}
+
+func (b *roundBot) close() { _ = b.conn.Close() }
+
+// send writes one command frame.
+func (b *roundBot) send(frame string) error {
+	_ = b.conn.SetWriteDeadline(time.Now().Add(roundIO))
+	if err := b.conn.WriteMessage(websocket.TextMessage, []byte(frame)); err != nil {
+		return fmt.Errorf("%s: sending: %w", b.label, err)
+	}
+	return nil
+}
+
+// start sends one `admin.item.start {id}` (D-65).
+func (b *roundBot) start(itemID string) error {
+	return b.send(fmt.Sprintf(`{"type":"admin.item.start","id":%q}`, itemID))
+}
+
+// await reads until want matches, validating EVERY frame against the stream
+// contract on the way. want may also return an error to fail on a frame that
+// must not appear here — a private rejection reaching the wrong socket.
+func (b *roundBot) await(budget time.Duration, want func(envelope) (bool, error)) (envelope, error) {
+	deadline := time.Now().Add(budget)
+	for {
+		if time.Now().After(deadline) {
+			return envelope{}, fmt.Errorf("%s: no expected frame within %s (read %d frames)", b.label, budget, b.frames)
+		}
+		_ = b.conn.SetReadDeadline(deadline)
+		_, raw, err := b.conn.ReadMessage()
+		if err != nil {
+			return envelope{}, fmt.Errorf("%s: reading frame %d: %w", b.label, b.frames+1, err)
+		}
+		var env envelope
+		if err := json.Unmarshal(raw, &env); err != nil {
+			return envelope{}, fmt.Errorf("%s: frame %d is not JSON: %v (%s)", b.label, b.frames+1, err, raw)
+		}
+		if err := b.s.observe(env); err != nil {
+			return envelope{}, fmt.Errorf("%s: %w", b.label, err)
+		}
+		b.frames++
+
+		match, err := want(env)
+		if err != nil {
+			return envelope{}, fmt.Errorf("%s: %w", b.label, err)
+		}
+		if match {
+			return env, nil
+		}
+	}
+}
+
+// awaitTypes reads exactly the named frame types, in order. A different type
+// where one of these was due is a failure — including a frame that should never
+// have reached this connection.
+func (b *roundBot) awaitTypes(budget time.Duration, types ...string) ([]envelope, error) {
+	frames := make([]envelope, 0, len(types))
+	for i, want := range types {
+		env, err := b.await(budget, func(env envelope) (bool, error) { return env.Type == want, nil })
+		if err != nil {
+			return nil, err
+		}
+		if env.Type != want {
+			return nil, fmt.Errorf("%s: frame %d = %q, want %q (the fan-out order is the contract)", b.label, i, env.Type, want)
+		}
+		frames = append(frames, env)
+	}
+	return frames, nil
+}
+
+// awaitItemID reads forward to the CRUD snapshot that carries the new item and
+// returns the id the server minted (H14).
+func (b *roundBot) awaitItemID(budget time.Duration) (string, error) {
+	deadline := time.Now().Add(budget)
+	for {
+		if time.Now().After(deadline) {
+			return "", fmt.Errorf("%s: no admin snapshot carried the item within %s", b.label, budget)
+		}
+		env, err := b.await(time.Until(deadline), func(env envelope) (bool, error) {
+			return env.Type == "state.snapshot", nil
+		})
+		if err != nil {
+			return "", err
+		}
+		id, err := itemIDFromSnapshot(env.Data)
+		if err == nil {
+			return id, nil
+		}
+	}
+}
+
+// roundReport is what the round proved, in the order it happened.
+type roundReport struct {
+	lines []string
+	errs  []string
+}
+
+func (r *roundReport) ok(format string, args ...any) {
+	r.lines = append(r.lines, fmt.Sprintf(format, args...))
+}
+
+func (r *roundReport) fail(format string, args ...any) {
+	r.errs = append(r.errs, fmt.Sprintf(format, args...))
+}
+
+// passed reports whether the round completed every step.
+func (r *roundReport) passed() bool { return len(r.errs) == 0 }
+
+// runRound plays one bounded English round against a live server and validates
+// every frame every bot receives: the admin creates an item and starts it twice,
+// two players bid (one accepted, one refused PRIVATELY), and the admin force-ends
+// it — so the round's whole path, from a real socket command to the committed
+// reveal, is what the exit code reflects (D-43's end-to-end gate).
+func runRound(target, run string) roundReport {
+	var report roundReport
+
+	admin, err := dialRound(target, "admin", "admin", "")
+	if err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	defer admin.close()
+
+	a, err := dialRound(target, "player A", "player", run+"-a")
+	if err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	defer a.close()
+
+	b, err := dialRound(target, "player B", "player", run+"-b")
+	if err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	defer b.close()
+
+	// The bots that were already connected saw the later joins fan out: a join
+	// has no typed event of its own, so the snapshot is the frame (H2).
+	if _, err := admin.awaitTypes(roundIO, "state.snapshot", "state.snapshot"); err != nil {
+		report.fail("consuming the join fan-out: %v", err)
+		return report
+	}
+	if _, err := a.awaitTypes(roundIO, "state.snapshot"); err != nil {
+		report.fail("consuming the join fan-out: %v", err)
+		return report
+	}
+
+	// 1. Create the English item (D-66).
+	item := fmt.Sprintf(`{"name":%q,"auction_type":"english","truth_value":350000,"start_price":100000,`+
+		`"min_increment":10000,"duration_ms":60000,"anti_snipe_mode":"disabled"}`, run+" lot")
+	if err := admin.send(`{"type":"admin.item.upsert","item":` + item + `}`); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	itemID, err := admin.awaitItemID(roundIO)
+	if err != nil {
+		report.fail("admin.item.upsert: %v", err)
+		return report
+	}
+	for _, bot := range []*roundBot{a, b} {
+		if _, err := bot.awaitTypes(roundIO, "state.snapshot"); err != nil {
+			report.fail("the item.upsert fan-out: %v", err)
+			return report
+		}
+	}
+	report.ok("admin created item %s (D-66)", itemID)
+
+	// 2. start → ITEM_INTRO, then start → LIVE with the immediate tick (D-65).
+	if err := admin.start(itemID); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	for _, bot := range []*roundBot{admin, a, b} {
+		if _, err := bot.awaitTypes(roundIO, "phase.changed", "item.intro", "state.snapshot"); err != nil {
+			report.fail("item.start → ITEM_INTRO: %v", err)
+			return report
+		}
+	}
+	report.ok("item.start reached ITEM_INTRO on every socket")
+
+	if err := admin.start(itemID); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	var live []envelope
+	for i, bot := range []*roundBot{admin, a, b} {
+		frames, err := bot.awaitTypes(roundIO, "phase.changed", "item.live", "state.snapshot", "price.tick")
+		if err != nil {
+			report.fail("item.start → LIVE: %v", err)
+			return report
+		}
+		if i == 1 {
+			live = frames
+		}
+	}
+	liveItem, err := itemObj("item.live", live[1].Data)
+	if err != nil {
+		report.fail("item.live: %v", err)
+		return report
+	}
+	if err := liveItemShape(liveItem); err != nil {
+		report.fail("item.live: %v", err)
+		return report
+	}
+	if deadline, err := optIntKey(liveItem, "deadline_at"); err != nil || deadline == nil {
+		report.fail("item.live carries no deadline_at: the countdown has nothing to anchor on (TIME-02)")
+		return report
+	}
+	tick, err := decodeObject(live[3].Data)
+	if err != nil {
+		report.fail("price.tick: %v", err)
+		return report
+	}
+	if price, err := intKey(tick, "current_price"); err != nil || price != 100000 {
+		report.fail("the immediate tick's current_price = %d (err %v), want the start price 100000", price, err)
+		return report
+	}
+	if remaining, err := optIntKey(tick, "remaining_ms"); err != nil || remaining == nil || *remaining <= 0 {
+		report.fail("the immediate tick's remaining_ms = %v (err %v), want a positive window", remaining, err)
+		return report
+	}
+	report.ok("item.start reached LIVE with the immediate price.tick on every socket")
+
+	// 3. Player A bids the minimum: accepted everywhere at one revision, with
+	// its own immediate tick.
+	if err := a.send(`{"type":"bid.place","amount":100000}`); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	var accepted envelope
+	var rev int64
+	for i, bot := range []*roundBot{admin, a, b} {
+		frames, err := bot.awaitTypes(roundIO, "bid.accepted", "price.tick")
+		if err != nil {
+			report.fail("bid.place: %v", err)
+			return report
+		}
+		if i == 1 {
+			accepted = frames[0]
+			rev = frames[0].Rev
+		}
+	}
+	acceptedPayload, err := decodeObject(accepted.Data)
+	if err != nil {
+		report.fail("bid.accepted: %v", err)
+		return report
+	}
+	if err := acceptedShape(accepted.Data); err != nil {
+		report.fail("bid.accepted: %v", err)
+		return report
+	}
+	if nickname, _ := stringKey(acceptedPayload, "nickname"); nickname != run+"-a" {
+		report.fail("bid.accepted nickname = %q, want %q", nickname, run+"-a")
+		return report
+	}
+	if min, err := intKey(acceptedPayload, "min_next_bid"); err != nil || min != 110000 {
+		report.fail("bid.accepted min_next_bid = %d (err %v), want 110000", min, err)
+		return report
+	}
+	report.ok("the minimum bid was accepted on every socket at rev %d", rev)
+
+	// 4. Player B bids below the new minimum: refused, and PRIVATELY — A and the
+	// admin only ever see the round continue (D-53).
+	if err := b.send(`{"type":"bid.place","amount":100000}`); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	refused, err := b.await(roundIO, func(env envelope) (bool, error) { return env.Type == "bid.rejected", nil })
+	if err != nil {
+		report.fail("bid.rejected: %v", err)
+		return report
+	}
+	var rejection struct {
+		Reason     string `json:"reason"`
+		MinNextBid int64  `json:"min_next_bid"`
+	}
+	if err := json.Unmarshal(refused.Data, &rejection); err != nil {
+		report.fail("bid.rejected payload: %v", err)
+		return report
+	}
+	if rejection.Reason != "below_minimum" {
+		report.fail("bid.rejected reason = %q, want below_minimum", rejection.Reason)
+		return report
+	}
+	if rejection.MinNextBid != 110000 {
+		report.fail("bid.rejected min_next_bid = %d, want 110000", rejection.MinNextBid)
+		return report
+	}
+	if b.s.lastRev != rev {
+		report.fail("the refused bid moved the revision to %d, want the unchanged %d (D-53)", b.s.lastRev, rev)
+		return report
+	}
+	report.ok("a below-minimum bid was refused privately and moved no revision")
+
+	// 5. Force end: the reveal, the standings and the SETTLED snapshot reach
+	// every role, and no player payload carries a top-level truth_value.
+	if err := admin.send(`{"type":"admin.item.force_end"}`); err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	for _, bot := range []*roundBot{admin, a, b} {
+		frames, err := bot.awaitTypes(roundIO, "item.settled", "leaderboard", "state.snapshot")
+		if err != nil {
+			report.fail("admin.item.force_end: %v", err)
+			return report
+		}
+		settled, err := itemObj("item.settled", frames[0].Data)
+		if err != nil {
+			report.fail("item.settled: %v", err)
+			return report
+		}
+		reveal, err := settleOf(settled)
+		if err != nil {
+			report.fail("item.settled: %v", err)
+			return report
+		}
+		if reveal.Outcome != "sold" || reveal.Price != 100000 {
+			report.fail("the reveal = %s at %d, want sold at the accepted bid", reveal.Outcome, reveal.Price)
+			return report
+		}
+		if reveal.Winner == nil || reveal.Winner.Nickname != run+"-a" {
+			report.fail("the reveal's winner = %+v, want %q", reveal.Winner, run+"-a")
+			return report
+		}
+		if _, leak := settled["truth_value"]; leak {
+			report.fail("%s: item.settled carried a top-level truth_value", bot.label)
+			return report
+		}
+		snapshotItem, err := itemObj("state.snapshot", frames[2].Data)
+		if err != nil {
+			report.fail("the SETTLED snapshot: %v", err)
+			return report
+		}
+		if _, err := settleOf(snapshotItem); err != nil {
+			report.fail("the SETTLED snapshot's item carries no reveal (D-63): %v", err)
+			return report
+		}
+	}
+	report.ok("the force-end reveal, leaderboard and SETTLED snapshot reached every role")
+
+	return report
 }
 
 // resolveTarget picks the first of: positional argument, WS_URL, the default.
@@ -313,8 +1000,11 @@ func resolveTarget() string {
 		out := flag.CommandLine.Output()
 		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url]\n\n")
 		fmt.Fprintf(out, "Dials %d player bots against a live /ws, asserts the real protocol's\n", bots)
-		fmt.Fprintf(out, "seq/rev contract, and exits non-zero when either bot cannot join or the\n")
-		fmt.Fprintf(out, "other player never becomes visible. The URL may also come from WS_URL.\n\n")
+		fmt.Fprintf(out, "seq/rev contract, then plays one bounded English round (an admin bot\n")
+		fmt.Fprintf(out, "creates and drives an item, two players bid, and the round ends on the\n")
+		fmt.Fprintf(out, "reveal). It exits non-zero when any bot cannot join, the round cannot\n")
+		fmt.Fprintf(out, "complete, or a frame breaks the stream contract. The URL may also come\n")
+		fmt.Fprintf(out, "from WS_URL.\n\n")
 		fmt.Fprintf(out, "  default: %s\n", defaultTarget)
 	}
 	flag.Parse()
