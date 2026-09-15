@@ -74,7 +74,7 @@ func mustOpenLiveRun(t *testing.T, env *testEnv, it *item) {
 		Phase:     string(env.engine.Phase()),
 		Revision:  env.engine.Rev(),
 		UpdatedAt: now,
-		Items:     []store.ItemRow{gameItemRow(it)},
+		Items:     []store.ItemRow{itemRow(it)},
 	}); err != nil {
 		t.Fatalf("seeding the item row: %v", err)
 	}
@@ -88,28 +88,6 @@ func mustOpenLiveRun(t *testing.T, env *testEnv, it *item) {
 		return nil
 	}); err != nil {
 		t.Fatalf("opening a live run: %v", err)
-	}
-}
-
-// gameItemRow maps the in-memory item to its durable row. It mirrors the
-// engine's own write-set mapping and normalizes 0 to SQL NULL for the columns
-// where 0 means "absent" (H3/the store's pointer contract).
-func gameItemRow(it *item) store.ItemRow {
-	opt := func(v int64) *int64 {
-		if v == 0 {
-			return nil
-		}
-		return &v
-	}
-	return store.ItemRow{
-		ID: it.id, OrderIndex: it.orderIndex, Name: it.name, Description: it.description,
-		ImageURL: it.imageURL, AuctionType: it.auctionType, TruthValue: it.truthValue,
-		HintMin: opt(it.hintMin), HintMax: opt(it.hintMax), StartPrice: it.startPrice,
-		MinIncrement: opt(it.minIncrement), FloorPrice: opt(it.floorPrice),
-		DecrementStep: opt(it.decrementStep), DecrementIntervalMS: opt(it.decrementIntervalMS),
-		DurationMS: opt(it.durationMS), AntiSnipeMode: it.antiSnipeMode,
-		AntiSnipeWindowMS: opt(it.antiSnipeWindowMS), MaxExtensions: opt(it.maxExtensions),
-		Status: it.status,
 	}
 }
 
