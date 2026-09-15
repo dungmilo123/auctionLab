@@ -6,7 +6,7 @@ SERVER_PORT ?= 8080
 VITE_PORT   ?= 5173
 DB_PATH     ?= ./auction.db
 
-.PHONY: dev dev-go dev-web build run tunnel loadtest test test-go test-web clean
+.PHONY: dev dev-go dev-web build run tunnel loadtest test test-go test-web test-lint clean
 
 # One command, two processes, zero extra dependencies. `kill 0` reaps the whole
 # process group — including the binary `go run` spawns, which a PID-based kill
@@ -43,13 +43,18 @@ tunnel: build
 loadtest:
 	$(GO) run ./scripts/loadtest
 
-test: test-go test-web
+test: test-go test-web test-lint
 
 test-go:
 	$(GO) test ./...
 
 test-web: web/node_modules
 	cd web && npm run test
+
+# oxlint exits non-zero on errors and only prints warnings without failing;
+# running it inside `make test` is what keeps the lint signal exercised at all.
+test-lint: web/node_modules
+	cd web && npm run lint
 
 clean:
 	rm -rf bin web/dist/assets web/dist/index.html
