@@ -120,29 +120,90 @@ func newStream() *stream {
 
 // observe validates one frame against D-21/D-22/D-23 and folds it in. It
 // returns nil only for a frame that fits the stream exactly.
-//
-// RED sentinel: nothing is validated yet. The GREEN commit implements the
-// contract this signature declares.
 func (s *stream) observe(env envelope) error {
-	_ = env
+	if env.Type == "" {
+		return fmt.Errorf("frame %d: envelope has no type", s.want)
+	}
+	if env.Seq < s.want {
+		return fmt.Errorf("frame %d: duplicate seq %d — the stream already carried it (D-21)", s.want, env.Seq)
+	}
+	if env.Seq > s.want {
+		return fmt.Errorf("frame %d: seq gap — the server sent %d, so a message was dropped (D-21)", s.want, env.Seq)
+	}
+	if env.TS <= 0 {
+		return fmt.Errorf("frame %d: ts = %d, want a positive server millisecond clock (D-21)", s.want, env.TS)
+	}
+
+	switch env.Type {
+	case "hello":
+		if env.Seq != 1 {
+			return fmt.Errorf("frame %d: hello arrived at seq %d, want seq 1 (D-23)", s.want, env.Seq)
+		}
+		var hello helloPayload
+		if err := json.Unmarshal(env.Data, &hello); err != nil {
+			return fmt.Errorf("frame %d: hello payload is not JSON: %v (%s)", s.want, err, env.Data)
+		}
+		if hello.Role != "player" {
+			return fmt.Errorf("frame %d: hello role = %q, want %q", s.want, hello.Role, "player")
+		}
+		if hello.PlayerID == "" {
+			return fmt.Errorf("frame %d: hello carries no player id (D-23)", s.want)
+		}
+		if hello.Token == "" {
+			return fmt.Errorf("frame %d: hello carries no token (D-29)", s.want)
+		}
+		if hello.Rev != env.Rev {
+			return fmt.Errorf("frame %d: hello rev %d disagrees with the envelope rev %d", s.want, hello.Rev, env.Rev)
+		}
+	case "state.snapshot":
+		var snap snapshotPayload
+		if err := json.Unmarshal(env.Data, &snap); err != nil {
+			return fmt.Errorf("frame %d: state.snapshot payload is not JSON: %v (%s)", s.want, err, env.Data)
+		}
+		if err := s.acceptRevision(env.Rev); err != nil {
+			return err
+		}
+		if snap.Me.Nickname == "" {
+			return fmt.Errorf("frame %d: snapshot carries no `me` row, so it is not self-sufficient (D-25)", s.want)
+		}
+		for _, entry := range snap.Lobby {
+			s.seen[entry.Nickname] = true
+		}
+	case "error":
+		var problem struct {
+			Code string `json:"code"`
+		}
+		_ = json.Unmarshal(env.Data, &problem)
+		return fmt.Errorf("frame %d: the server answered error %q — this bot never joined", s.want, problem.Code)
+	default:
+		return fmt.Errorf("frame %d: unexpected message type %q with no game running", s.want, env.Type)
+	}
+
+	s.want++
 	return nil
 }
 
 // acceptRevision applies D-22's rule to one state event: a revision may repeat
 // (sibling messages legitimately share one), but it must never regress or skip.
-//
-// RED sentinel: the GREEN commit implements the rule.
+// A skip means a state event was never delivered, and only a fresh snapshot can
+// repair that — which is precisely the failure this harness exists to catch.
 func (s *stream) acceptRevision(rev int64) error {
-	_ = rev
+	if s.lastRev >= 0 && rev != s.lastRev && rev != s.lastRev+1 {
+		return fmt.Errorf("state event rev %d does not follow rev %d — revisions must be contiguous and never regress (D-22)",
+			rev, s.lastRev)
+	}
+	s.lastRev = rev
 	return nil
 }
 
 // complete reports whether every peer has appeared in some snapshot's lobby.
-//
-// RED sentinel: the GREEN commit reads s.seen.
 func (s *stream) complete(peers []string) bool {
-	_ = peers
-	return false
+	for _, peer := range peers {
+		if !s.seen[peer] {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -218,10 +279,6 @@ func resolveTarget() string {
 // runBot dials one connection, joins as a player, and reads until its own lobby
 // shows every peer. It never returns an error: failures are collected in the
 // result so one bot's trouble cannot hide another's.
-//
-// RED sentinel: the dial and the join are real (they are the harness's
-// transport contract), but no frame is read or validated yet. The GREEN commit
-// implements the read loop.
 func runBot(target string, spec botSpec) result {
 	res := result{bot: spec.index, rev: -1}
 
@@ -252,8 +309,34 @@ func runBot(target string, spec botSpec) result {
 		return res
 	}
 
+	s := newStream()
+	for res.seen < maxFrames {
+		_ = conn.SetReadDeadline(time.Now().Add(ioTimeout))
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			res.errs = append(res.errs, fmt.Sprintf("frame %d: read: %v", s.want, err))
+			return res
+		}
+
+		var env envelope
+		if err := json.Unmarshal(raw, &env); err != nil {
+			res.errs = append(res.errs, fmt.Sprintf("frame %d: envelope is not JSON: %v (%s)", s.want, err, raw))
+			return res
+		}
+		if err := s.observe(env); err != nil {
+			res.errs = append(res.errs, err.Error())
+			return res
+		}
+
+		res.seen = int(s.want) - 1
+		res.rev = s.lastRev
+		if s.complete(spec.peers) {
+			return res
+		}
+	}
+
 	res.errs = append(res.errs, fmt.Sprintf(
-		"no frame was read: the stream contract is not implemented yet (peers: %s)",
-		strings.Join(spec.peers, ", ")))
+		"no snapshot showed every player (%s) in %d frames — the other bot never became visible",
+		strings.Join(spec.peers, ", "), res.seen))
 	return res
 }
