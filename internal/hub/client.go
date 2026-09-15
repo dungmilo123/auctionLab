@@ -42,11 +42,6 @@ type client struct {
 	// construction rather than by luck.
 	seq int64
 
-	// rev is the last revision handed to this connection. The fan-out writes it
-	// under the engine lock, the read pump reads it for a private error frame;
-	// atomic so that read needs no lock.
-	rev atomic.Int64
-
 	// send is the per-connection FIFO. It is deliberately never closed: a
 	// producer holding a stale registry snapshot is always one instruction away
 	// from a send, and a close would panic inside the engine's critical section
@@ -352,7 +347,6 @@ func (c *client) enqueueLocked(rev int64, typ string, data any, recovery bool) b
 	}
 
 	c.seq = next
-	c.rev.Store(rev)
 
 	select {
 	case c.send <- Envelope{Type: typ, Seq: next, Rev: rev, TS: c.hub.now().UnixMilli(), Data: payload}:
