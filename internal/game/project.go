@@ -179,18 +179,29 @@ type AdminPlayer struct {
 }
 
 // AdminItem is the full item row, including the truth value (D-26's positive
-// control).
+// control) and every mechanics field the Phase 3 editor round-trips (D-66).
 type AdminItem struct {
 	ID          string `json:"id"`
 	OrderIndex  int64  `json:"order_index"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
 	AuctionType string `json:"auction_type"`
 	TruthValue  int64  `json:"truth_value"`
-	HintMin     *int64 `json:"hint_min,omitempty"`
-	HintMax     *int64 `json:"hint_max,omitempty"`
-	StartPrice  int64  `json:"start_price"`
-	Status      string `json:"status"`
+
+	HintMin             *int64 `json:"hint_min,omitempty"`
+	HintMax             *int64 `json:"hint_max,omitempty"`
+	StartPrice          int64  `json:"start_price"`
+	MinIncrement        *int64 `json:"min_increment,omitempty"`
+	FloorPrice          *int64 `json:"floor_price,omitempty"`
+	DecrementStep       *int64 `json:"decrement_step,omitempty"`
+	DecrementIntervalMS *int64 `json:"decrement_interval_ms,omitempty"`
+	DurationMS          *int64 `json:"duration_ms,omitempty"`
+	AntiSnipeMode       string `json:"anti_snipe_mode,omitempty"`
+	AntiSnipeWindowMS   *int64 `json:"anti_snipe_window_ms,omitempty"`
+	MaxExtensions       *int64 `json:"max_extensions,omitempty"`
+
+	Status string `json:"status"`
 }
 
 // AdminSealedBid is one effective sealed bid (PLAN.md §5). Phase 6 owns the
@@ -224,6 +235,16 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 			Budget:     p.budget,
 			TotalValue: p.totalValue,
 			Connected:  s.connected[p.id],
+		}
+		// D-67/D-72: the outbid banner is derived from these two server-computed
+		// values, never from client arithmetic — `last_bid` is scoped to the
+		// current run, so the banner clears on the next item by construction.
+		if last, ok := s.lastBidOf(p.id); ok {
+			amount := last.amount
+			view.Me.LastBid = &amount
+		}
+		if top, ok := s.topBid(); ok && top.playerID == p.id {
+			view.Me.IsTopBidder = true
 		}
 	}
 	return view
@@ -327,7 +348,9 @@ func (s *state) leaderboard() []LeaderEntry {
 }
 
 // currentPublicItem projects the current item, or nil when none is current
-// (LOBBY, and between items).
+// (LOBBY, and between items). It is the ONE builder behind all three roles, so a
+// live field is either visible to everyone or to no one by construction —
+// including the settle object, which reaches `/screen` for free (D-69).
 func (s *state) currentPublicItem() *PublicItem {
 	if s.currentItemID == "" {
 		return nil
@@ -348,16 +371,57 @@ func (s *state) currentPublicItem() *PublicItem {
 		min, max := it.hintMin, it.hintMax
 		view.HintMin, view.HintMax = &min, &max
 	}
+	s.addLiveFields(view, it)
 	return view
 }
 
-// adminItem projects the full item row, truth value included.
+// addLiveFields is D-67's extension: every field is a pointer with `omitempty`,
+// so the wire distinguishes "not applicable" from a real 0, and `settle` exists
+// ONLY at SETTLED — the leak boundary is the presence of the whole object, not
+// of any single field inside it.
+func (s *state) addLiveFields(view *PublicItem, it *item) {
+	run := s.currentAuction
+	if run == nil || run.itemID != it.id {
+		return
+	}
+
+	if price, ok := s.currentPrice(); ok {
+		view.CurrentPrice = &price
+	}
+	if nickname, ok := s.topBidderNickname(); ok {
+		view.TopBidder = &Bidder{Nickname: nickname}
+	}
+	if run.deadlineAt > 0 {
+		deadline := run.deadlineAt
+		view.DeadlineAt = &deadline
+	}
+	if s.phase == PhaseLive {
+		// Only an open window advertises a next bid: after SETTLED there is
+		// nothing to bid on, and a stale minimum would invite a bid the ladder
+		// refuses (D-52 #3).
+		if min, ok := s.minNextBid(); ok {
+			view.MinNextBid = &min
+		}
+	}
+	extensionsUsed := run.extensionsUsed
+	view.ExtensionsUsed = &extensionsUsed
+
+	if s.phase == PhaseSettled && run.settle != nil {
+		reveal := *run.settle
+		view.Settle = &reveal
+	}
+}
+
+// adminItem projects the full item row, truth value included, plus every
+// mechanics field the editor round-trips (D-66: `admin.item.upsert` takes the
+// same object shape back).
 func adminItem(it *item) AdminItem {
 	view := AdminItem{
 		ID:          it.id,
 		OrderIndex:  it.orderIndex,
 		Name:        it.name,
 		Description: it.description,
+		ImageURL:    it.imageURL,
 		AuctionType: it.auctionType,
 		TruthValue:  it.truthValue,
 		StartPrice:  it.startPrice,
@@ -366,6 +430,37 @@ func adminItem(it *item) AdminItem {
 	if it.hintMax > 0 {
 		min, max := it.hintMin, it.hintMax
 		view.HintMin, view.HintMax = &min, &max
+	}
+	if it.minIncrement > 0 {
+		v := it.minIncrement
+		view.MinIncrement = &v
+	}
+	if it.floorPrice > 0 {
+		v := it.floorPrice
+		view.FloorPrice = &v
+	}
+	if it.decrementStep > 0 {
+		v := it.decrementStep
+		view.DecrementStep = &v
+	}
+	if it.decrementIntervalMS > 0 {
+		v := it.decrementIntervalMS
+		view.DecrementIntervalMS = &v
+	}
+	if it.durationMS > 0 {
+		v := it.durationMS
+		view.DurationMS = &v
+	}
+	if it.antiSnipeMode != "" {
+		view.AntiSnipeMode = it.antiSnipeMode
+	}
+	if it.antiSnipeWindowMS > 0 {
+		v := it.antiSnipeWindowMS
+		view.AntiSnipeWindowMS = &v
+	}
+	if it.maxExtensions > 0 {
+		v := it.maxExtensions
+		view.MaxExtensions = &v
 	}
 	return view
 }

@@ -359,6 +359,14 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		Revision:      next.revision,
 		UpdatedAt:     e.now().UnixMilli(),
 		Players:       next.playerRows(),
+		// Phase 3 (H3): the auction write set is derived by diffing the scratch
+		// state against the committed one, so a mutation cannot forget to
+		// persist what it changed — the single most important property of the
+		// crash drill (RT-06).
+		Items:        next.changedItems(e.state),
+		DeletedItems: next.deletedItems(e.state),
+		Runtime:      next.runtimeRow(e.state),
+		Bids:         next.bidTail(e.state),
 	}); err != nil {
 		if store.IsUniqueViolation(err) {
 			// A UNIQUE collision is a rejection, not corruption: the write set
@@ -612,6 +620,10 @@ func (v view) Snapshot(role Role, playerID string) any {
 // clone deep-copies the state so a mutation that fails validation can never
 // leave the live state half-updated, and so the committed state is published
 // atomically as one pointer swap.
+//
+// events is deliberately NOT copied: each mutation starts with an empty event
+// list, so the list on the published state is exactly what that mutation
+// produced (D-57).
 func (s *state) clone() *state {
 	next := &state{
 		phase:         s.phase,
@@ -624,6 +636,11 @@ func (s *state) clone() *state {
 		items:         make(map[string]*item, len(s.items)),
 		itemOrder:     append([]string(nil), s.itemOrder...),
 		sealedBids:    append([]sealedBid(nil), s.sealedBids...),
+		bids:          append([]bid(nil), s.bids...),
+	}
+	if s.currentAuction != nil {
+		run := *s.currentAuction
+		next.currentAuction = &run
 	}
 	for id, p := range s.players {
 		copied := *p
@@ -653,6 +670,114 @@ func (s *state) playerRows() []store.PlayerRow {
 			TotalValue:  p.totalValue,
 			JoinedAt:    p.joinedAt,
 			LastSeenAt:  p.lastSeenAt,
+		})
+	}
+	return rows
+}
+
+// itemRow projects one in-memory item into its durable row. Every nullable
+// column is normalized 0 → SQL NULL, which is the same direction the table uses
+// on the way back (LoadItems reads NULL as 0).
+func itemRow(it *item) store.ItemRow {
+	opt := func(v int64) *int64 {
+		if v == 0 {
+			return nil
+		}
+		return &v
+	}
+	return store.ItemRow{
+		ID: it.id, OrderIndex: it.orderIndex, Name: it.name, Description: it.description,
+		ImageURL: it.imageURL, AuctionType: it.auctionType, TruthValue: it.truthValue,
+		HintMin: opt(it.hintMin), HintMax: opt(it.hintMax), StartPrice: it.startPrice,
+		MinIncrement: opt(it.minIncrement), FloorPrice: opt(it.floorPrice),
+		DecrementStep: opt(it.decrementStep), DecrementIntervalMS: opt(it.decrementIntervalMS),
+		DurationMS: opt(it.durationMS), AntiSnipeMode: it.antiSnipeMode,
+		AntiSnipeWindowMS: opt(it.antiSnipeWindowMS), MaxExtensions: opt(it.maxExtensions),
+		Status: it.status,
+	}
+}
+
+// changedItems is H3's diff: only the rows whose value differs from the
+// committed state are written, in presentation order. `item` is a flat
+// comparable struct, so `*a != *b` is the entire "this row changed" test; if a
+// later phase adds a slice or map field, this must become an explicit predicate
+// instead.
+func (s *state) changedItems(prev *state) []store.ItemRow {
+	var rows []store.ItemRow
+	for _, id := range s.itemOrder {
+		it := s.items[id]
+		if old, existed := prev.items[id]; existed && *old == *it {
+			continue
+		}
+		rows = append(rows, itemRow(it))
+	}
+	return rows
+}
+
+// deletedItems names the ids the committed state held and the scratch copy does
+// not: the write set must say so explicitly, because a map diff cannot see a
+// removal without a key walk.
+func (s *state) deletedItems(prev *state) []string {
+	var ids []string
+	for _, id := range prev.itemOrder {
+		if _, ok := s.items[id]; !ok {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// runtimeRow is the persisted timing of the current run, or nil when the timing
+// did not move (D-54: the row changes on a start, an extend or a settle — not on
+// a bid that left the deadline alone). The revision is the mutation's revision:
+// it records when the timing last moved.
+func (s *state) runtimeRow(prev *state) *store.RuntimeRow {
+	run := s.currentAuction
+	if run == nil {
+		return nil
+	}
+	if prev.currentAuction != nil && sameRuntime(prev.currentAuction, run) {
+		return nil
+	}
+	row := &store.RuntimeRow{
+		ItemID:         run.itemID,
+		StartedAt:      run.startedAt,
+		Revision:       s.revision,
+		ExtensionsUsed: run.extensionsUsed,
+	}
+	if run.deadlineAt > 0 {
+		deadline := run.deadlineAt
+		row.DeadlineAt = &deadline
+	}
+	if run.settledAt > 0 {
+		settled := run.settledAt
+		row.SettledAt = &settled
+	}
+	return row
+}
+
+// sameRuntime compares the persisted halves of two runs. The settle reveal is
+// deliberately excluded: it is derivable from the trail and the item, and a
+// second persisted copy of the economics would be a second source of truth.
+func sameRuntime(a, b *auctionRun) bool {
+	return a.itemID == b.itemID &&
+		a.startedAt == b.startedAt &&
+		a.deadlineAt == b.deadlineAt &&
+		a.extensionsUsed == b.extensionsUsed &&
+		a.settledAt == b.settledAt
+}
+
+// bidTail is the append-only tail: the bids committed since prev (H4). The trail
+// is never truncated, so the slice suffix is exactly the new rows.
+func (s *state) bidTail(prev *state) []store.BidRow {
+	if len(s.bids) <= len(prev.bids) {
+		return nil
+	}
+	rows := make([]store.BidRow, 0, len(s.bids)-len(prev.bids))
+	for _, b := range s.bids[len(prev.bids):] {
+		rows = append(rows, store.BidRow{
+			ItemID: b.itemID, PlayerID: b.playerID,
+			Amount: b.amount, Kind: "bid", CreatedAt: b.createdAt,
 		})
 	}
 	return rows

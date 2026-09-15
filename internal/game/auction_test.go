@@ -173,6 +173,7 @@ func requireRejection(t *testing.T, env *testEnv, playerID string, amount int64,
 	t.Helper()
 
 	revBefore := env.engine.Rev()
+	eventsBefore := len(env.lastEvents())
 	rejection, got, err := env.placeBid(playerID, amount)
 	if !got {
 		t.Fatalf("bid %d by %s was not answered privately (err = %v), want the reason %q", amount, playerID, err, wantReason)
@@ -187,8 +188,8 @@ func requireRejection(t *testing.T, env *testEnv, playerID string, amount int64,
 	if got := env.engine.Rev(); got != revBefore {
 		t.Errorf("revision = %d after a rejection, want the unchanged %d: a rejection is not a mutation (D-53)", got, revBefore)
 	}
-	if events := env.lastEvents(); len(events) != 0 {
-		t.Errorf("a rejected bid left %d event(s) on the committed state, want none", len(events))
+	if events := env.lastEvents(); len(events) != eventsBefore {
+		t.Errorf("a rejected bid left %d event(s) on the committed state, want the unchanged %d", len(events), eventsBefore)
 	}
 }
 
