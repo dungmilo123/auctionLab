@@ -29,9 +29,12 @@ import {
   readError,
   readHello,
   readPlayerSnapshot,
+  type BidRejected,
   type ErrorPayload,
+  type Hello,
   type PlayerSnapshot,
 } from './protocol'
+import type { ViewState } from './view'
 
 /** D-29's storage key (UI-SPEC §Resume, supersede and storage). */
 export const TOKEN_KEY = 'auctionlab.player_token'
@@ -42,12 +45,53 @@ export const SUPERSEDED_CLOSE_CODE = 4001
 /** The four connection states UI-SPEC allows — exactly these, no more. */
 export type ConnectionStatus = 'connecting' | 'open' | 'lost' | 'superseded'
 
+/** The role a socket joins as (D-23). It selects the snapshot decoder. */
+export type SocketRole = 'player' | 'admin'
+
+/**
+ * The role-neutral socket contract (H17). The lifecycle — same-origin URL,
+ * detach-then-replace, reset-per-connection gate, ONE resume attempt per
+ * visibility/pageshow event — lives here once; the role owns its join frame,
+ * its identity and its callbacks.
+ */
+export type SocketOptions = {
+  role: SocketRole
+  /** the frame to send once the upgrade completes; null = this role joins later */
+  joinFrame: (token: string) => unknown | null
+  /** the stored identity to resume with — '' means there is nothing to restore */
+  readToken: () => string
+  /** called with a `hello` addressed to this socket (the player stores its token) */
+  onHello?: (hello: Hello) => void
+  /** called when the server refuses the stored identity (D-30 (3)) */
+  onTokenInvalid?: () => void
+  onStatus: (status: ConnectionStatus) => void
+  /** one reduced view per admitted frame (D-57/D-70); invalid frames never arrive */
+  onView?: (view: ViewState) => void
+  /** the player route's Phase-2 snapshot callback, kept for the lobby screen */
+  onSnapshot?: (snapshot: PlayerSnapshot) => void
+  /** D-53's private refusal, for the submitter's feedback row */
+  onBidRejected?: (rejection: BidRejected) => void
+  onError?: (error: ErrorPayload) => void
+}
+
+/** What every role's socket handle can do. */
+export type Socket = {
+  /** send one already-built frame (a role command); a no-op while not open */
+  send(frame: unknown): void
+  /** detach and close. Safe to call twice. */
+  close(): void
+}
+
 export type PlayerSocketHandlers = {
   onStatus(status: ConnectionStatus): void
   onSnapshot(snapshot: PlayerSnapshot): void
   /** The rejection the player must act on. `code` selects the copy; the /
    * server's `message` is never rendered (UI-SPEC §Join/mutation states). */
   onError(error: ErrorPayload): void
+  /** The Phase-3 reduced view (D-70). Optional so Phase 2's call site is unchanged. */
+  onView?(view: ViewState): void
+  /** D-53's private bid refusal, rendered as the feedback row. */
+  onBidRejected?(rejection: BidRejected): void
 }
 
 export type PlayerConnection = {
@@ -107,6 +151,17 @@ function clearStoredToken(): void {
  */
 export function resetStream(): GateState {
   return initialGateState()
+}
+
+/**
+ * The extracted role-neutral lifecycle (H17): same-origin URL, the gate reset
+ * per connection, the detach-then-replace order, the D-45 resume and the
+ * status callback. RED stub: the body lands in the GREEN commit, and
+ * `openPlayerSocket` still owns the live Phase-2 implementation.
+ */
+export function openSocket(opts: SocketOptions): Socket {
+  void opts
+  return { send: () => {}, close: () => {} }
 }
 
 /**

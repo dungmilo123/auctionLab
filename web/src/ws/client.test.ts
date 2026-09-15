@@ -19,12 +19,97 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { initialGateState } from './gate'
 import { openPlayerSocket, readStoredToken, resetStream } from './client'
+import { openAdminSocket, type AdminConnection } from './admin'
+import {
+  readAdminSnapshot,
+  readBidAccepted,
+  readPlayerSnapshot,
+  readPriceTick,
+  type BidRejected,
+  type PlayerSnapshot,
+} from './protocol'
+import { initialViewState, reduceView, type ViewFrame, type ViewState } from './view'
 import type { PlayerConnection } from './client'
 import type { ErrorPayload } from './protocol'
 
 /** One server frame, exactly as the wire carries it (D-21). */
-function envelope(type: string, seq: number, data: unknown, rev = 0): string {
-  return JSON.stringify({ type, seq, rev, ts: 1_757_934_000_000, data })
+function envelope(type: string, seq: number, data: unknown, rev = 0, ts = 1_757_934_000_000): string {
+  return JSON.stringify({ type, seq, rev, ts, data })
+}
+
+/** The wire clock every Phase-3 fixture is anchored to. */
+const WS_TS = 1_757_934_000_000
+
+/** A live English snapshot payload, exactly as `internal/game/project.go` builds it. */
+function liveSnapshotData(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    phase: 'LIVE',
+    revision: 9,
+    server_ts: WS_TS,
+    me: {
+      id: 'p1',
+      nickname: 'Milo',
+      budget: 1_000_000,
+      total_value: 0,
+      connected: true,
+      last_bid: 120_000,
+      is_top_bidder: true,
+    },
+    lobby: [{ nickname: 'Milo', connected: true }],
+    leaderboard: [{ rank: 1, nickname: 'Milo', total_value: 0, budget: 1_000_000 }],
+    item: {
+      id: 'i1',
+      name: 'Bức tranh',
+      auction_type: 'english',
+      start_price: 100_000,
+      status: 'live',
+      current_price: 120_000,
+      top_bidder: { nickname: 'Milo' },
+      deadline_at: WS_TS + 30_000,
+      min_next_bid: 130_000,
+      extensions_used: 0,
+    },
+    ...overrides,
+  }
+}
+
+/** The admin projection the hub sends a role=admin connection. */
+function adminSnapshotData(): Record<string, unknown> {
+  return {
+    phase: 'LOBBY',
+    revision: 1,
+    server_ts: WS_TS,
+    config: { starting_budget: 1_000_000, currency: 'VND' },
+    players: [],
+    sealed_bids: [],
+    lobby: [],
+    leaderboard: [],
+    item: null,
+    items: [
+      {
+        id: 'i1',
+        order_index: 0,
+        name: 'Bức tranh',
+        auction_type: 'english',
+        truth_value: 200_000,
+        start_price: 100_000,
+        min_increment: 10_000,
+        duration_ms: 30_000,
+        anti_snipe_mode: 'extend',
+        anti_snipe_window_ms: 10_000,
+        max_extensions: 1,
+        status: 'pending',
+      },
+    ],
+  }
+}
+
+/** `reduceView`, with the "it applied" expectation made explicit. */
+function reduceOrThrow(state: ViewState, frame: ViewFrame): ViewState {
+  const next = reduceView(state, frame)
+  expect(next).not.toBeNull()
+  if (next === null) throw new Error('frame did not apply')
+  return next
 }
 
 type Listener = () => void
@@ -144,6 +229,7 @@ function installSocketEnvironment() {
 
   return {
     sockets,
+    storage,
     fireVisibility(state: 'visible' | 'hidden'): void {
       fakeDocument.visibilityState = state
       fire('document', 'visibilitychange')
@@ -249,5 +335,216 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
     env.fireVisibility('visible')
     env.firePageshow()
     expect(env.sockets).toHaveLength(2)
+  })
+})
+
+describe('the reduced view contract (D-57/D-70)', () => {
+  let connection: PlayerConnection | null = null
+
+  afterEach(() => {
+    connection?.close()
+    connection = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('hands onView exactly what reduceView makes of the decoded frames', () => {
+    const env = installSocketEnvironment()
+    const views: ViewState[] = []
+    const snapshots: PlayerSnapshot[] = []
+    const rejections: BidRejected[] = []
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    connection = openPlayerSocket({
+      onStatus: () => {},
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      onError: () => {},
+      onView: (view) => views.push(view),
+      onBidRejected: (rejection) => rejections.push(rejection),
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    socket.accept()
+    connection.join('Milo')
+    socket.deliver(
+      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
+    )
+
+    // ---- A snapshot seeds the view (and the Phase-2 callback still fires).
+    const payload = liveSnapshotData()
+    socket.deliver(envelope('state.snapshot', 2, payload, 9))
+    const snapshot = readPlayerSnapshot(payload)
+    expect(snapshot).not.toBeNull()
+    if (snapshot === null) return
+    const afterSnapshot = reduceOrThrow(initialViewState(), { kind: 'player-snapshot', snapshot })
+    expect(views.at(-1)).toEqual(afterSnapshot)
+    expect(snapshots).toEqual([snapshot])
+
+    // ---- A tick re-anchors the countdown through the same contract (D-60).
+    const tickData = {
+      item_id: 'i1',
+      current_price: 130_000,
+      min_next_bid: 140_000,
+      deadline_at: WS_TS + 30_000,
+      remaining_ms: 29_500,
+    }
+    socket.deliver(envelope('price.tick', 3, tickData, 9, WS_TS + 500))
+    const tick = readPriceTick(tickData)
+    expect(tick).not.toBeNull()
+    if (tick === null) return
+    const afterTick = reduceOrThrow(afterSnapshot, { kind: 'price.tick', tick, ts: WS_TS + 500 })
+    expect(views.at(-1)).toEqual(afterTick)
+    expect(views.at(-1)?.live?.serverTs).toBe(WS_TS + 500)
+
+    // ---- An accepted bid patches the price and my own row (D-67/D-72).
+    const bidData = {
+      player_id: 'p1',
+      nickname: 'Milo',
+      amount: 130_000,
+      current_price: 130_000,
+      min_next_bid: 140_000,
+      deadline_at: WS_TS + 30_000,
+      extensions_used: 0,
+    }
+    socket.deliver(envelope('bid.accepted', 4, bidData, 9, WS_TS + 800))
+    const bid = readBidAccepted(bidData)
+    expect(bid).not.toBeNull()
+    if (bid === null) return
+    const afterBid = reduceOrThrow(afterTick, { kind: 'bid.accepted', bid, ts: WS_TS + 800 })
+    expect(views.at(-1)).toEqual(afterBid)
+    expect(views.at(-1)?.me?.lastBid).toBe(130_000)
+    expect(views.at(-1)?.me?.isTopBidder).toBe(true)
+    // Events never masquerade as snapshots.
+    expect(snapshots).toHaveLength(1)
+
+    // ---- D-53's private refusal reaches its submitter as feedback, not state.
+    socket.deliver(
+      envelope('bid.rejected', 5, {
+        reason: 'below_minimum',
+        min_next_bid: 140_000,
+        budget: 1_000_000,
+        amount: 130_000,
+      }),
+    )
+    expect(rejections).toEqual([
+      { reason: 'below_minimum', minNextBid: 140_000, budget: 1_000_000, amount: 130_000 },
+    ])
+  })
+
+  it('never hands onView a frame the decoder refused, or one from another phase', () => {
+    const env = installSocketEnvironment()
+    const views: ViewState[] = []
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    connection = openPlayerSocket({
+      onStatus: () => {},
+      onSnapshot: () => {},
+      onError: () => {},
+      onView: (view) => views.push(view),
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    socket.accept()
+
+    // A LIVE snapshot whose english item carries no deadline: rejected by the
+    // decoder, so the last known view (none yet) stays and onView never fires.
+    socket.deliver(
+      envelope(
+        'state.snapshot',
+        1,
+        liveSnapshotData({
+          item: {
+            id: 'i1',
+            name: 'Bức tranh',
+            auction_type: 'english',
+            start_price: 100_000,
+            status: 'live',
+            current_price: 120_000,
+            min_next_bid: 130_000,
+          },
+        }),
+        9,
+      ),
+    )
+    expect(views).toHaveLength(0)
+
+    // An unknown phase is refused at the decoder too.
+    socket.deliver(envelope('phase.changed', 2, { phase: 'PAUSED', item: null }, 10))
+    expect(views).toHaveLength(0)
+
+    // A well-formed frame in a phase it does not belong to is refused by the
+    // reducer: a tick while the view is still LOBBY.
+    socket.deliver(
+      envelope(
+        'price.tick',
+        3,
+        { item_id: 'i1', current_price: 1, min_next_bid: 2, deadline_at: WS_TS },
+        10,
+        WS_TS,
+      ),
+    )
+    expect(views).toHaveLength(0)
+  })
+})
+
+describe('the admin connection (D-64/H17)', () => {
+  let admin: AdminConnection | null = null
+
+  afterEach(() => {
+    admin?.close()
+    admin = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('joins as admin, reduces its own projection and stores no token', () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    const views: ViewState[] = []
+
+    admin = openAdminSocket({
+      onStatus: (status) => statuses.push(status),
+      onView: (view) => views.push(view),
+      onError: () => {},
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    expect(socket.url).toBe('ws://localhost:5173/ws')
+    expect(statuses.at(-1)).toBe('connecting')
+
+    socket.accept()
+    expect(statuses.at(-1)).toBe('open')
+    expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'join', role: 'admin' })
+
+    socket.deliver(envelope('hello', 1, { role: 'admin', rev: 0 }))
+    const payload = adminSnapshotData()
+    socket.deliver(envelope('state.snapshot', 2, payload, 1))
+    const snapshot = readAdminSnapshot(payload)
+    expect(snapshot).not.toBeNull()
+    if (snapshot === null) return
+    expect(views.at(-1)).toEqual(
+      reduceOrThrow(initialViewState(), { kind: 'admin-snapshot', snapshot }),
+    )
+    expect(views.at(-1)?.items[0]?.truthValue).toBe(200_000)
+    expect(views.at(-1)?.me).toBeNull()
+
+    // The presenter's command API sends the D-65 frames on the same socket.
+    admin.send({ type: 'admin.item.start', id: 'i1' })
+    expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'admin.item.start', id: 'i1' })
+
+    // No localStorage path at all: nothing was written, and there is no
+    // identity to resume with, so a drop is not re-opened by visibility.
+    expect(env.storage.size).toBe(0)
+    socket.drop(1006)
+    expect(statuses.at(-1)).toBe('lost')
+    env.fireVisibility('visible')
+    env.firePageshow()
+    expect(env.sockets).toHaveLength(1)
   })
 })
