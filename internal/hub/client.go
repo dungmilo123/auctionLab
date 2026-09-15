@@ -79,7 +79,7 @@ type client struct {
 	rejectedJoins int
 }
 
-// inbound is the union of the client→server fields Phase 2 needs to route a
+// inbound is the union of the client→server fields the hub needs to route a
 // frame. Unknown fields are ignored on purpose: D-24 freezes the catalog, not
 // the payload structs, and later phases add optional fields to the same
 // commands (D-24's additive rule).
@@ -89,6 +89,20 @@ type inbound struct {
 	Nickname string `json:"nickname"` // consumed by the engine's identity resolution
 	Token    string `json:"token"`    // consumed by the engine's identity resolution
 	Key      string `json:"key"`      // ADMIN_KEY check is Phase 4 (D-24: accepted unchecked for now)
+
+	// Phase 3 (D-52/D-66), additive:
+	//
+	//   amount — `bid.place`'s amount, a whole number. The ladder, not this
+	//            struct, decides what is acceptable (D-52).
+	//   id     — the item an `admin.item.*` command names.
+	//   item   — D-66's full-object upsert payload; nil means the frame carried
+	//            no `item` key at all, which is a bad_message rather than an
+	//            empty create.
+	//   ids    — the complete permutation `admin.item.reorder` demands.
+	Amount int64           `json:"amount"`
+	ID     string          `json:"id"`
+	Item   *game.ItemInput `json:"item"`
+	IDs    []string        `json:"ids"`
 }
 
 // newClient wires one upgraded connection to the hub.
@@ -225,8 +239,13 @@ func (c *client) handle(payload []byte) {
 		// to the socket from here, so it cannot jump the queue, and coalesced so
 		// two rapid requests do not queue two snapshots.
 		c.requestResync()
+	case TypeBidPlace:
+		c.handleBid(in)
+	case TypeAdminItemUpsert, TypeAdminItemDelete, TypeAdminItemReorder,
+		TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext:
+		c.handleAdmin(in)
 	default:
-		// D-24: the Phase 3–6 commands are already in the catalog, so a client
+		// D-24: the Phase 4–6 commands are already in the catalog, so a client
 		// that sends one now gets a typed answer instead of silence.
 		//
 		// Deliberately outside D-23's rejectedJoins cap — that counter counts
@@ -235,6 +254,77 @@ func (c *client) handle(payload []byte) {
 		// bound until the Phase 7 per-connection rate limit lands (CONTEXT
 		// §Deferred).
 		c.sendError(CodeUnsupported, "command not implemented in this phase")
+	}
+}
+
+// handleBid routes one `bid.place` (D-52/D-53). The role gate comes first: a
+// command from the wrong role is a protocol error and never reaches the engine
+// (D-52 #1/H12/T-03-07). The amount itself is NOT pre-validated here — the
+// ladder is the single validation surface, so `invalid_amount` travels to the
+// bidder as the same typed `bid.rejected` every other refusal uses.
+func (c *client) handleBid(in inbound) {
+	if c.role() != RolePlayer {
+		c.sendError(CodeBadMessage, "bid.place needs the player role")
+		return
+	}
+
+	// D-53's refusal travels through this callback, which PlaceBid invokes with
+	// the engine's exclusive lock held: the min_next_bid and budget it reports
+	// are the numbers of that moment, and the private frame takes its seq on the
+	// same lock-held FIFO as every state event (Pitfall 1).
+	err := c.hub.engine.PlaceBid(c.playerID(), in.Amount, func(v game.View, rejection game.BidRejection) {
+		c.enqueue(v.Rev(), TypeBidRejected, rejection)
+	})
+	if err == nil {
+		return
+	}
+
+	// A *BidRejectedError means the private frame already answered the player;
+	// there is nothing left to say. Anything else is an engine-level failure.
+	var rejected *game.BidRejectedError
+	if errors.As(err, &rejected) {
+		return
+	}
+	log.Printf("ws: bid from %s: %v", c.describe(), err)
+	c.sendError(CodeBadMessage, "the bid could not be placed")
+}
+
+// handleAdmin routes one `admin.item.*` command (D-64/D-65/D-66). Every command
+// is role-gated before it can name a mutation, and every refusal is a private
+// typed error that changes nothing (T-03-07): `not_authorized` for the wrong
+// role, `bad_message` for a phase edge, an unknown id or an invalid item.
+//
+// The engine's own message is carried along for the log and for an operator
+// reading a dev console — the UI maps the CODE to its copy and never renders
+// the server's text (UI-SPEC §Copywriting).
+func (c *client) handleAdmin(in inbound) {
+	if c.role() != RoleAdmin {
+		c.sendError(CodeNotAuthorized, "admin commands need the admin role")
+		return
+	}
+
+	var err error
+	switch in.Type {
+	case TypeAdminItemUpsert:
+		if in.Item == nil {
+			c.sendError(CodeBadMessage, "admin.item.upsert needs an item object")
+			return
+		}
+		err = c.hub.engine.ItemUpsert(*in.Item)
+	case TypeAdminItemDelete:
+		err = c.hub.engine.DeleteItem(in.ID)
+	case TypeAdminItemReorder:
+		err = c.hub.engine.ReorderItems(in.IDs)
+	case TypeAdminItemStart:
+		err = c.hub.engine.StartItem(in.ID)
+	case TypeAdminItemForceEnd:
+		err = c.hub.engine.ForceEnd()
+	case TypeAdminItemNext:
+		err = c.hub.engine.NextItem()
+	}
+
+	if err != nil {
+		c.sendError(CodeBadMessage, err.Error())
 	}
 }
 

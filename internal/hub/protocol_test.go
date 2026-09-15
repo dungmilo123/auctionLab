@@ -105,7 +105,7 @@ func TestProtocol(t *testing.T) {
 			{"not_joined", CodeNotJoined},
 			{"bad_message", CodeBadMessage},
 			{"unsupported", CodeUnsupported},
-			{"not_authorized", CodeNotAuthorized}, // wired in Phase 4 (ADMN-04)
+			{"not_authorized", CodeNotAuthorized}, // Phase 3: admin-role misuse (D-65); Phase 4 adds ADMIN_KEY (ADMN-04)
 		}
 		for _, entry := range codes {
 			if entry.constant != entry.literal {
@@ -114,15 +114,18 @@ func TestProtocol(t *testing.T) {
 		}
 	})
 
-	t.Run("the frozen Phase 3-6 commands answer unsupported today", func(t *testing.T) {
+	t.Run("the still-unimplemented frozen commands answer unsupported today", func(t *testing.T) {
 		// D-24: the catalog is defined now, so a client that sends a later
 		// phase's command gets a typed answer instead of silence. A command not
 		// in the catalog is not distinguished here on purpose — the catalog is
 		// freeze-only-additive, so "frozen but not implemented" is the answer.
+		//
+		// Phase 3 removed `bid.place` and the six `admin.item.*` commands from
+		// this list: they are routed now, and their own answers are pinned by
+		// auction_test.go (a role gate for the wrong role, a mutation or a
+		// typed bad_message for the right one).
 		future := []string{
-			TypeBidPlace, TypeDutchAccept, TypeSealedSubmit,
-			TypeAdminItemUpsert, TypeAdminItemDelete, TypeAdminItemReorder,
-			TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext,
+			TypeDutchAccept, TypeSealedSubmit,
 			TypeAdminGameReset, TypeAdminConfigUpdate,
 		}
 

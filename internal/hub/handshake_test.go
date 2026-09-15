@@ -278,13 +278,14 @@ func TestPreJoinCommand(t *testing.T) {
 
 // TestUnsupportedCommand pins D-24's forward-compatibility rule: a command from
 // a later phase is already in the frozen catalog, so it answers the typed
-// unsupported error instead of looking like an unknown message.
+// unsupported error instead of looking like an unknown message. Phase 3 routed
+// `admin.item.*`, so the example moved to Phase 4's config command.
 func TestUnsupportedCommand(t *testing.T) {
 	h, _ := newTestHub(t)
 	conn := dialWS(t, h)
 	join(t, conn, `{"type":"join","role":"admin"}`)
 
-	writeFrame(t, conn, `{"type":"admin.item.start","id":"item-1"}`)
+	writeFrame(t, conn, `{"type":"admin.config.update"}`)
 	assertErrorCode(t, readFrame(t, conn), CodeUnsupported)
 }
 

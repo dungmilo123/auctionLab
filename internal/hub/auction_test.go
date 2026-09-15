@@ -61,22 +61,32 @@ func expectAll(t *testing.T, conns []*websocket.Conn, types ...string) [][]frame
 func createItem(t *testing.T, admin *websocket.Conn) string {
 	t.Helper()
 
-	writeFrame(t, admin, `{"type":"admin.item.upsert","item":`+englishItemJSON+`}`)
-	env := readType(t, admin, TypeStateSnapshot)
-
 	var view struct {
 		Items []struct {
 			ID     string `json:"id"`
 			Status string `json:"status"`
 		} `json:"items"`
 	}
-	if err := json.Unmarshal(env.Data, &view); err != nil {
-		t.Fatalf("the admin snapshot is not an admin view: %v (%s)", err, env.Data)
+
+	writeFrame(t, admin, `{"type":"admin.item.upsert","item":`+englishItemJSON+`}`)
+
+	// Read forward to the CRUD mutation's own snapshot (D-66). The read is
+	// bounded and keyed on the item appearing, so a caller that left earlier
+	// admin traffic queued still lands on the right frame.
+	for i := 0; i < maxRecoveryReads; i++ {
+		env := readFrame(t, admin)
+		if env.Type != TypeStateSnapshot {
+			continue
+		}
+		if err := json.Unmarshal(env.Data, &view); err != nil {
+			t.Fatalf("the admin snapshot is not an admin view: %v (%s)", err, env.Data)
+		}
+		if len(view.Items) > 0 {
+			return view.Items[len(view.Items)-1].ID
+		}
 	}
-	if len(view.Items) != 1 {
-		t.Fatalf("admin items = %+v, want exactly the item just created", view.Items)
-	}
-	return view.Items[0].ID
+	t.Fatal("no admin snapshot carried the item just created (D-66)")
+	return ""
 }
 
 // startItem sends one `admin.item.start {id}` (D-65).
@@ -138,7 +148,7 @@ func TestLiveProjectionCarriesEveryLiveField(t *testing.T) {
 	expectAll(t, []*websocket.Conn{admin, screen}, TypeStateSnapshot) // An's join fan-out
 
 	id := createItem(t, admin)
-	expectAll(t, []*websocket.Conn{admin, screen, player}, TypeStateSnapshot)
+	expectAll(t, []*websocket.Conn{screen, player}, TypeStateSnapshot)
 
 	// start → ITEM_INTRO: the phase frame and the intro item, one revision.
 	startItem(t, admin, id)
@@ -225,7 +235,7 @@ func TestBidRejectionIsPrivateAndDoesNotBumpRev(t *testing.T) {
 	expectAll(t, []*websocket.Conn{admin, screen, an}, TypeStateSnapshot) // Binh joined
 
 	id := createItem(t, admin)
-	expectAll(t, []*websocket.Conn{admin, screen, an, binh}, TypeStateSnapshot)
+	expectAll(t, []*websocket.Conn{screen, an, binh}, TypeStateSnapshot)
 
 	startItem(t, admin, id)
 	expectAll(t, []*websocket.Conn{admin, screen, an, binh}, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)
@@ -300,7 +310,7 @@ func TestSettleRevealReachesPlayerAndScreen(t *testing.T) {
 	expectAll(t, []*websocket.Conn{admin, screen}, TypeStateSnapshot)
 
 	id := createItem(t, admin)
-	expectAll(t, []*websocket.Conn{admin, screen, an}, TypeStateSnapshot)
+	expectAll(t, []*websocket.Conn{screen, an}, TypeStateSnapshot)
 
 	startItem(t, admin, id)
 	expectAll(t, []*websocket.Conn{admin, screen, an}, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)
@@ -377,8 +387,8 @@ func TestPhaseChangedSharesRevision(t *testing.T) {
 	screen := joinRole(t, h, RoleScreen)
 
 	id := createItem(t, admin)
-	crud := expectAll(t, []*websocket.Conn{admin, screen}, TypeStateSnapshot)
-	crudRev := crud[1][0].Rev
+	crud := expectAll(t, []*websocket.Conn{screen}, TypeStateSnapshot)
+	crudRev := crud[0][0].Rev
 
 	startItem(t, admin, id)
 	intro := expectFrames(t, screen, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)

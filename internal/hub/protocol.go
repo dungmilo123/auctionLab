@@ -113,8 +113,27 @@ const (
 	CodeNotJoined       = "not_joined"
 	CodeBadMessage      = "bad_message"
 	CodeUnsupported     = "unsupported"
-	CodeNotAuthorized   = "not_authorized" // wired in Phase 4 (ADMN-04)
+	CodeNotAuthorized   = "not_authorized" // Phase 3: admin-role misuse (D-65/H12); Phase 4 adds the ADMIN_KEY check (ADMN-04)
 )
+
+// # Phase 3 payloads (D-52…D-68)
+//
+// The catalog above is UNCHANGED: every message this phase needs already had a
+// literal, so no type is added, renamed or repurposed (D-24).
+//
+// The payload structs are deliberately NOT redeclared here. Every server→client
+// payload of this phase is a game projection — game.PublicItem (item.intro,
+// item.live, item.settled), game.BidAccepted, game.BidRejection,
+// game.PhaseChanged, game.PriceTick and the leaderboard's []LeaderEntry — and
+// game/project.go is the ONE file in that package with JSON tags, which is what
+// keeps the leak boundary (D-26) a property of a single file rather than a
+// convention spread over two. Duplicating those shapes here would create a
+// second wire contract that can drift from the projection that fills it.
+//
+// The client→server bodies are parsed into one `inbound` union in client.go:
+// `bid.place {amount}`, `admin.item.upsert {item}`, `admin.item.delete {id}`,
+// `admin.item.reorder {ids}`, `admin.item.start {id}`, `admin.item.force_end {}`
+// and `admin.item.next {}`, with unknown fields ignored (D-24's additive rule).
 
 // frozenCatalog is the D-24 freeze made checkable: every message type this
 // protocol publishes, client→server first, then server→client, in catalog
