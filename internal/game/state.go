@@ -35,6 +35,12 @@ var phases = []Phase{PhaseLobby, PhaseItemIntro, PhaseLive, PhaseSettled, PhaseF
 //	LIVE       → SETTLED      deadline reached (wall clock) or admin item.force_end
 //	SETTLED    → ITEM_INTRO   admin item.next with items remaining
 //	SETTLED    → FINALE       admin item.next with no item left
+//	FINALE     → ITEM_INTRO   admin item.start — D-65 lists FINALE among the
+//	                          phases that may open an item, because the presenter
+//	                          can add an item during the finale. This is a
+//	                          deliberate, test-visible widening of the §6 diagram
+//	                          (a rendering, not the API): without it the command
+//	                          D-65 promises would answer bad_message.
 //	*          → LOBBY        admin game.reset — the reset arrow spans the whole
 //	                          diagram in §6, so every row lists LOBBY
 //
@@ -46,7 +52,7 @@ var transitions = map[Phase][]Phase{
 	PhaseItemIntro: {PhaseLobby, PhaseLive, PhaseItemIntro, PhaseFinale},
 	PhaseLive:      {PhaseLobby, PhaseSettled},
 	PhaseSettled:   {PhaseLobby, PhaseItemIntro, PhaseFinale},
-	PhaseFinale:    {PhaseLobby},
+	PhaseFinale:    {PhaseLobby, PhaseItemIntro},
 }
 
 // AllPhases returns the phases in declaration order, as a copy: the machine is

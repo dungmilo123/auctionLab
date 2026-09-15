@@ -28,6 +28,11 @@ const tokenBytes = 32
 // someone else.
 const playerIDBytes = 16
 
+// itemIDBytes is the item id's entropy, the same size and source as a player id
+// (D-66/H14): a server-minted id must not be predictable, and it must never come
+// from math/rand (the repo-wide rule, and gorilla's own CVE).
+const itemIDBytes = 16
+
 // zeroWidth is D-27's explicit set. The Cf category is checked as well so an
 // unlisted format character cannot slip through, but this named set is what the
 // policy promises.
@@ -96,6 +101,10 @@ func NewToken() (string, error) { return randomHex(tokenBytes) }
 
 // newPlayerID mints a player id from crypto/rand (see playerIDBytes).
 func newPlayerID() (string, error) { return randomHex(playerIDBytes) }
+
+// newItemID mints an item id from crypto/rand (see itemIDBytes): the create arm
+// of `admin.item.upsert` has no client-chosen key (H14).
+func newItemID() (string, error) { return randomHex(itemIDBytes) }
 
 // randomHex returns n cryptographically random bytes as lowercase hex.
 func randomHex(n int) (string, error) {
