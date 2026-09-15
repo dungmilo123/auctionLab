@@ -79,32 +79,39 @@ export const COPY = {
 export type CopyKey = keyof typeof COPY
 
 /** One string in one language. */
-export function translate(_lang: Lang, key: CopyKey): string {
-  // RED sentinel: the dictionary is declared, the language lookup is not —
-  // every key resolves to its English column until the GREEN commit.
-  return COPY[key].en
+export function translate(lang: Lang, key: CopyKey): string {
+  return COPY[key][lang]
 }
 
 /**
  * `lobby.count`: EN has one plural rule, VI has none.
  */
-export function playerCount(_lang: Lang, n: number): string {
-  // RED sentinel — see translate.
-  return `${n} players`
+export function playerCount(lang: Lang, n: number): string {
+  if (lang === 'en') return n === 1 ? '1 player' : `${n} players`
+  return `${n} người chơi`
 }
 
 /**
  * Read the stored language. A throwing or unavailable storage degrades to the
- * default with no error copy shown.
+ * default with no error copy shown (the phone-in-private-mode case).
  */
 export function readStoredLang(): Lang {
-  // RED sentinel: the storage read is not implemented; the default is.
-  return DEFAULT_LANG
+  try {
+    const stored = window.localStorage.getItem(LANG_STORAGE_KEY)
+    return stored === 'en' || stored === 'vi' ? stored : DEFAULT_LANG
+  } catch {
+    return DEFAULT_LANG
+  }
 }
 
 /** Persist the language choice. */
-export function writeStoredLang(_lang: Lang): void {
-  // RED sentinel — see readStoredLang.
+export function writeStoredLang(lang: Lang): void {
+  try {
+    window.localStorage.setItem(LANG_STORAGE_KEY, lang)
+  } catch {
+    // A full or throwing storage keeps the default language for this session;
+    // it never surfaces as an error to the player.
+  }
 }
 
 /** The language the current subtree renders in. */

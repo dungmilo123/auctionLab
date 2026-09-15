@@ -7,7 +7,12 @@
  * one format Phase 2 ships).
  */
 export function formatVND(amount: number): string {
-  // RED sentinel: the surface is declared, the grouping rule is not — the
-  // number is returned unformatted until the GREEN commit replaces this body.
-  return String(amount)
+  // Grouping is done by hand rather than with Intl.NumberFormat: the venue may
+  // be offline and a locale database is not worth loading for a dot every three
+  // digits. `\B` keeps the match off the first digit, and the lookahead only
+  // matches a position followed by complete groups of three.
+  const rounded = Math.trunc(amount)
+  const sign = rounded < 0 ? '-' : ''
+  const digits = Math.abs(rounded).toString()
+  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
