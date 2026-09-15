@@ -44,6 +44,7 @@ type staticCase struct {
 	path        string
 	wantStatus  int
 	wantBody    string // marker the body must contain
+	wantNotBody string // marker the body must NOT contain ("" = no assertion)
 	wantType    string // substring the Content-Type must contain
 	wantCache   string // exact Cache-Control, "" = the header must be absent
 	wantNosniff bool   // X-Content-Type-Options: nosniff (the SPA document)
@@ -51,8 +52,9 @@ type staticCase struct {
 
 // TestStaticServingContract pins the serving rules for the embedded SPA:
 // every path that is not a real file in the build gets the boot-cached
-// document, the document is never cached, and only content-hashed assets/
-// names are immutable.
+// document — except inside the assets/ namespace, where a miss is a 404 so a
+// stale <script>/<link> never receives an HTML body. The document is never
+// cached, and only content-hashed assets/ names are immutable.
 func TestStaticServingContract(t *testing.T) {
 	s, err := NewStatic(staticFixture())
 	if err != nil {
@@ -91,6 +93,11 @@ func TestStaticServingContract(t *testing.T) {
 			wantCache: wantIndexCache, wantNosniff: true,
 		},
 		{
+			name: "a missing asset is a 404, never the SPA document", path: "/assets/does-not-exist.js",
+			wantStatus: http.StatusNotFound, wantBody: "404 page not found", wantType: "text/plain",
+			wantCache: "", wantNotBody: indexMarker,
+		},
+		{
 			name: "a content-hashed asset is served with the immutable cache header", path: "/assets/app.js",
 			wantStatus: http.StatusOK, wantBody: assetMarker, wantType: "javascript",
 			wantCache: wantAssetCache,
@@ -121,6 +128,11 @@ func TestStaticServingContract(t *testing.T) {
 			}
 			if body := rec.Body.String(); !strings.Contains(body, tc.wantBody) {
 				t.Errorf("GET %s: body = %q, want it to contain %q", tc.path, body, tc.wantBody)
+			}
+			if tc.wantNotBody != "" {
+				if body := rec.Body.String(); strings.Contains(body, tc.wantNotBody) {
+					t.Errorf("GET %s: body = %q, must not contain %q", tc.path, body, tc.wantNotBody)
+				}
 			}
 			if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, tc.wantType) {
 				t.Errorf("GET %s: Content-Type = %q, want it to contain %q", tc.path, ct, tc.wantType)
