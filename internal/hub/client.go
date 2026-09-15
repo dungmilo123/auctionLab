@@ -228,6 +228,12 @@ func (c *client) handle(payload []byte) {
 	default:
 		// D-24: the Phase 3–6 commands are already in the catalog, so a client
 		// that sends one now gets a typed answer instead of silence.
+		//
+		// Deliberately outside D-23's rejectedJoins cap — that counter counts
+		// join REJECTIONS, not answers — and so are the bad-JSON, no-type,
+		// non-text and pre-join replies above. The 4 KiB read limit is the only
+		// bound until the Phase 7 per-connection rate limit lands (CONTEXT
+		// §Deferred).
 		c.sendError(CodeUnsupported, "command not implemented in this phase")
 	}
 }
