@@ -552,12 +552,18 @@ func (e *Engine) Snapshot(role Role, playerID string) any {
 // snapshotLocked builds the role projection. The caller must hold the lock:
 // project.go reads the unexported state directly, which is the whole point of
 // the type boundary (D-26).
-//
-// The projection bodies are this plan's Task 2 (project.go); until they land the
-// engine has no view to hand out, and the hub — which is 02-03 — is not wired to
-// it yet.
 func (e *Engine) snapshotLocked(role Role, playerID string) any {
-	return nil
+	now := e.now()
+	switch role {
+	case RolePlayer:
+		return e.state.playerView(now, playerID)
+	case RoleScreen:
+		return e.state.screenView(now)
+	case RoleAdmin:
+		return e.state.adminView(now)
+	default:
+		return nil
+	}
 }
 
 // publishLocked hands the committed revision and a lock-held View to the
