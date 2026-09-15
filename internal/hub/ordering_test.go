@@ -315,6 +315,11 @@ func TestResyncCoalescesBeforeTheWriterRuns(t *testing.T) {
 // can hand the same seq to two different messages — which the browser gate
 // (web/src/ws/gate.ts) then discards as a duplicate, silently losing a real
 // state change.
+//
+// NOTE (measured): this case PASSES on the pre-fix implementation without the
+// race detector — the gapless-seq assertion alone cannot see a lost update.
+// `go test -race` (make test-race, D-43) is the detector; do not run this file
+// through a non-race gate and call it evidence.
 func TestReadPumpErrorsStayOrderedWithFanout(t *testing.T) {
 	// A deep FIFO: this case is about the two producers sharing one sequence,
 	// not about overflow, so nothing may be dropped here.
