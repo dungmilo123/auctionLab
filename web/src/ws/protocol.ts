@@ -93,6 +93,15 @@ export const STATE_SNAPSHOT = 'state.snapshot'
 export const ERROR = 'error'
 /** Control plane: applied regardless of seq, never gated on rev (D-24). */
 export const TUNNEL_STATUS = 'tunnel.status'
+/** The Phase-3 state events the view reducer consumes (D-57). */
+export const PHASE_CHANGED = 'phase.changed'
+export const ITEM_INTRO = 'item.intro'
+export const ITEM_LIVE = 'item.live'
+export const ITEM_SETTLED = 'item.settled'
+export const PRICE_TICK = 'price.tick'
+export const BID_ACCEPTED = 'bid.accepted'
+export const BID_REJECTED = 'bid.rejected'
+export const LEADERBOARD = 'leaderboard'
 
 /** `error` payload (D-24). `message` is for logs — the UI renders `code`. */
 export type ErrorPayload = {
@@ -320,7 +329,7 @@ function readLobby(value: unknown): LobbyEntry[] | null {
 // The standings and the current item are not rendered by the Phase 2 lobby,
 // but they are part of the self-sufficient snapshot (D-25), so they are decoded
 // the moment they arrive rather than re-derived from events later.
-function readLeaderboard(value: unknown): LeaderEntry[] {
+export function readLeaderboard(value: unknown): LeaderEntry[] {
   if (!Array.isArray(value)) return []
   const entries: LeaderEntry[] = []
   for (const raw of value) {
@@ -335,7 +344,13 @@ function readLeaderboard(value: unknown): LeaderEntry[] {
   return entries
 }
 
-function readPublicItem(value: unknown): PublicItem | null {
+/**
+ * Decode one public item payload (the `item.intro` / `item.live` / `item.settled`
+ * frames and the `item` key of a snapshot). Shape only: which phases a given
+ * item may appear in is the caller's rule, because the caller is the one that
+ * knows the phase (`itemMatchesPhase` for snapshots, the event type for events).
+ */
+export function readPublicItem(value: unknown): PublicItem | null {
   if (!isRecord(value)) return null
   const id = readString(value.id)
   const name = readString(value.name)

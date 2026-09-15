@@ -1,11 +1,17 @@
 /**
- * The player's socket lifecycle (D-44/D-45).
+ * The socket lifecycle (D-44/D-45) — one role-neutral core plus the player
+ * wrapper Phase 2 shipped.
  *
  * This module owns everything the pure gate cannot: the same-origin URL, the
  * open/close state, the reconciliation state per connection, the token in
- * storage, and D-45's one-shot resume. The rules themselves live in `gate.ts`
- * and the frame shapes in `protocol.ts`, so both stay testable in the node
- * environment.
+ * storage, and D-45's one-shot resume. The rules themselves live in `gate.ts`,
+ * the frame shapes in `protocol.ts` and the reduction in `view.ts`, so all
+ * three stay testable in the node environment.
+ *
+ * `openSocket` is the extracted lifecycle (H17); `openPlayerSocket` is the
+ * player's thin wrapper over it, with its exported signature, callbacks and
+ * token behaviour unchanged. `admin.ts` builds the presenter's connection on
+ * the same core.
  *
  * It is deliberately NOT a React hook: the React effect that calls
  * `openPlayerSocket` owns the lifetime, and cleanup closes it. A module-scope
@@ -22,19 +28,36 @@ import {
   type GateState,
 } from './gate'
 import {
+  BID_ACCEPTED,
+  BID_REJECTED,
   CODE_TOKEN_INVALID,
   ERROR,
   HELLO,
+  ITEM_INTRO,
+  ITEM_LIVE,
+  ITEM_SETTLED,
+  LEADERBOARD,
+  PHASE_CHANGED,
+  PRICE_TICK,
+  STATE_SNAPSHOT,
   parseEnvelope,
+  readAdminSnapshot,
+  readBidAccepted,
+  readBidRejected,
   readError,
   readHello,
+  readLeaderboard,
+  readPhaseChanged,
   readPlayerSnapshot,
+  readPriceTick,
+  readPublicItem,
   type BidRejected,
+  type Envelope,
   type ErrorPayload,
   type Hello,
   type PlayerSnapshot,
 } from './protocol'
-import type { ViewState } from './view'
+import { initialViewState, reduceView, type ViewFrame, type ViewState } from './view'
 
 /** D-29's storage key (UI-SPEC §Resume, supersede and storage). */
 export const TOKEN_KEY = 'auctionlab.player_token'
@@ -155,21 +178,21 @@ export function resetStream(): GateState {
 
 /**
  * The extracted role-neutral lifecycle (H17): same-origin URL, the gate reset
- * per connection, the detach-then-replace order, the D-45 resume and the
- * status callback. RED stub: the body lands in the GREEN commit, and
- * `openPlayerSocket` still owns the live Phase-2 implementation.
+ * per connection, the detach-then-replace order, the D-45 resume, the status
+ * callback and the reduced-view callback. The role owns its join frame, its
+ * identity storage and its callbacks; nothing role-specific lives here.
+ *
+ * Everything the pure gate cannot own is here: one `GateState` per connection,
+ * the open/close state, the stored-identity read, and D-45's one-shot resume.
+ * The rules themselves live in `gate.ts`, the frame shapes in `protocol.ts` and
+ * the reduction in `view.ts`, so all three stay testable in the node
+ * environment with this module's four stubbed globals.
  */
 export function openSocket(opts: SocketOptions): Socket {
-  void opts
-  return { send: () => {}, close: () => {} }
-}
-
-/**
- * Open the player connection. Returns the handle the effect keeps for the
- * lifetime of the screen; `close()` detaches every listener it installed.
- */
-export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnection {
+  // The gate is per CONNECTION (D-21), but the view is the app's state: it
+  // survives a resume, and the replacement connection's snapshot replaces it.
   let gate: GateState = initialGateState()
+  let view: ViewState = initialViewState()
   let current: WebSocket | null = null
   let closed = false
 
@@ -181,11 +204,8 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
 
   function applyHello(data: unknown): void {
     const hello = readHello(data)
-    if (hello === null || hello.role !== 'player') return
-    // D-29: the token is persisted ONLY from a player hello, and only the token
-    // this connection was addressed with. It is never displayed and never
-    // broadcast — storage is the whole of its lifetime (T-02-07).
-    if (hello.token !== '') storeToken(hello.token)
+    if (hello === null || hello.role !== opts.role) return
+    opts.onHello?.(hello)
   }
 
   function applyError(data: unknown): void {
@@ -194,12 +214,19 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
     if (error.code === CODE_TOKEN_INVALID) {
       // D-30 (3): the stored token is dead, so it must not be offered again —
       // otherwise every reload repeats the same rejected resume.
-      clearStoredToken()
+      opts.onTokenInvalid?.()
     }
     // The server's message is log-only (UI-SPEC §Join/mutation states, T-02-01):
     // the UI selects its copy from the dictionary by `error.code`.
     console.warn('[ws] server error', error.code, error.message)
-    handlers.onError(error)
+    opts.onError?.(error)
+  }
+
+  function pushView(frame: ViewFrame): void {
+    const next = reduceView(view, frame)
+    if (next === null) return
+    view = next
+    opts.onView?.(view)
   }
 
   function onFrame(socket: WebSocket, raw: unknown): void {
@@ -219,15 +246,26 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
         return
       case 'snapshot': {
         if (!step.outcome.apply) return
-        const snapshot = readPlayerSnapshot(envelope.data)
-        if (snapshot !== null) handlers.onSnapshot(snapshot)
+        const frame = decodeFrame(opts.role, envelope)
+        if (frame === null) return
+        // The Phase-2 lobby callback and the reduced view are the same frame:
+        // one decode, two consumers.
+        if (frame.kind === 'player-snapshot') opts.onSnapshot?.(frame.snapshot)
+        pushView(frame)
         return
       }
-      case 'apply':
+      case 'apply': {
         if (envelope.type === HELLO) applyHello(envelope.data)
         if (envelope.type === ERROR) applyError(envelope.data)
+        if (envelope.type === BID_REJECTED) {
+          const rejection = readBidRejected(envelope.data)
+          if (rejection !== null) opts.onBidRejected?.(rejection)
+        }
+        const frame = decodeFrame(opts.role, envelope)
+        if (frame !== null) pushView(frame)
         if (step.outcome.requestResync) send({ type: 'resync' })
         return
+      }
     }
   }
 
@@ -255,7 +293,7 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
       previous.close()
     }
 
-    handlers.onStatus('connecting')
+    opts.onStatus('connecting')
 
     let socket: WebSocket
     try {
@@ -264,18 +302,19 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
       // The constructor throws on an unusable URL (e.g. a built index.html
       // opened from file://). Without this the status line would stay
       // "connecting" forever, which mid-demo reads as a hung server.
-      handlers.onStatus('lost')
+      opts.onStatus('lost')
       return
     }
     current = socket
 
     socket.onopen = () => {
       if (current !== socket) return
-      handlers.onStatus('open')
-      // A stored token resumes the identity immediately (D-30 (1)): the player
-      // never sees the form again after a reload or a phone unlock.
-      const token = readStoredToken()
-      if (token !== '') send({ type: 'join', role: 'player', token })
+      opts.onStatus('open')
+      // The role's join. The player sends the stored token when there is one
+      // (D-30 (1)) and otherwise waits for the form; the admin always joins as
+      // admin — there is no identity to restore.
+      const frame = opts.joinFrame(opts.readToken())
+      if (frame !== null) send(frame)
     }
 
     socket.onmessage = (event: MessageEvent) => onFrame(socket, event.data)
@@ -289,7 +328,7 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
       // each time a backgrounded one comes forward. No token leaks and no data
       // is lost; making the superseded state terminal is Phase 7's reconnect
       // policy (RECN-01/02).
-      handlers.onStatus(event.code === SUPERSEDED_CLOSE_CODE ? 'superseded' : 'lost')
+      opts.onStatus(event.code === SUPERSEDED_CLOSE_CODE ? 'superseded' : 'lost')
     }
 
     socket.onerror = () => {
@@ -302,8 +341,9 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
     const readyState = current === null ? SOCKET_CLOSED : current.readyState
     // D-45: ONE attempt per visibility/pageshow event, and only when there is
     // an identity to restore. Backoff, jitter and stale-socket detection are
-    // RECN-01/02 (Phase 7) and are deliberately absent.
-    if (resumeOutcome(readyState, readStoredToken() !== '') !== 'reconnect') return
+    // RECN-01/02 (Phase 7) and are deliberately absent — and a role with no
+    // stored identity (the admin) simply never resumes.
+    if (resumeOutcome(readyState, opts.readToken() !== '') !== 'reconnect') return
     connect()
   }
 
@@ -316,12 +356,7 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
   connect()
 
   return {
-    join(nickname: string): void {
-      send({ type: 'join', role: 'player', nickname })
-    },
-    resync(): void {
-      send({ type: 'resync' })
-    },
+    send,
     close(): void {
       closed = true
       document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -335,6 +370,89 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
         socket.onerror = null
         socket.close()
       }
+    },
+  }
+}
+
+/**
+ * Decode one admitted envelope into the frame the reducer understands. `null`
+ * covers everything this socket does not render — `hello`, `error`,
+ * `tunnel.status`, later phases' frames — AND every decode failure, so an
+ * invalid or phase-inconsistent payload can never reach `onView` (T-03-09).
+ */
+function decodeFrame(role: SocketRole, envelope: Envelope): ViewFrame | null {
+  const { type, data, ts } = envelope
+  switch (type) {
+    case STATE_SNAPSHOT: {
+      if (role === 'admin') {
+        const snapshot = readAdminSnapshot(data)
+        return snapshot === null ? null : { kind: 'admin-snapshot', snapshot }
+      }
+      const snapshot = readPlayerSnapshot(data)
+      return snapshot === null ? null : { kind: 'player-snapshot', snapshot }
+    }
+    case PHASE_CHANGED: {
+      const payload = readPhaseChanged(data)
+      return payload === null ? null : { kind: 'phase.changed', payload, ts }
+    }
+    case ITEM_INTRO:
+    case ITEM_LIVE:
+    case ITEM_SETTLED: {
+      const item = readPublicItem(data)
+      return item === null ? null : { kind: 'item', type, item, ts }
+    }
+    case PRICE_TICK: {
+      const tick = readPriceTick(data)
+      return tick === null ? null : { kind: 'price.tick', tick, ts }
+    }
+    case BID_ACCEPTED: {
+      const bid = readBidAccepted(data)
+      return bid === null ? null : { kind: 'bid.accepted', bid, ts }
+    }
+    case LEADERBOARD:
+      return { kind: 'leaderboard', entries: readLeaderboard(data), ts }
+    default:
+      return null
+  }
+}
+
+/**
+ * Open the player connection (D-44/D-45) — the exported API Phase 2 shipped,
+ * now a thin role wrapper over `openSocket`. The signature, the callbacks, the
+ * token behaviour and the resume rule are unchanged: the player joins by name
+ * from the form, or resumes with the stored token the moment the socket opens.
+ */
+export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnection {
+  const socket = openSocket({
+    role: 'player',
+    readToken: readStoredToken,
+    // A stored token resumes the identity immediately (D-30 (1)): the player
+    // never sees the form again after a reload or a phone unlock. Without one,
+    // nothing is sent and the form's join is the path.
+    joinFrame: (token) => (token !== '' ? { type: 'join', role: 'player', token } : null),
+    onHello: (hello) => {
+      // D-29: the token is persisted ONLY from a player hello, and only the
+      // token this connection was addressed with. It is never displayed and
+      // never broadcast — storage is the whole of its lifetime (T-02-07).
+      if (hello.token !== '') storeToken(hello.token)
+    },
+    onTokenInvalid: clearStoredToken,
+    onStatus: handlers.onStatus,
+    onView: handlers.onView,
+    onSnapshot: handlers.onSnapshot,
+    onBidRejected: handlers.onBidRejected,
+    onError: handlers.onError,
+  })
+
+  return {
+    join(nickname: string): void {
+      socket.send({ type: 'join', role: 'player', nickname })
+    },
+    resync(): void {
+      socket.send({ type: 'resync' })
+    },
+    close(): void {
+      socket.close()
     },
   }
 }
