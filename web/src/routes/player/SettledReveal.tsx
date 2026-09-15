@@ -76,11 +76,14 @@ function SettledReveal({ item, me }: SettledRevealProps) {
 
       {iWon && <p className="text-base leading-[1.5]">{t('settle.youWon')}</p>}
 
-      {/* Only the winner's budget moved (ECON-02), and a "0" row would be noise
-          for everybody else: the delta row renders only for a non-zero change.
-          `formatVND` already carries the minus sign of a negative delta, so the
-          plus is added only when the value is positive. */}
-      {settle.budgetDelta !== 0 && (
+      {/* ECON-02: only the winner's budget moved. `budget_delta` is an
+          ITEM-scoped number — ONE value broadcast to every role (D-68) — so
+          `!== 0` alone would show a non-winner a change to money that never
+          moved, while `me.budget` below renders unchanged. The winner gate is
+          therefore the load-bearing half; a "0" delta stays hidden as noise
+          even for the winner, and `formatVND` already carries the minus sign of
+          a negative delta, so the plus is added only when the value is positive. */}
+      {iWon && settle.budgetDelta !== 0 && (
         <RevealRow label={t('settle.deltaLabel')}>
           <span>
             {settle.budgetDelta > 0 ? '+' : ''}
