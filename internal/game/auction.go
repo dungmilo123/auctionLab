@@ -194,8 +194,8 @@ func (s *state) settleLocked(now int64) error {
 		return fmt.Errorf("game: settle for unknown item %q", run.itemID)
 	}
 
-	reveal := &SettleInfo{TruthValue: it.truthValue}
-	if top, ok := s.topBid(); ok {
+	top, hasWinner := s.topBid()
+	if hasWinner {
 		p := s.players[top.playerID]
 		if p == nil {
 			return fmt.Errorf("game: settle for unknown player %q", top.playerID)
@@ -205,15 +205,12 @@ func (s *state) settleLocked(now int64) error {
 		// bid time and budgets only move here, so the result cannot go negative.
 		p.budget = p.budget - top.amount + it.truthValue
 		p.totalValue += it.truthValue
-		reveal.Outcome = "sold"
-		reveal.Winner = &Bidder{Nickname: p.nickname}
-		reveal.Price = top.amount
-		reveal.BudgetDelta = it.truthValue - top.amount
-	} else {
-		// ECON-03: unsold is a first-class outcome — price 0, delta 0, an
-		// explicit null winner — and no player's budget moves.
-		reveal.Outcome = "unsold"
 	}
+
+	// The reveal is built by the SAME helper the projection uses, so a process
+	// that restarts on this settled file derives an object identical to the one
+	// stored here (D-62/D-67).
+	reveal := s.settleReveal(it)
 
 	it.status = "settled"
 	run.settledAt = now

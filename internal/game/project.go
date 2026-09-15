@@ -383,6 +383,31 @@ func (s *state) currentPublicItem() *PublicItem {
 	return view
 }
 
+// settleReveal derives D-67's reveal from the run's trail and the item. It is
+// the ONE construction of the reveal object: settleLocked stores the object it
+// returns, and a process that restarts on a settled file derives the identical
+// object from the same rule — the runtime row persists the timing only, so a
+// second, unpersisted copy of the economics must never be the only source
+// (D-62/D-67, T-03-05). The budget mutation itself happens in settleLocked and
+// nowhere else.
+func (s *state) settleReveal(it *item) *SettleInfo {
+	reveal := &SettleInfo{Outcome: "unsold", TruthValue: it.truthValue}
+
+	top, ok := s.topBid()
+	if !ok {
+		// ECON-03: unsold is a first-class outcome — price 0, delta 0 and an
+		// explicit null winner — and no budget moves.
+		return reveal
+	}
+	reveal.Outcome = "sold"
+	reveal.Price = top.amount
+	reveal.BudgetDelta = it.truthValue - top.amount
+	if p := s.players[top.playerID]; p != nil {
+		reveal.Winner = &Bidder{Nickname: p.nickname}
+	}
+	return reveal
+}
+
 // addLiveFields is D-67's extension: every field is a pointer with `omitempty`,
 // so the wire distinguishes "not applicable" from a real 0, and `settle` exists
 // ONLY at SETTLED — the leak boundary is the presence of the whole object, not
@@ -414,9 +439,17 @@ func (s *state) addLiveFields(view *PublicItem, it *item) {
 	extensionsUsed := run.extensionsUsed
 	view.ExtensionsUsed = &extensionsUsed
 
-	if s.phase == PhaseSettled && run.settle != nil {
-		reveal := *run.settle
-		view.Settle = &reveal
+	if s.phase == PhaseSettled {
+		// The settle mutation recorded the reveal on the run; a process that
+		// restarted on the settled file never had that field, so the projection
+		// derives the same object from the trail. Either way the key is present
+		// exactly at SETTLED, which is what a late joiner renders from (D-63).
+		reveal := run.settle
+		if reveal == nil {
+			reveal = s.settleReveal(it)
+		}
+		copied := *reveal
+		view.Settle = &copied
 	}
 }
 
