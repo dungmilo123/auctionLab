@@ -36,6 +36,15 @@ const maxRejectedJoins = 5
 // client is expected to say so rather than reconnect in a loop.
 const closeCodeSuperseded = 4001
 
+// supersedeWriteWait bounds the close frame the supersede path sends. It is
+// deliberately far below the policy's WriteWait because that write runs inside
+// the engine's exclusive critical section: WriteControl flushes to the peer, so
+// a phone that has stopped reading (the case the FIFO fence exists for) would
+// otherwise hold engine.mu — and with it every mutation and every other
+// connection's error reply — for the full deadline. A responsive peer still
+// observes close code 4001; a wedged one just sees the socket end.
+const supersedeWriteWait = 250 * time.Millisecond
+
 // originRejectLogInterval bounds how often the routine cross-origin rejection
 // is logged: /ws is unauthenticated, so once the app is published any scanner
 // can otherwise drive unbounded log writes at one line per 403.
@@ -297,12 +306,14 @@ func (h *Hub) applyResync(c *client) {
 //
 // WriteControl is the one write gorilla documents as safe to call concurrently
 // with the connection's writer goroutine — and it is synchronously flushed, so
-// the close frame reaches the peer before the socket ends.
+// the close frame reaches the peer before the socket ends. Its deadline is
+// supersedeWriteWait, not the policy's WriteWait, because this runs with the
+// engine's lock held and a wedged peer must not stall the room.
 func (h *Hub) supersede(old *client) {
 	old.superseded.Store(true)
 	_ = old.conn.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(closeCodeSuperseded, "this identity joined on another connection"),
-		time.Now().Add(h.policy.WriteWait))
+		time.Now().Add(supersedeWriteWait))
 	old.close()
 }
 
