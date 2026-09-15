@@ -48,17 +48,20 @@ func openTestStore(t *testing.T, path string) *store.Store {
 	return st
 }
 
-// newTestEnv builds an engine on path. Calling it twice with the same path is
-// how a restart is simulated — the second call is a fresh process-equivalent.
-func newTestEnv(t *testing.T, path string) *testEnv {
+// newTestEnvAt builds an engine on path with the injected clock. Calling it
+// twice with the same path is how a restart is simulated — the second call is a
+// fresh process-equivalent — and the clock parameter is what makes the restart
+// land at a SHIFTED instant (research Pitfall 14: a "restart" that reuses the
+// same clock and the same engine has not exercised the load path at all).
+func newTestEnvAt(t *testing.T, path string, clock *testClock) *testEnv {
 	t.Helper()
 
 	st := openTestStore(t, path)
-	env := &testEnv{store: st, clock: &testClock{t: testStart}, fatal: make(chan error, 8)}
+	env := &testEnv{store: st, clock: clock, fatal: make(chan error, 8)}
 
 	eng, err := New(Config{
 		Store: st,
-		Now:   env.clock.now,
+		Now:   clock.now,
 		Fatal: func(err error) { env.fatal <- err },
 	})
 	if err != nil {
@@ -71,6 +74,27 @@ func newTestEnv(t *testing.T, path string) *testEnv {
 		env.published = append(env.published, rev)
 	})
 	return env
+}
+
+// newTestEnv is newTestEnvAt at the fixture's fixed instant: the shape every
+// Phase 2/3 test already uses.
+func newTestEnv(t *testing.T, path string) *testEnv {
+	t.Helper()
+	return newTestEnvAt(t, path, &testClock{t: testStart})
+}
+
+// openEngineAt opens path and constructs an engine at the given instant,
+// returning the construction error instead of failing the test — the fail-hard
+// matrix asserts on that error, so it cannot go through newTestEnvAt.
+func openEngineAt(t *testing.T, path string, now time.Time) (*Engine, error) {
+	t.Helper()
+
+	st := openTestStore(t, path)
+	return New(Config{
+		Store: st,
+		Now:   func() time.Time { return now },
+		Fatal: func(error) {},
+	})
 }
 
 // revs returns the revisions the engine has published so far.
@@ -262,15 +286,7 @@ func TestCommitFailureFailsHard(t *testing.T) {
 func TestBootRefusesStateTheMachineCannotUse(t *testing.T) {
 	newEngineAt := func(t *testing.T, path string) (*Engine, error) {
 		t.Helper()
-		st, err := store.Open(path)
-		if err != nil {
-			t.Fatalf("store.Open(%q): %v", path, err)
-		}
-		t.Cleanup(func() { _ = st.Close() })
-		if err := store.Schema(st.DB); err != nil {
-			t.Fatalf("store.Schema: %v", err)
-		}
-		return New(Config{Store: st, Now: func() time.Time { return testStart }, Fatal: func(error) {}})
+		return openEngineAt(t, path, testStart)
 	}
 
 	t.Run("a phase outside the section 6 machine", func(t *testing.T) {
