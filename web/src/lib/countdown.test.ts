@@ -43,14 +43,15 @@ describe('remainingMs (D-61)', () => {
   })
 
   it('re-anchors on every frame that carries timing', () => {
-    // Two frames five seconds apart, each carrying its own (deadline, ts) pair:
-    // the newest anchor wins outright and the countdown never double-counts the
-    // earlier one (UI-SPEC §Countdown).
-    const first = anchor(SERVER_TS + 30_000, SERVER_TS, LOCAL_NOW)
-    const second = anchor(SERVER_TS + 25_000, SERVER_TS + 5_000, LOCAL_NOW + 5_000)
+    // Two frames five seconds apart carry the SAME deadline with a newer server
+    // clock (the tick case): each anchor stands alone, so the second one — and
+    // not a modified first one — is what the countdown reads from then on.
+    const deadline = SERVER_TS + 30_000
+    const first = anchor(deadline, SERVER_TS, LOCAL_NOW)
+    const second = anchor(deadline, SERVER_TS + 5_000, LOCAL_NOW + 5_000)
     expect(remainingMs(first, LOCAL_NOW + 5_000)).toBe(25_000)
     expect(remainingMs(second, LOCAL_NOW + 5_000)).toBe(25_000)
-    expect(remainingMs(second, LOCAL_NOW + 4_900)).toBe(24_900)
+    expect(remainingMs(second, LOCAL_NOW + 5_900)).toBe(24_100)
   })
 
   it('is unaffected by a phone clock that is minutes off', () => {
