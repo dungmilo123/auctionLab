@@ -179,11 +179,16 @@ function EchoWidget() {
         Widget này bị xoá ở Phase 2 khi hub thật thay thế.
       </p>
 
-      <p className="flex items-center gap-2 text-sm leading-[1.5] font-bold">
-        <span aria-hidden="true" className={`inline-block size-2 ${STATUS_DOT[state]}`} />
-        {STATUS_COPY[state]}
-      </p>
-      {state === 'error' && <p className="text-base leading-[1.5]">{ERROR_COPY}</p>}
+      {/* One polite live region for the whole status line, so the state change
+          itself ("Đang kết nối…" → "Đã kết nối tới /ws" → "Mất kết nối") is
+          announced, not only the log. gap-4 is the Card's own 16px rhythm. */}
+      <div role="status" aria-live="polite" className="flex flex-col gap-4">
+        <p className="flex items-center gap-2 text-sm leading-[1.5] font-bold">
+          <span aria-hidden="true" className={`inline-block size-2 ${STATUS_DOT[state]}`} />
+          {STATUS_COPY[state]}
+        </p>
+        {state === 'error' && <p className="text-base leading-[1.5]">{ERROR_COPY}</p>}
+      </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex min-w-0 flex-1 basis-48 flex-col gap-2">
@@ -205,10 +210,24 @@ function EchoWidget() {
             }}
           />
         </div>
-        <Button type="button" onClick={send} disabled={!canSend}>
+        {/* Accent fill marks the one action that is actually available: Gửi only
+            once it can be pressed, Kết nối only while the socket is neither open
+            nor connecting. Never two accent fills, never an accent on a disabled
+            control (01-UI-SPEC.md §Color, §Temporary echo widget). */}
+        <Button
+          type="button"
+          variant={canSend ? 'default' : 'outline'}
+          onClick={send}
+          disabled={!canSend}
+        >
           Gửi
         </Button>
-        <Button type="button" variant="outline" onClick={isOpen ? disconnect : connect} disabled={isBusy}>
+        <Button
+          type="button"
+          variant={isOpen || isBusy ? 'outline' : 'default'}
+          onClick={isOpen ? disconnect : connect}
+          disabled={isBusy}
+        >
           {isOpen ? 'Ngắt' : 'Kết nối'}
         </Button>
       </div>
@@ -217,7 +236,7 @@ function EchoWidget() {
         ref={logRef}
         role="log"
         aria-live="polite"
-        className="max-h-[288px] overflow-y-auto border-2 border-border bg-background p-2"
+        className="max-h-[288px] overflow-y-auto border-2 border-border bg-secondary p-2"
       >
         {rows.length === 0 ? (
           <div className="p-2">

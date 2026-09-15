@@ -1,32 +1,39 @@
-# React + TypeScript + Vite
+# AuctionLab — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite 8 + TypeScript cho AuctionLab. Đây là **toàn bộ** frontend của app: `vite build`
+xuất ra asset tĩnh trong `dist/`, và binary Go nhúng thư mục đó bằng `//go:embed all:web/dist`
+(`embed.go` ở repo root). Lúc demo không có tiến trình Node nào chạy.
 
-Currently, two official plugins are available:
+## Trong thư mục này
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `src/main.tsx`, `src/App.tsx` — điểm vào của SPA; `src/lib/route.ts` là hàm thuần
+  `routeFor(pathname)` chọn một trong ba route tĩnh `/` (player), `/admin`, `/screen` — chưa dùng
+  router dependency.
+- `src/routes/{player,admin,screen}/` — component cho từng route.
+- `src/components/ui/` — bốn primitive shadcn (`button`, `input`, `label`, `card`), đã restyle theo
+  style neobrutalist của design contract.
+- `src/components/EchoWidget.tsx` — widget echo tạm trên `/` để kiểm tra WebSocket; xoá ở Phase 2
+  khi hub thật thay thế.
+- `src/index.css` — token màu, typography và spacing của design contract.
+- `public/` — asset tĩnh, được copy nguyên trạng vào output build.
+- `dist/` — output của `vite build`; không commit (chỉ `dist/.gitkeep` được track, để `go:embed`
+  không vỡ trên clean clone khi chưa build).
 
-## React Compiler
+## Lệnh
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Chạy từ **repo root**, không phải trong `web/`:
 
-## Expanding the Oxlint configuration
+| Lệnh | Việc |
+|---|---|
+| `make dev` | Chạy song song Go `:8080` và Vite `:5173`; Vite proxy `/api` và `/ws` sang `:8080` |
+| `make build` | `vite build` **trước**, rồi `CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server` |
+| `make test` | `go test ./...` + `vitest run` + `oxlint` |
+| `make dev-web` | Chỉ chạy Vite, khi backend đã chạy sẵn |
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+Khi cần chạy riêng trong `web/`: `npm run dev`, `npm run build`, `npm run test` (một lượt),
+`npm run lint`.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+## Tài liệu gốc
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+- `PLAN.md` — build plan đầy đủ: kiến trúc, WS protocol, milestones, testing.
+- `AGENTS.md` — hướng dẫn project cho agent runtime (stack, conventions, workflow).
