@@ -49,7 +49,7 @@ test-go:
 	$(GO) test ./...
 
 test-web: web/node_modules
-	cd web && npm run test -- --run
+	cd web && npm run test
 
 clean:
 	rm -rf bin web/dist/assets web/dist/index.html
