@@ -117,6 +117,10 @@ export type PlayerMe = {
   budget: number
   totalValue: number
   connected: boolean
+  /** this player's most recent accepted bid in the CURRENT run, or null (D-67) */
+  lastBid: number | null
+  /** server-computed so the outbid banner never has to be (D-72) */
+  isTopBidder: boolean
 }
 
 /** One lobby row: a nickname and its live presence. No budgets — public (D-25). */
@@ -137,14 +141,25 @@ export type LeaderEntry = {
 export type PublicItem = {
   id: string
   name: string
+  description: string
   auctionType: string
+  hintMin: number | null
+  hintMax: number | null
   startPrice: number
   status: string
+  /** live fields, present while the run is open (D-67) */
+  currentPrice: number | null
+  topBidder: string | null
+  deadlineAt: number | null
+  minNextBid: number | null
+  extensionsUsed: number | null
+  /** present ONLY at SETTLED — the leak boundary is the object itself (D-67/D-68) */
+  settle: SettleInfo | null
 }
 
 /** The `state.snapshot` payload a player receives (D-25): self-sufficient. */
 export type PlayerSnapshot = {
-  phase: string
+  phase: Phase
   revision: number
   serverTs: number
   me: PlayerMe
@@ -228,17 +243,22 @@ export function readError(data: unknown): ErrorPayload | null {
 }
 
 /**
- * Decode the player `state.snapshot` payload (D-25).
+ * Decode the player `state.snapshot` payload (D-25/D-63).
  *
  * A payload with a missing or ill-typed required field decodes to null rather
  * than to a half-populated lobby: an unapplied snapshot leaves the last known
  * good state on screen, which is exactly what UI-SPEC requires when the
  * connection is lost or superseded.
+ *
+ * Phase 3 (UI-SPEC §Phase-body totality): the phase↔item invariant is enforced
+ * HERE, so the body switch downstream is total — an admitted snapshot always
+ * carries what its body renders, and a payload that breaks the table leaves the
+ * previous body on screen instead of rendering blank.
  */
 export function readPlayerSnapshot(data: unknown): PlayerSnapshot | null {
   if (!isRecord(data)) return null
 
-  const phase = readString(data.phase)
+  const phase = readPhase(data.phase)
   const revision = readInt(data.revision)
   const serverTs = readInt(data.server_ts)
   const me = readPlayerMe(data.me)
@@ -247,6 +267,9 @@ export function readPlayerSnapshot(data: unknown): PlayerSnapshot | null {
     return null
   }
 
+  const item = readPublicItem(data.item)
+  if (!itemMatchesPhase(phase, item)) return null
+
   return {
     phase,
     revision,
@@ -254,7 +277,7 @@ export function readPlayerSnapshot(data: unknown): PlayerSnapshot | null {
     me,
     lobby,
     leaderboard: readLeaderboard(data.leaderboard),
-    item: readPublicItem(data.item),
+    item,
   }
 }
 
@@ -268,7 +291,17 @@ function readPlayerMe(value: unknown): PlayerMe | null {
   if (id === null || nickname === null || budget === null || totalValue === null || connected === null) {
     return null
   }
-  return { id, nickname, budget, totalValue, connected }
+  // `last_bid`/`is_top_bidder` are Phase 3's additive keys (D-67): a row that
+  // predates them reads as "never bid", never as a rejection.
+  return {
+    id,
+    nickname,
+    budget,
+    totalValue,
+    connected,
+    lastBid: readInt(value.last_bid),
+    isTopBidder: value.is_top_bidder === true,
+  }
 }
 
 function readLobby(value: unknown): LobbyEntry[] | null {
@@ -312,13 +345,86 @@ function readPublicItem(value: unknown): PublicItem | null {
   if (id === null || name === null || auctionType === null || startPrice === null || status === null) {
     return null
   }
-  return { id, name, auctionType, startPrice, status }
+  return {
+    id,
+    name,
+    description: readString(value.description) ?? '',
+    auctionType,
+    hintMin: readInt(value.hint_min),
+    hintMax: readInt(value.hint_max),
+    startPrice,
+    status,
+    currentPrice: readInt(value.current_price),
+    topBidder: readBidder(value.top_bidder),
+    deadlineAt: readInt(value.deadline_at),
+    minNextBid: readInt(value.min_next_bid),
+    extensionsUsed: readInt(value.extensions_used),
+    settle: readSettle(value.settle),
+  }
+}
+
+/** The public identity the wire nests under `top_bidder`/`settle.winner`. */
+function readBidder(value: unknown): string | null {
+  if (!isRecord(value)) return null
+  return readString(value.nickname)
+}
+
+/**
+ * Decode the D-67 reveal. The object is internally consistent or it is not a
+ * reveal at all: `sold` names its winner, `unsold` carries an explicit null —
+ * the SETTLED body omits the winner row on exactly the second case (UI-SPEC
+ * §Screen E), so admitting a sold item with no winner would render a hole.
+ */
+function readSettle(value: unknown): SettleInfo | null {
+  if (!isRecord(value)) return null
+  const outcome = readString(value.outcome)
+  const price = readInt(value.price)
+  const truthValue = readInt(value.truth_value)
+  const budgetDelta = readInt(value.budget_delta)
+  if (outcome !== 'sold' && outcome !== 'unsold') return null
+  if (price === null || truthValue === null || budgetDelta === null) return null
+
+  const winner = readBidder(value.winner)
+  if (outcome === 'sold' && winner === null) return null
+  if (outcome === 'unsold' && winner !== null) return null
+  return { outcome, winner, price, truthValue, budgetDelta }
+}
+
+/** One of the five frozen phase names, or null. */
+function readPhase(value: unknown): Phase | null {
+  return isPhase(value) ? value : null
+}
+
+/**
+ * The UI-SPEC §Phase-body totality table, as one predicate: an admitted
+ * snapshot's phase always carries what its body renders. `settle` may exist
+ * only at SETTLED — a settle object on any other phase is the leak boundary
+ * itself (D-67), so it is rejected rather than ignored.
+ */
+function itemMatchesPhase(phase: Phase, item: PublicItem | null): boolean {
+  switch (phase) {
+    case 'LOBBY':
+    case 'FINALE':
+      return item === null || item.settle === null
+    case 'ITEM_INTRO':
+      return item !== null && item.status === 'intro' && item.settle === null
+    case 'LIVE':
+      if (item === null || item.status !== 'live' || item.settle !== null) return false
+      // H13: an english LIVE item must carry the numbers its bid controls
+      // render; any other type may reach LIVE with fewer fields and renders
+      // `live.typePending` instead of the form.
+      if (item.auctionType !== 'english') return true
+      return item.currentPrice !== null && item.minNextBid !== null && item.deadlineAt !== null
+    case 'SETTLED':
+      return item !== null && item.status === 'settled' && item.settle !== null
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Phase 3 (D-54/D-56/D-57/D-64/D-67/D-68). The wire payloads are declared by
-// `internal/game/project.go`; the readers below land in the GREEN commit of
-// plan 03-04 — everything here is the RED contract.
+// `internal/game/project.go`; every reader below maps that JSON onto the
+// camelCase the UI renders, and every one of them refuses an inconsistent
+// payload rather than half-populating state (T-03-09).
 // ---------------------------------------------------------------------------
 
 /** The five PLAN §6 phases, in order. The body switch is total over exactly these. */
@@ -340,7 +446,7 @@ export type SettleInfo = {
   budgetDelta: number
 }
 
-/** The D-56 timing frame. RED stub: no reader yet. */
+/** The D-56 timing frame. */
 export type PriceTick = {
   itemId: string
   currentPrice: number
@@ -349,7 +455,7 @@ export type PriceTick = {
   remainingMs: number | null
 }
 
-/** The D-54 broadcast. RED stub: no reader yet. */
+/** The D-54 broadcast. */
 export type BidAccepted = {
   playerId: string
   nickname: string
@@ -360,7 +466,7 @@ export type BidAccepted = {
   extensionsUsed: number
 }
 
-/** The D-53 private refusal. RED stub: no reader yet. */
+/** The D-53 private refusal. */
 export type BidRejected = {
   reason: string
   minNextBid: number | null
@@ -368,13 +474,13 @@ export type BidRejected = {
   amount: number
 }
 
-/** The D-57 `phase.changed` payload. RED stub: no reader yet. */
+/** The D-57 `phase.changed` payload. */
 export type PhaseChanged = {
   phase: Phase
   item: PublicItem | null
 }
 
-/** One admin catalog row (D-66). RED stub: no reader yet. */
+/** One admin catalog row (D-66). */
 export type AdminItem = {
   id: string
   orderIndex: number
@@ -397,7 +503,7 @@ export type AdminItem = {
   status: string
 }
 
-/** The admin projection the `/admin` page renders. RED stub: no reader yet. */
+/** The admin projection the `/admin` page renders. */
 export type AdminSnapshot = {
   phase: Phase
   revision: number
@@ -408,32 +514,167 @@ export type AdminSnapshot = {
   leaderboard: LeaderEntry[]
 }
 
-/** Decode a `price.tick` payload. RED stub. */
+/**
+ * Decode a `price.tick` payload (D-56). The three numbers the frame exists for
+ * are required; the deadline pair is optional because a non-English run may
+ * carry no deadline at all (H13). `remaining_ms` is decoded for completeness
+ * and never used as the countdown's authority — the client interpolates from
+ * `(deadline_at, ts)` (D-60/D-61).
+ */
 export function readPriceTick(data: unknown): PriceTick | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  const itemId = readString(data.item_id)
+  const currentPrice = readInt(data.current_price)
+  const minNextBid = readInt(data.min_next_bid)
+  if (itemId === null || itemId === '' || currentPrice === null || minNextBid === null) return null
+  return {
+    itemId,
+    currentPrice,
+    minNextBid,
+    deadlineAt: readInt(data.deadline_at),
+    remainingMs: readInt(data.remaining_ms),
+  }
 }
 
-/** Decode a `bid.accepted` payload. RED stub. */
+/** Decode a `bid.accepted` payload (D-54). */
 export function readBidAccepted(data: unknown): BidAccepted | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  const playerId = readString(data.player_id)
+  const nickname = readString(data.nickname)
+  const amount = readInt(data.amount)
+  const currentPrice = readInt(data.current_price)
+  const minNextBid = readInt(data.min_next_bid)
+  const extensionsUsed = readInt(data.extensions_used)
+  if (
+    playerId === null ||
+    nickname === null ||
+    amount === null ||
+    currentPrice === null ||
+    minNextBid === null ||
+    extensionsUsed === null
+  ) {
+    return null
+  }
+  return {
+    playerId,
+    nickname,
+    amount,
+    currentPrice,
+    minNextBid,
+    extensionsUsed,
+    deadlineAt: readInt(data.deadline_at),
+  }
 }
 
-/** Decode a `bid.rejected` payload. RED stub. */
+/** Decode a `bid.rejected` payload (D-53). */
 export function readBidRejected(data: unknown): BidRejected | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  const reason = readString(data.reason)
+  const budget = readInt(data.budget)
+  const amount = readInt(data.amount)
+  if (reason === null || reason === '' || budget === null || amount === null) return null
+  return { reason, minNextBid: readInt(data.min_next_bid), budget, amount }
 }
 
-/** Decode a `phase.changed` payload. RED stub. */
+/**
+ * Decode a `phase.changed` payload (D-57): the new phase plus the item that
+ * comes with it — an explicit null in LOBBY/FINALE. The phase↔item invariant
+ * applies here too, so an event can never patch the view into a body a snapshot
+ * would have been rejected for.
+ */
 export function readPhaseChanged(data: unknown): PhaseChanged | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  const phase = readPhase(data.phase)
+  if (phase === null) return null
+  const item = readPublicItem(data.item)
+  if (!itemMatchesPhase(phase, item)) return null
+  return { phase, item }
 }
 
-/** Decode an admin `state.snapshot` payload. RED stub. */
+/**
+ * Decode the admin `state.snapshot` (D-64/D-66): the catalog the presenter
+ * edits, the current item and the shared public lists. The player/sealed-bid
+ * rows are deliberately NOT decoded — the Phase-3 panel renders neither, and a
+ * typed model that cannot express a token cannot leak one (T-03-10).
+ */
 export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  const phase = readPhase(data.phase)
+  const revision = readInt(data.revision)
+  const serverTs = readInt(data.server_ts)
+  const items = readAdminItems(data.items)
+  const lobby = readLobby(data.lobby)
+  if (phase === null || revision === null || serverTs === null || items === null || lobby === null) {
+    return null
+  }
+  const item = readPublicItem(data.item)
+  if (!itemMatchesPhase(phase, item)) return null
+  return {
+    phase,
+    revision,
+    serverTs,
+    items,
+    item,
+    lobby,
+    leaderboard: readLeaderboard(data.leaderboard),
+  }
+}
+
+/**
+ * Decode the catalog. ONE ill-typed row rejects the snapshot: the list is
+ * rendered as a whole, so a half-decoded catalog would be a list the presenter
+ * cannot trust — and the server's rows are always well-formed.
+ */
+function readAdminItems(value: unknown): AdminItem[] | null {
+  if (!Array.isArray(value)) return null
+  const items: AdminItem[] = []
+  for (const raw of value) {
+    const item = readAdminItem(raw)
+    if (item === null) return null
+    items.push(item)
+  }
+  return items
+}
+
+function readAdminItem(value: unknown): AdminItem | null {
+  if (!isRecord(value)) return null
+  const id = readString(value.id)
+  const orderIndex = readInt(value.order_index)
+  const name = readString(value.name)
+  const auctionType = readString(value.auction_type)
+  const truthValue = readInt(value.truth_value)
+  const startPrice = readInt(value.start_price)
+  const status = readString(value.status)
+  if (
+    id === null ||
+    orderIndex === null ||
+    name === null ||
+    auctionType === null ||
+    truthValue === null ||
+    startPrice === null ||
+    status === null
+  ) {
+    return null
+  }
+  return {
+    id,
+    orderIndex,
+    name,
+    description: readString(value.description) ?? '',
+    imageUrl: readString(value.image_url) ?? '',
+    auctionType,
+    truthValue,
+    hintMin: readInt(value.hint_min),
+    hintMax: readInt(value.hint_max),
+    startPrice,
+    minIncrement: readInt(value.min_increment),
+    floorPrice: readInt(value.floor_price),
+    decrementStep: readInt(value.decrement_step),
+    decrementIntervalMs: readInt(value.decrement_interval_ms),
+    durationMs: readInt(value.duration_ms),
+    antiSnipeMode: readString(value.anti_snipe_mode) ?? '',
+    antiSnipeWindowMs: readInt(value.anti_snipe_window_ms),
+    maxExtensions: readInt(value.max_extensions),
+    status,
+  }
 }
