@@ -95,13 +95,21 @@ func TestTickCarriesTimingWithoutBumpingRevision(t *testing.T) {
 
 	conn := dialWS(t, h)
 	join(t, conn, `{"type":"join","role":"player","nickname":"An"}`)
+	// A join is a mutation: the handshake pair is followed by the fan-out of
+	// that same mutation (the joining player is already registered), and with no
+	// typed event of its own the snapshot IS the frame (H2).
+	expectFrames(t, conn, TypeStateSnapshot)
 
-	// Entering LIVE is a mutation whose recorded frames end with the D-56
-	// immediate tick: phase.changed, item.live, the snapshot, then the tick.
+	// The whole admin flow through the engine, one mutation per frame group:
+	// upsert (D-66's snapshot), start → ITEM_INTRO, start → LIVE + the D-56
+	// immediate tick. The order IS the contract (D-57).
 	_ = startLiveItem(t, engine, 30_000)
-	frames := expectFrames(t, conn, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+	frames := expectFrames(t, conn,
+		TypeStateSnapshot, // item.upsert
+		TypePhaseChanged, TypeItemIntro, TypeStateSnapshot,
+		TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
 
-	immediate := frames[3]
+	immediate := frames[7]
 	rev := engine.Rev()
 	if immediate.Rev != rev {
 		t.Fatalf("immediate tick rev = %d, want the current %d (a tick never bumps it, D-58)", immediate.Rev, rev)
@@ -168,14 +176,21 @@ func TestTickCadenceAndImmediateTicks(t *testing.T) {
 	player := dialWS(t, h)
 	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)
 	playerID := frameString(t, frameData(t, hello), "player")
+	expectFrames(t, player, TypeStateSnapshot) // the player's own join fan-out
 
 	screen := dialWS(t, h)
 	join(t, screen, `{"type":"join","role":"screen"}`)
+	// A screen join is not a mutation (no identity, no presence), so it fans
+	// out nothing: the next frames on either socket are the item mutations.
 
 	// No periodic goroutine yet: every tick below is the mutation path's own.
 	startLiveItem(t, engine, 60_000)
-	expectFrames(t, player, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
-	expectFrames(t, screen, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+	for _, conn := range []*websocket.Conn{player, screen} {
+		expectFrames(t, conn,
+			TypeStateSnapshot, // item.upsert
+			TypePhaseChanged, TypeItemIntro, TypeStateSnapshot,
+			TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+	}
 
 	// An accepted bid is a mutation: bid.accepted, then the immediate tick
 	// carrying the price the bid just set and the new minimum.

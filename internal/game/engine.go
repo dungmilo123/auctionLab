@@ -639,11 +639,11 @@ func (v view) Snapshot(role Role, playerID string) any {
 	return v.e.snapshotLocked(role, playerID)
 }
 
-// Tick is the D-56 timing frame, built from the same lock-held state the
-// mutation just committed.
-//
-// RED stub: the payload builder is the behaviour under test.
-func (v view) Tick() (PriceTick, bool) { return PriceTick{}, false }
+// Tick is the D-56 timing frame. It is built from the same lock-held state a
+// mutation just committed, with the engine's injected clock (D-60), so
+// remaining_ms is server-computed and can never disagree with the deadline the
+// settle path will honour.
+func (v view) Tick() (PriceTick, bool) { return v.e.state.priceTick(v.e.now()) }
 
 // clone deep-copies the state so a mutation that fails validation can never
 // leave the live state half-updated, and so the committed state is published

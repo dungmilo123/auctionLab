@@ -157,6 +157,39 @@ type PriceTick struct {
 	RemainingMS  *int64 `json:"remaining_ms,omitempty"`
 }
 
+// priceTick builds the D-56 frame from the lock-held state, or reports false
+// when there is no open window to describe: a tick belongs to a LIVE run, and
+// after SETTLED nothing may invite a bid. `remaining_ms` is clamped at zero
+// because the tick and the settle are two lock acquisitions — the settle may
+// land between them (Pitfall 5), and a negative remaining would end the auction
+// on the phone before the server did.
+func (s *state) priceTick(now time.Time) (PriceTick, bool) {
+	run := s.currentAuction
+	if s.phase != PhaseLive || run == nil {
+		return PriceTick{}, false
+	}
+	price, ok := s.currentPrice()
+	if !ok {
+		return PriceTick{}, false
+	}
+	min, ok := s.minNextBid()
+	if !ok {
+		return PriceTick{}, false
+	}
+
+	tick := PriceTick{ItemID: run.itemID, CurrentPrice: price, MinNextBid: min}
+	if run.deadlineAt > 0 {
+		deadline := run.deadlineAt
+		remaining := deadline - now.UnixMilli()
+		if remaining < 0 {
+			remaining = 0
+		}
+		tick.DeadlineAt = &deadline
+		tick.RemainingMS = &remaining
+	}
+	return tick, true
+}
+
 // ScreenView is the projector's view: public state only. Before SETTLED it
 // carries no truth_value, and it never carries an identity or a token (D-25).
 type ScreenView struct {

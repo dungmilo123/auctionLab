@@ -21,12 +21,13 @@ type Policy struct {
 }
 
 // DefaultPolicy carries D-40's production numbers: 64 buffered messages, a
-// 4 KiB frame cap, a 60 s pong window refreshed by a ping every 25 s, and a
-// 10 s write deadline.
+// 4 KiB frame cap, a 60 s pong window refreshed by a ping every 25 s, a 10 s
+// write deadline, and D-56's 250 ms tick cadence.
 var DefaultPolicy = Policy{
 	SendBuffer: 64,
 	ReadLimit:  4 << 10,
 	PongWait:   60 * time.Second,
 	PingPeriod: 25 * time.Second,
 	WriteWait:  10 * time.Second,
+	TickPeriod: 250 * time.Millisecond,
 }

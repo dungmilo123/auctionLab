@@ -213,8 +213,10 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	c.readPump()
 }
 
-// Enqueue is the engine's fan-out edge (D-33). The engine calls it with its
-// exclusive lock held, after every committed mutation and every presence change.
+// Enqueue fans one committed revision out as each connection's own role
+// projection. It is the D-33 fan-out edge for every mutation whose frame IS a
+// snapshot — a join, a presence change, resync and drop recovery — and the
+// fallback Fanout uses when a mutation recorded no typed event of its own (H2).
 //
 // PRECONDITION: engine.mu is held exclusively. The registry is lock-free to
 // read, but the per-client seq counter and the send channel are only race-free
@@ -231,15 +233,73 @@ func (h *Hub) Enqueue(rev int64, v game.View) {
 }
 
 // Fanout is the engine's fan-out edge (D-33/D-57). The engine calls it with its
-// exclusive lock held, after every committed mutation, handing over the typed
-// event list that mutation recorded.
+// exclusive lock held, handing over the committed revision and the exact ordered
+// event list the mutation recorded.
 //
-// RED stub: the committed revision is fanned out as each connection's role
-// snapshot. The typed event expansion and the D-56 immediate tick are the
-// behaviour under test.
+// PRECONDITION: engine.mu is held exclusively — the same rule as Enqueue. Every
+// frame goes through the connection's own FIFO, so D-41's drop/fence/resync
+// semantics apply to event frames exactly as they apply to a snapshot.
+//
+// Three rules make up the contract:
+//
+//   - A private event (To != "") reaches its addressee alone (D-53's
+//     `bid.rejected` shape); a public one is broadcast to every joined role.
+//   - The zero event — game.EventSnapshot — is per client by definition: it is
+//     that connection's own role projection, built from the same lock-held view.
+//   - An EMPTY list means the mutation produced no typed frame of its own (a
+//     join, a presence change): the snapshot is the frame, so the established
+//     D-33 path is reused unchanged.
+//
+// When the list moved numbers a client is watching — entering LIVE
+// (`item.live`) or an accepted bid, an anti-snipe extension included
+// (`bid.accepted`) — one D-56 `price.tick` follows the events, built from this
+// same lock-held view. Nobody waits up to a tick period to see a deadline move.
 func (h *Hub) Fanout(rev int64, v game.View, events []game.Event) {
-	_ = events
-	h.Enqueue(rev, v)
+	if len(events) == 0 {
+		h.Enqueue(rev, v)
+		return
+	}
+
+	// One tick per mutation, not one per client: the payload derives from the
+	// lock-held state alone, and every client is owed the same numbers.
+	var (
+		tick    game.PriceTick
+		hasTick bool
+	)
+	if wantsImmediateTick(events) {
+		tick, hasTick = v.Tick()
+	}
+
+	for _, c := range h.registry.snapshot() {
+		if c.role() == "" {
+			continue
+		}
+		for _, event := range events {
+			switch {
+			case event.Type == game.EventSnapshot:
+				c.enqueue(rev, TypeStateSnapshot, c.snapshot(v))
+			case event.To != "" && event.To != c.playerID():
+				// Addressed to one connection, and this is not it (D-53).
+			default:
+				c.enqueue(rev, event.Type, event.Data)
+			}
+		}
+		if hasTick {
+			c.enqueue(rev, TypePriceTick, tick)
+		}
+	}
+}
+
+// wantsImmediateTick reports whether a mutation's event list moved the numbers a
+// D-56 tick carries: entering LIVE, or an accepted bid (including the anti-snipe
+// extension a bid may have performed).
+func wantsImmediateTick(events []game.Event) bool {
+	for _, event := range events {
+		if event.Type == game.EventItemLive || event.Type == game.EventBidAccepted {
+			return true
+		}
+	}
+	return false
 }
 
 // broadcast sends one already-built payload to every joined connection. It is
