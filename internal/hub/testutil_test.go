@@ -178,9 +178,83 @@ func decodeFrame(raw []byte) (frame, error) {
 func writeFrame(t *testing.T, conn *websocket.Conn, payload string) {
 	t.Helper()
 
-	_ = conn.SetWriteDeadline(time.Now().Add(testIOTimeout))
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
+	if err := writeFrameErr(conn, payload); err != nil {
 		t.Fatalf("writing %s: %v", payload, err)
+	}
+}
+
+// writeFrameErr is writeFrame without t.Fatalf: a burst case writes from several
+// goroutines, where FailNow is not allowed (it would end the wrong goroutine).
+func writeFrameErr(conn *websocket.Conn, payload string) error {
+	_ = conn.SetWriteDeadline(time.Now().Add(testIOTimeout))
+	return conn.WriteMessage(websocket.TextMessage, []byte(payload))
+}
+
+// readType reads frames until one of the wanted type arrives, so a case can
+// skip the interleaved traffic of another client's fan-out.
+func readType(t *testing.T, conn *websocket.Conn, typ string) frame {
+	t.Helper()
+
+	deadline := time.Now().Add(testIOTimeout)
+	for {
+		if time.Now().After(deadline) {
+			t.Fatalf("no %q frame arrived within %s", typ, testIOTimeout)
+		}
+		env, err := readFrameErr(conn)
+		if err != nil {
+			t.Fatalf("waiting for a %q frame: %v", typ, err)
+		}
+		if env.Type == typ {
+			return env
+		}
+	}
+}
+
+// reader drains one socket in its own goroutine. A case that must keep one
+// connection healthy while it provokes a stall on another cannot call t.Fatalf
+// from that goroutine, so the failures arrive as values.
+type reader struct {
+	frames chan frame
+	errs   chan error
+}
+
+// startReader begins draining conn. The socket's own read deadline ends the
+// reader when the connection goes quiet for testIOTimeout.
+func startReader(conn *websocket.Conn) *reader {
+	r := &reader{
+		frames: make(chan frame, 512),
+		errs:   make(chan error, 1),
+	}
+	go func() {
+		for {
+			env, err := readFrameErr(conn)
+			if err != nil {
+				select {
+				case r.errs <- err:
+				default:
+				}
+				close(r.frames)
+				return
+			}
+			r.frames <- env
+		}
+	}()
+	return r
+}
+
+// next returns the next frame the reader saw, or fails the case if none arrived.
+func (r *reader) next(t *testing.T) frame {
+	t.Helper()
+
+	select {
+	case env, ok := <-r.frames:
+		if !ok {
+			t.Fatal("the connection ended before the expected frame arrived")
+		}
+		return env
+	case <-time.After(testIOTimeout):
+		t.Fatal("no frame arrived within the read budget")
+		return frame{}
 	}
 }
 

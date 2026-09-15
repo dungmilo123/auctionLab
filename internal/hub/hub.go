@@ -213,6 +213,13 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 // lock guarantees that.
 func (h *Hub) Enqueue(rev int64, v game.View) {}
 
+// broadcast sends one already-built payload to every joined connection. It is
+// the sibling-message primitive: a single revision may legitimately produce
+// several messages (D-21), each taking its own seq.
+//
+// PRECONDITION: engine.mu is held exclusively — same rule as Enqueue.
+func (h *Hub) broadcast(rev int64, typ string, data any) {}
+
 // supersede retires the connection that used to hold an identity (D-31). It is
 // called with the engine's lock held, from the successor's handshake section, so
 // the replacement cannot race the registration it is replacing.

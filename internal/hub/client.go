@@ -117,6 +117,15 @@ func (c *client) close() {
 // always written before the close frame.
 func (c *client) retire() { c.retiring.Store(true) }
 
+// requestResync asks the writer to enqueue a fresh snapshot (D-42). It is a
+// flag rather than a queue on purpose: two requests arriving before the writer
+// runs must coalesce into one snapshot.
+func (c *client) requestResync() {}
+
+// applyResync is one writer pass over a pending resync request: it enqueues the
+// role projection built under the engine's exclusive lock and clears the request.
+func (h *Hub) applyResync(c *client) {}
+
 // readPump routes client frames until the socket ends. It is the only reader,
 // and it is where the per-connection protocol state lives: nothing it does ever
 // writes to the socket directly.

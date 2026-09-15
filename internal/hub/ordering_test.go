@@ -1,0 +1,380 @@
+package hub
+
+import (
+	"fmt"
+	"net"
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+
+	"auctionlab/internal/game"
+)
+
+// This file is the ordering and convergence contract (RT-03 / RT-04, PLAN.md
+// §3.1 #5): the fan-out runs inside the engine's critical section, a client that
+// stops keeping up is fenced and repaired by ONE snapshot built under that same
+// lock, and a client's own `resync` travels on the same FIFO as everything else
+// — never out of band.
+
+// TestOrderingUnderBurst is research Pitfall 2's test: N concurrent mutations
+// must reach one client as a gapless seq stream, in revision order, with no
+// duplicate and no gap. It is red on an implementation that unlocks before
+// broadcasting, which is the shape of nearly every WebSocket chat example.
+func TestOrderingUnderBurst(t *testing.T) {
+	// A deep FIFO: this case is about ORDER, not about overflow.
+	h, _ := newTestHubWithPolicy(t, testPolicyWithBuffer(256))
+
+	observer := dialWS(t, h)
+	join(t, observer, `{"type":"join","role":"screen"}`)
+
+	const burst = 12
+
+	// Every connection is dialed up front: t.Fatalf is not allowed off the test
+	// goroutine, so only the writes happen concurrently.
+	conns := make([]*websocket.Conn, burst)
+	for i := range conns {
+		conns[i] = dialWS(t, h)
+	}
+
+	var wg sync.WaitGroup
+	for i, conn := range conns {
+		wg.Add(1)
+		go func(i int, conn *websocket.Conn) {
+			defer wg.Done()
+			// Each join is a mutation: it bumps the revision and fans out.
+			if err := writeFrameErr(conn, fmt.Sprintf(`{"type":"join","role":"player","nickname":"P%02d"}`, i)); err != nil {
+				t.Errorf("burst join %d: %v", i, err)
+			}
+		}(i, conn)
+	}
+	wg.Wait()
+
+	frames := make([]frame, 0, burst+2)
+	for i := 0; i < burst+2; i++ {
+		frames = append(frames, readFrame(t, observer))
+	}
+
+	// The handshake pair first: hello at seq 1, the role snapshot at seq 2.
+	if frames[0].Type != TypeHello || frames[0].Seq != 1 {
+		t.Fatalf("first frame = %s seq %d, want hello seq 1", frames[0].Type, frames[0].Seq)
+	}
+	if frames[1].Type != TypeStateSnapshot || frames[1].Seq != 2 {
+		t.Fatalf("second frame = %s seq %d, want state.snapshot seq 2", frames[1].Type, frames[1].Seq)
+	}
+
+	for i := 1; i < len(frames); i++ {
+		if got, want := frames[i].Seq, frames[i-1].Seq+1; got != want {
+			t.Fatalf("frame %d: seq = %d, want %d — the stream has a gap or a duplicate (D-21/RT-03)\nframes: %s",
+				i, got, want, frameSummary(frames))
+		}
+	}
+	for i := 2; i < len(frames); i++ {
+		if got, want := frames[i].Rev, frames[i-1].Rev+1; got != want {
+			t.Fatalf("frame %d: rev = %d, want %d — a state event out of order or a revision skipped (RT-03)\nframes: %s",
+				i, got, want, frameSummary(frames))
+		}
+	}
+	if got := frames[len(frames)-1].Rev; got != burst {
+		t.Errorf("last revision = %d, want %d (every mutation reached the observer)", got, burst)
+	}
+}
+
+// TestStalledClientDoesNotBlockOthers is T-02-03's contract, and D-41's reason
+// for existing: one phone that stops reading must not be able to slow the room
+// down. The stalled connection is fenced and repaired; the healthy one keeps
+// receiving every mutation, in order.
+func TestStalledClientDoesNotBlockOthers(t *testing.T) {
+	h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(2))
+	inflateLobby(t, engine)
+
+	stalled := dialStalled(t, h)
+	stalledHello, _ := join(t, stalled, `{"type":"join","role":"player","nickname":"Stalled"}`)
+	stalledID := frameString(t, frameData(t, stalledHello), "player")
+
+	healthy := dialWS(t, h)
+	_, base := join(t, healthy, `{"type":"join","role":"screen"}`)
+	healthyReader := startReader(healthy)
+
+	forceOverflow(t, h, engine, stalledID, 300)
+
+	if h.Drops() == 0 {
+		t.Fatal("no drop was recorded; the stalled peer's FIFO never overflowed, so D-41 was not exercised")
+	}
+
+	// The healthy client is read between mutations, so its own FIFO cannot fill:
+	// whatever the stalled client is going through, this stream stays gapless.
+	for i := 0; i < 5; i++ {
+		conn := dialWS(t, h)
+		if err := writeFrameErr(conn, fmt.Sprintf(`{"type":"join","role":"player","nickname":"H%02d"}`, i)); err != nil {
+			t.Fatalf("mutation %d: %v", i, err)
+		}
+		env := healthyReader.next(t)
+		if want := base.Seq + int64(i) + 1; env.Seq != want {
+			t.Fatalf("healthy seq = %d at mutation %d, want %d — a stalled client delayed this client's stream",
+				env.Seq, i, want)
+		}
+		if want := base.Rev + int64(i) + 1; env.Rev != want {
+			t.Fatalf("healthy rev = %d at mutation %d, want %d", env.Rev, i, want)
+		}
+	}
+
+	// The stalled client now catches up: it converges on the current revision
+	// through a snapshot instead of replaying a burst it only half received.
+	frames := drainFrames(t, stalled, 400*time.Millisecond)
+	converged := false
+	for _, env := range frames {
+		if env.Type == TypeStateSnapshot && env.Rev == engine.Rev() {
+			converged = true
+		}
+	}
+	if !converged {
+		t.Fatalf("the stalled client never saw a snapshot at the current revision %d; it cannot converge (D-41)\nframes: %s",
+			engine.Rev(), frameSummary(frames))
+	}
+}
+
+// TestGapConvergenceViaSnapshot is the phase's most valuable assertion (research
+// Pitfall 3): a real overflow must repair through ONE snapshot built under the
+// engine's exclusive lock and enqueued on the same FIFO — never written to the
+// socket out of band, or the client would apply newer state and then regress.
+func TestGapConvergenceViaSnapshot(t *testing.T) {
+	h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(2))
+	inflateLobby(t, engine)
+
+	conn := dialStalled(t, h)
+	hello, _ := join(t, conn, `{"type":"join","role":"player","nickname":"An"}`)
+	id := frameString(t, frameData(t, hello), "player")
+
+	before := h.Resyncs()
+	forceOverflow(t, h, engine, id, 300)
+
+	frames := drainFrames(t, conn, 500*time.Millisecond)
+
+	// Find the recovery: the first frame that follows a seq gap must be the
+	// snapshot. A gap followed by ordinary events would mean the client applied
+	// the tail of a burst it never saw the head of.
+	recovery := -1
+	for i := 1; i < len(frames); i++ {
+		if frames[i].Seq > frames[i-1].Seq+1 {
+			if frames[i].Type != TypeStateSnapshot {
+				t.Fatalf("the frame after the seq gap is %q, want %q — recovery must be a snapshot (D-41)\nframes: %s",
+					frames[i].Type, TypeStateSnapshot, frameSummary(frames))
+			}
+			recovery = i
+			break
+		}
+	}
+	if recovery < 0 {
+		t.Fatalf("no seq gap was observed: the forced overflow was not exercised\nframes: %s", frameSummary(frames))
+	}
+	if got := h.Resyncs(); got <= before {
+		t.Errorf("resync counter = %d, want it past %d (a drop must be followed by a recovery snapshot)", got, before)
+	}
+	if got := h.Drops(); got == 0 {
+		t.Error("drop counter = 0 after a forced overflow (D-41 accounting)")
+	}
+
+	snapshot := frames[recovery]
+	for _, env := range frames[recovery+1:] {
+		if env.Rev < snapshot.Rev {
+			t.Errorf("post-snapshot frame %s rev %d < snapshot rev %d: the client would regress (research Pitfall 3)",
+				env.Type, env.Rev, snapshot.Rev)
+		}
+	}
+
+	// A mutation after the recovery reaches this connection at a strictly newer
+	// revision: the stream is live again, not merely repaired on paper.
+	late := dialWS(t, h)
+	writeFrame(t, late, `{"type":"join","role":"player","nickname":"Binh"}`)
+	next := readType(t, conn, TypeStateSnapshot)
+	if next.Rev <= snapshot.Rev {
+		t.Errorf("the first snapshot after the recovery carries rev %d, want it past the recovery's %d",
+			next.Rev, snapshot.Rev)
+	}
+}
+
+// TestSiblingMessagesShareARevision pins the rule that makes seq and rev two
+// different fields (D-21, research Pitfall 7): one revision legitimately carries
+// several messages, and a client that deduped on rev would silently discard
+// every sibling. Both messages must arrive, in order, with consecutive seq.
+func TestSiblingMessagesShareARevision(t *testing.T) {
+	h, engine := newTestHub(t)
+
+	conn := dialWS(t, h)
+	join(t, conn, `{"type":"join","role":"screen"}`)
+
+	// One critical section, one revision, two messages — the shape Phase 3's
+	// `phase.changed` + `leaderboard` pair will have.
+	if err := engine.Section(func(v game.View) error {
+		h.Enqueue(v.Rev(), v)
+		h.broadcast(v.Rev(), TypeLeaderboard, map[string]any{"standings": []any{}})
+		return nil
+	}); err != nil {
+		t.Fatalf("driving one revision with two messages: %v", err)
+	}
+
+	first := readFrame(t, conn)
+	second := readFrame(t, conn)
+
+	if first.Type != TypeStateSnapshot || second.Type != TypeLeaderboard {
+		t.Fatalf("siblings = %q then %q, want %q then %q", first.Type, second.Type, TypeStateSnapshot, TypeLeaderboard)
+	}
+	if first.Rev != second.Rev {
+		t.Fatalf("sibling revs = %d then %d, want one revision (D-21)", first.Rev, second.Rev)
+	}
+	if second.Seq != first.Seq+1 {
+		t.Errorf("sibling seqs = %d then %d, want consecutive numbers — gap detection is seq's job, never rev's",
+			first.Seq, second.Seq)
+	}
+}
+
+// TestResyncReturnsRoleSnapshot pins D-42's client-facing half: `resync` arrives
+// through the connection's own FIFO, carries the role-appropriate projection of
+// the CURRENT state, and takes a fresh seq like any other message.
+func TestResyncReturnsRoleSnapshot(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	player := dialWS(t, h)
+	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)
+	id := frameString(t, frameData(t, hello), "player")
+
+	writeFrame(t, player, `{"type":"resync"}`)
+	first := readType(t, player, TypeStateSnapshot)
+	if got := meOf(t, first); got.ID != id {
+		t.Errorf("resync snapshot me.id = %q, want %q — the reply must be this connection's own role projection (D-25/D-42)", got.ID, id)
+	}
+	if first.Seq <= 2 {
+		t.Errorf("resync snapshot seq = %d, want it past the handshake pair", first.Seq)
+	}
+
+	// The lobby moved on, so a later resync must return the newer state.
+	other := dialWS(t, h)
+	join(t, other, `{"type":"join","role":"player","nickname":"Binh"}`)
+	drainFrames(t, player, 200*time.Millisecond)
+
+	writeFrame(t, player, `{"type":"resync"}`)
+	fresh := readType(t, player, TypeStateSnapshot)
+	if got := len(lobbyOf(t, fresh)); got != 2 {
+		t.Errorf("resync snapshot lobby has %d entries, want 2 (the snapshot is built under the lock, not from a stale cache)", got)
+	}
+}
+
+// TestResyncCoalescesBeforeTheWriterRuns pins D-42's coalescing rule at the
+// boundary it is defined at: a client that asks twice before the writer runs
+// gets ONE snapshot, not two. The client is built directly because the point is
+// the FIFO, not the transport.
+func TestResyncCoalescesBeforeTheWriterRuns(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	c := &client{
+		hub:  h,
+		role: RoleScreen,
+		send: make(chan Envelope, 8),
+		done: make(chan struct{}),
+	}
+
+	c.requestResync()
+	c.requestResync()
+	c.requestResync()
+	h.applyResync(c)
+
+	if got := len(c.send); got != 1 {
+		t.Fatalf("three resync requests enqueued %d snapshots, want 1 (D-42: coalesce before the writer runs)", got)
+	}
+	if got := (<-c.send).Type; got != TypeStateSnapshot {
+		t.Errorf("the coalesced frame is %q, want %q", got, TypeStateSnapshot)
+	}
+}
+
+// forceOverflow enqueues past one connection's FIFO depth inside a single engine
+// lock hold. It is the producer-side primitive under test: the target is a peer
+// that has stopped reading, so its writer cannot drain, and this call is what a
+// burst of mutations does to it.
+func forceOverflow(t *testing.T, h *Hub, engine *game.Engine, playerID string, n int) {
+	t.Helper()
+
+	target := h.registry.lookup(playerID)
+	if target == nil {
+		t.Fatalf("no registered connection for %q", playerID)
+	}
+	if err := engine.Section(func(v game.View) error {
+		for i := 0; i < n; i++ {
+			target.enqueue(v.Rev(), TypeStateSnapshot, v.Snapshot(game.Role(target.role), target.playerID))
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("forcing an overflow: %v", err)
+	}
+}
+
+// inflateLobby gives the projections real size before any client connects: a
+// stalled peer's socket can absorb a couple of hundred kilobytes, and the
+// overflow has to be a property of the mechanism, not of how lucky the timing
+// was. No client is connected yet, so these mutations fan out to nobody.
+func inflateLobby(t *testing.T, engine *game.Engine) {
+	t.Helper()
+
+	for i := 0; i < 40; i++ {
+		if _, err := engine.Join(game.JoinRequest{
+			Role:     game.RolePlayer,
+			Nickname: fmt.Sprintf("Filler%02d", i),
+		}, nil); err != nil {
+			t.Fatalf("inflating the lobby: %v", err)
+		}
+	}
+}
+
+// dialStalled connects a peer that stops reading, with a deliberately tiny
+// receive buffer so the server's writes stop being absorbed after a couple of
+// kilobytes. That is the real "phone that stopped reading" case made
+// deterministic, instead of a race against the loopback socket's default
+// buffering.
+func dialStalled(t *testing.T, h *Hub) *websocket.Conn {
+	t.Helper()
+
+	srv := newTestServer(t, h)
+	dialer := websocket.Dialer{
+		NetDial: func(network, addr string) (net.Conn, error) {
+			d := net.Dialer{Control: func(_, _ string, c syscall.RawConn) error {
+				var sockErr error
+				if err := c.Control(func(fd uintptr) {
+					sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, 2048)
+				}); err != nil {
+					return err
+				}
+				return sockErr
+			}}
+			return d.Dial(network, addr)
+		},
+	}
+
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	conn, resp, err := dialer.Dial(url, nil)
+	if err != nil {
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+			_ = resp.Body.Close()
+		}
+		t.Fatalf("dialing a stalled peer at %s: %v (HTTP %d)", url, err, status)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	return conn
+}
+
+// frameSummary renders the frames a failing case actually saw: the assertion is
+// about the shape of the stream, and a bare count cannot show it.
+func frameSummary(frames []frame) string {
+	out := ""
+	for _, env := range frames {
+		out += fmt.Sprintf("\n  %s seq=%d rev=%d", env.Type, env.Seq, env.Rev)
+	}
+	if out == "" {
+		return "(none)"
+	}
+	return out
+}
