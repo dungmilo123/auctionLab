@@ -302,6 +302,115 @@ func TestResyncCoalescesBeforeTheWriterRuns(t *testing.T) {
 	}
 }
 
+// TestReadPumpErrorsStayOrderedWithFanout is GAP 1's regression (RT-03, D-21,
+// D-33, D-41). Two different producers write the SAME connection's seq counter
+// and FIFO: the observed connection's own read pump (a private `error` answer to
+// an unsupported command) and the fan-out of every other connection's committed
+// mutation (`Engine.publishLocked → Hub.Enqueue`). Only the engine's exclusive
+// lock makes those two producers race-free, so this case drives both at once and
+// asserts the observer's stream stays gapless and duplicate-free.
+//
+// It is red on an implementation whose read pump enqueues without the lock:
+// `go test -race` reports the concurrent access to client.seq, and two producers
+// can hand the same seq to two different messages — which the browser gate
+// (web/src/ws/gate.ts) then discards as a duplicate, silently losing a real
+// state change.
+func TestReadPumpErrorsStayOrderedWithFanout(t *testing.T) {
+	// A deep FIFO: this case is about the two producers sharing one sequence,
+	// not about overflow, so nothing may be dropped here.
+	h, _ := newTestHubWithPolicy(t, testPolicyWithBuffer(256))
+
+	observer := dialWS(t, h)
+	_, handshake := join(t, observer, `{"type":"join","role":"screen"}`)
+
+	// The observer is drained for the whole case: an unread socket would stall
+	// its writer and turn an ordering failure into a read timeout.
+	stream := startReader(observer)
+
+	// One frame arrives per producer event: every private error is answered on
+	// the observer's own connection, and every committed join fans out exactly
+	// one snapshot to it. The counts are here because the assertion is about the
+	// INTERLEAVING of the two producers, not about how many messages were sent.
+	const (
+		errorFrames = 60
+		joiners     = 12
+	)
+
+	// Every joining connection is dialed up front: t.Fatalf is not allowed off
+	// the test goroutine, so only the writes happen concurrently.
+	conns := make([]*websocket.Conn, joiners)
+	for i := range conns {
+		conns[i] = dialWS(t, h)
+	}
+
+	var producers sync.WaitGroup
+
+	// Producer A: the observer's own read pump, answering unimplemented
+	// commands with a private typed error. It is paced so it keeps running while
+	// the joins below are in flight instead of finishing first.
+	producers.Add(1)
+	go func() {
+		defer producers.Done()
+		for i := 0; i < errorFrames; i++ {
+			if err := writeFrameErr(observer, fmt.Sprintf(`{"type":"%s"}`, TypeBidPlace)); err != nil {
+				t.Errorf("driving the observer's error producer: %v", err)
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}()
+
+	// Producer B: concurrent player joins from separate connections. Each one is
+	// a committed mutation whose fan-out runs from a DIFFERENT connection's read
+	// pump than producer A's.
+	for i, conn := range conns {
+		producers.Add(1)
+		go func(i int, conn *websocket.Conn) {
+			defer producers.Done()
+			time.Sleep(time.Duration(i) * 5 * time.Millisecond)
+			if err := writeFrameErr(conn, fmt.Sprintf(`{"type":"join","role":"player","nickname":"R%02d"}`, i)); err != nil {
+				t.Errorf("concurrent join %d: %v", i, err)
+			}
+		}(i, conn)
+	}
+
+	producers.Wait()
+
+	frames := make([]frame, 0, errorFrames+joiners)
+	for i := 0; i < errorFrames+joiners; i++ {
+		frames = append(frames, stream.next(t))
+	}
+
+	kinds := make(map[string]int, 2)
+	previous := handshake
+	for i, env := range frames {
+		kinds[env.Type]++
+		if got, want := env.Seq, previous.Seq+1; got != want {
+			t.Fatalf("frame %d (%s): seq = %d, want %d — the private error producer and the fan-out do not share one lock-held sequence (D-21/D-33/RT-03)\nframes: %s",
+				i, env.Type, got, want, frameSummary(frames))
+		}
+		previous = env
+	}
+	if got := kinds[TypeError]; got != errorFrames {
+		t.Errorf("the observer saw %d %q frames, want %d — the private error producer did not run",
+			got, TypeError, errorFrames)
+	}
+	if got := kinds[TypeStateSnapshot]; got != joiners {
+		t.Errorf("the observer saw %d %q frames, want %d — the mutation fan-out did not run",
+			got, TypeStateSnapshot, joiners)
+	}
+
+	// The stream is still live after the concurrent work: the next mutation
+	// continues from where the mixed stream left off, at the next seq.
+	late := dialWS(t, h)
+	writeFrame(t, late, `{"type":"join","role":"player","nickname":"Late"}`)
+	next := stream.next(t)
+	if got, want := next.Seq, previous.Seq+1; got != want {
+		t.Errorf("the frame after the concurrent work has seq %d, want %d — the stream did not continue gaplessly",
+			got, want)
+	}
+}
+
 // forceOverflow provokes a real overflow on one connection and returns how many
 // messages were handed to it before the fence closed. The payload is a large
 // synthetic blob rather than a projection because the point is VOLUME: the
