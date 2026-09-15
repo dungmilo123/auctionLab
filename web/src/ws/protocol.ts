@@ -314,3 +314,126 @@ function readPublicItem(value: unknown): PublicItem | null {
   }
   return { id, name, auctionType, startPrice, status }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3 (D-54/D-56/D-57/D-64/D-67/D-68). The wire payloads are declared by
+// `internal/game/project.go`; the readers below land in the GREEN commit of
+// plan 03-04 — everything here is the RED contract.
+// ---------------------------------------------------------------------------
+
+/** The five PLAN §6 phases, in order. The body switch is total over exactly these. */
+export const PHASES = ['LOBBY', 'ITEM_INTRO', 'LIVE', 'SETTLED', 'FINALE'] as const
+
+export type Phase = (typeof PHASES)[number]
+
+/** True for one of the five frozen phase names. */
+export function isPhase(value: unknown): value is Phase {
+  return typeof value === 'string' && (PHASES as readonly string[]).includes(value)
+}
+
+/** The D-67 reveal, present ONLY at SETTLED — the leak boundary is the object. */
+export type SettleInfo = {
+  outcome: string
+  winner: string | null
+  price: number
+  truthValue: number
+  budgetDelta: number
+}
+
+/** The D-56 timing frame. RED stub: no reader yet. */
+export type PriceTick = {
+  itemId: string
+  currentPrice: number
+  minNextBid: number
+  deadlineAt: number | null
+  remainingMs: number | null
+}
+
+/** The D-54 broadcast. RED stub: no reader yet. */
+export type BidAccepted = {
+  playerId: string
+  nickname: string
+  amount: number
+  currentPrice: number
+  minNextBid: number
+  deadlineAt: number | null
+  extensionsUsed: number
+}
+
+/** The D-53 private refusal. RED stub: no reader yet. */
+export type BidRejected = {
+  reason: string
+  minNextBid: number | null
+  budget: number
+  amount: number
+}
+
+/** The D-57 `phase.changed` payload. RED stub: no reader yet. */
+export type PhaseChanged = {
+  phase: Phase
+  item: PublicItem | null
+}
+
+/** One admin catalog row (D-66). RED stub: no reader yet. */
+export type AdminItem = {
+  id: string
+  orderIndex: number
+  name: string
+  description: string
+  imageUrl: string
+  auctionType: string
+  truthValue: number
+  hintMin: number | null
+  hintMax: number | null
+  startPrice: number
+  minIncrement: number | null
+  floorPrice: number | null
+  decrementStep: number | null
+  decrementIntervalMs: number | null
+  durationMs: number | null
+  antiSnipeMode: string
+  antiSnipeWindowMs: number | null
+  maxExtensions: number | null
+  status: string
+}
+
+/** The admin projection the `/admin` page renders. RED stub: no reader yet. */
+export type AdminSnapshot = {
+  phase: Phase
+  revision: number
+  serverTs: number
+  items: AdminItem[]
+  item: PublicItem | null
+  lobby: LobbyEntry[]
+  leaderboard: LeaderEntry[]
+}
+
+/** Decode a `price.tick` payload. RED stub. */
+export function readPriceTick(data: unknown): PriceTick | null {
+  void data
+  return null
+}
+
+/** Decode a `bid.accepted` payload. RED stub. */
+export function readBidAccepted(data: unknown): BidAccepted | null {
+  void data
+  return null
+}
+
+/** Decode a `bid.rejected` payload. RED stub. */
+export function readBidRejected(data: unknown): BidRejected | null {
+  void data
+  return null
+}
+
+/** Decode a `phase.changed` payload. RED stub. */
+export function readPhaseChanged(data: unknown): PhaseChanged | null {
+  void data
+  return null
+}
+
+/** Decode an admin `state.snapshot` payload. RED stub. */
+export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
+  void data
+  return null
+}
