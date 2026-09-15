@@ -416,6 +416,58 @@ func TestReadPumpErrorsStayOrderedWithFanout(t *testing.T) {
 	}
 }
 
+// TestAuctionEventStreamStaysOrdered is the third-producer case (Pitfall 6): the
+// ticker, the mutation fan-out and the private rejection all share one
+// connection's sequence, so a full round must reach an observer as ONE gapless
+// stream whose revisions never regress — even though a tick repeats the current
+// revision instead of bumping it (D-21/D-22/D-58).
+func TestAuctionEventStreamStaysOrdered(t *testing.T) {
+	// A deep FIFO: this case is about ORDER, not about overflow.
+	h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(256))
+
+	screen := dialWS(t, h)
+	_, base := join(t, screen, `{"type":"join","role":"screen"}`)
+	stream := startReader(screen)
+
+	admin := dialWS(t, h)
+	join(t, admin, `{"type":"join","role":"admin"}`)
+
+	player := dialWS(t, h)
+	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)
+	playerID := frameString(t, frameData(t, hello), "player")
+
+	// Drive one complete round through the engine, so the frame count below is
+	// exactly deterministic: the join's snapshot, item CRUD, the intro burst,
+	// the LIVE burst (with its immediate tick), the accepted bid (with its
+	// tick) and the settle trio.
+	startLiveItem(t, engine, 60_000)
+	if err := engine.PlaceBid(playerID, 100_000, nil); err != nil {
+		t.Fatalf("the accepted bid: %v", err)
+	}
+	if err := engine.ForceEnd(); err != nil {
+		t.Fatalf("the force end: %v", err)
+	}
+
+	const frames = 1 /* player join */ + 1 /* upsert */ + 3 /* intro */ + 4 /* live */ + 2 /* bid */ + 3 /* settle */
+	previous := base
+	for i := 0; i < frames; i++ {
+		env := stream.next(t)
+		if got, want := env.Seq, previous.Seq+1; got != want {
+			t.Fatalf("frame %d (%s): seq = %d, want %d — the tick producer broke the stream (D-21/D-33)\nframes: %s",
+				i, env.Type, got, want, frameSummary([]frame{previous, env}))
+		}
+		if env.Rev < previous.Rev {
+			t.Fatalf("frame %d (%s): rev = %d, want it at or past %d — a state event regressed (D-22)",
+				i, env.Type, env.Rev, previous.Rev)
+		}
+		previous = env
+	}
+
+	if got := engine.Phase(); got != game.PhaseSettled {
+		t.Errorf("phase after the round = %s, want SETTLED", got)
+	}
+}
+
 // forceOverflow provokes a real overflow on one connection and returns how many
 // messages were handed to it before the fence closed. The payload is a large
 // synthetic blob rather than a projection because the point is VOLUME: the
