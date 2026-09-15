@@ -531,3 +531,89 @@ func TestAdminCommandSemantics(t *testing.T) {
 		}
 	})
 }
+
+// TestNoDeadlineNeverGoesLive is WR-02: this phase plays English only, and the
+// whole phase hangs off a live run that can settle ON THE CLOCK — the ticker's
+// settle arm and the boot's resume both require `deadline_at`. A run started
+// without one would sit in LIVE forever (`Force end` its only exit) while the
+// English ladder still accepted bids on it, so the LIVE edge is refused for any
+// row that cannot carry a deadline. The intro and `item.next` stay available:
+// the row is on stage and the presenter skips it the documented way.
+func TestNoDeadlineNeverGoesLive(t *testing.T) {
+	t.Run("a dutch item opens its intro but never goes live", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+		// The natural draft the shipped editor produces: D-66 hides duration_ms
+		// for dutch, so the payload carries null and the row has no window.
+		dutch := validEnglishInput()
+		dutch.AuctionType = "dutch"
+		dutch.MinIncrement, dutch.DurationMS, dutch.AntiSnipeMode = nil, nil, ""
+		dutch.AntiSnipeWindowMS, dutch.MaxExtensions = nil, nil
+		id := mustUpsertItem(t, env, dutch)
+
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Fatalf("phase = %q, want ITEM_INTRO", got)
+		}
+
+		revBefore := env.engine.Rev()
+		err := env.engine.StartItem(id)
+		if err == nil {
+			t.Fatal("a dutch item went LIVE: the run would have no deadline and could never settle on the clock (WR-02)")
+		}
+		if !strings.Contains(err.Error(), "english") {
+			t.Errorf("error %q does not name the type at fault, so the presenter cannot act on it", err)
+		}
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
+		}
+		if got := env.item(t, id).status; got != "intro" {
+			t.Errorf("item status = %q after the refused start, want intro", got)
+		}
+		if got := env.engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refused start, want the unchanged %d", got, revBefore)
+		}
+		env.engine.mu.RLock()
+		run := env.engine.state.currentAuction
+		env.engine.mu.RUnlock()
+		if run != nil {
+			t.Errorf("a refused start created a run: %+v", run)
+		}
+
+		// The documented way out is unchanged: next skips the item.
+		if err := env.engine.NextItem(); err != nil {
+			t.Fatalf("NextItem after the refusal: %v", err)
+		}
+		if got := env.itemStatus(id); got != "skipped" {
+			t.Errorf("status = %q, want skipped (admin.item.next IS item.skip)", got)
+		}
+		if got := env.engine.Phase(); got != PhaseFinale {
+			t.Errorf("phase = %q, want FINALE with no pending item left", got)
+		}
+	})
+
+	t.Run("an english row with no duration is refused as well", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		id := mustUpsertItem(t, env, validEnglishInput())
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+
+		// D-66 refuses to create such a row (english requires duration_ms > 0),
+		// so the only way to reach this state is a row loaded from outside the
+		// validator — a hand-edited file. Mutate the loaded row directly and pin
+		// that the deadline invariant is enforced at the edge that needs it.
+		env.engine.mu.Lock()
+		env.engine.state.items[id].durationMS = 0
+		env.engine.mu.Unlock()
+
+		if err := env.engine.StartItem(id); err == nil {
+			t.Fatal("an english row with no deadline went LIVE: settleDueAtBoot and SettleIfDue would both skip it (WR-02)")
+		}
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
+		}
+	})
+}

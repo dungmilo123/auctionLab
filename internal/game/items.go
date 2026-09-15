@@ -329,6 +329,20 @@ func (e *Engine) StartItem(itemID string) error {
 			// presenter's back (Pitfall 4).
 			return fmt.Errorf("game: item.start %q while item %q is in intro", itemID, e.state.currentItemID)
 		}
+		// WR-02: this phase plays ENGLISH only (D-66 ships dutch/sealed/vickrey
+		// as validated-but-unplayed data), and a run with no wall-clock deadline
+		// can never settle on the clock — the ticker's settle arm and the boot's
+		// resume both require one — so it would sit in LIVE with `Force end` as
+		// its only exit while the English ladder still accepted bids on it (a
+		// Dutch row carries min_increment 0, so `below_minimum` could never
+		// fire). Refuse the edge here: the row stays in intro and the presenter
+		// skips it with `admin.item.next`, which is the documented way out.
+		if it.auctionType != "english" {
+			return fmt.Errorf("game: item %q is %s; only an english auction can go live in this phase", itemID, it.auctionType)
+		}
+		if it.durationMS <= 0 {
+			return fmt.Errorf("game: item %q has duration_ms %d; a live run always needs a wall-clock deadline", itemID, it.durationMS)
+		}
 		if !CanTransition(PhaseItemIntro, PhaseLive) {
 			return fmt.Errorf("game: the machine does not declare ITEM_INTRO → LIVE")
 		}
