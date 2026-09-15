@@ -1,11 +1,11 @@
 package hub
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"log"
 	"net/http"
-	"net/http/httptest"
-	"sort"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,168 +13,50 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// This file is the tracer's transport contract (D-23 / D-47): the three role
-// handshakes, the pre-join guard, the unsupported-command answer and the
-// malformed-frame / oversize paths — every one of them asserted on a real
-// WebSocket, never on a mock (D-43).
+// This file is the transport contract of the real hub (D-23 / D-30 / D-31 /
+// D-43): the three role handshakes, the nickname policy at the socket, the
+// rejection cap, the token ladder, the malformed-frame paths and the
+// cross-origin guard — every one of them asserted on a real WebSocket, never on
+// a mock.
 //
 // The assertions are written against JSON literals rather than the production
 // catalog on purpose (D-24 freezes the wire, not the Go identifiers): renaming
 // a constant must not be able to move this contract silently.
 
-// tracerIOTimeout bounds every read and write so a handler that answers
-// nothing fails the case instead of hanging the package.
-const tracerIOTimeout = 5 * time.Second
-
-// dialTracer starts an httptest server around the tracer handler and dials it
-// with gorilla's DefaultDialer — the Phase 1 idiom (internal/hub/echo_test.go):
-// the real transport, not a mocked connection.
-//
-// Note for the record (Pitfall 12 / T-04-03): the dialer sends no Origin
-// header, so this idiom cannot exercise gorilla's same-origin CheckOrigin; that
-// path is owned by TestOriginRejectionIsLoggedOncePerInterval.
-func dialTracer(t *testing.T) *websocket.Conn {
-	t.Helper()
-
-	srv := httptest.NewServer(http.HandlerFunc(Echo))
-	t.Cleanup(srv.Close)
-
-	url := "ws" + strings.TrimPrefix(srv.URL, "http")
-	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		status := 0
-		if resp != nil {
-			status = resp.StatusCode
-			_ = resp.Body.Close()
-		}
-		t.Fatalf("dialing %s: %v (HTTP %d)", url, err, status)
-	}
-	t.Cleanup(func() { _ = conn.Close() })
-	return conn
-}
-
-// tracerFrame is one server frame decoded for a contract assertion: the five
-// D-21 fields plus the raw key set of the object that actually arrived, so a
-// case can assert the wire shape literally instead of trusting a Go struct.
-type tracerFrame struct {
-	Type string          `json:"type"`
-	Seq  int64           `json:"seq"`
-	Rev  int64           `json:"rev"`
-	TS   int64           `json:"ts"`
-	Data json.RawMessage `json:"data"`
-
-	keys []string
-}
-
-// tracerWrite sends one text frame and fails the case if the socket refuses it.
-func tracerWrite(t *testing.T, conn *websocket.Conn, payload string) {
-	t.Helper()
-
-	_ = conn.SetWriteDeadline(time.Now().Add(tracerIOTimeout))
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
-		t.Fatalf("writing %s: %v", payload, err)
-	}
-}
-
-// tracerRead reads the next frame and fails the case if none arrives.
-func tracerRead(t *testing.T, conn *websocket.Conn) tracerFrame {
-	t.Helper()
-
-	env, err := tracerReadErr(conn)
-	if err != nil {
-		t.Fatalf("reading a frame: %v", err)
-	}
-	return env
-}
-
-// tracerReadErr reads the next frame, or reports why none arrived. Separate
-// from tracerRead so the "the server must stay silent here" paths can assert on
-// the error instead of dying on it.
-func tracerReadErr(conn *websocket.Conn) (tracerFrame, error) {
-	_ = conn.SetReadDeadline(time.Now().Add(tracerIOTimeout))
-	_, raw, err := conn.ReadMessage()
-	if err != nil {
-		return tracerFrame{}, err
-	}
-
-	var env tracerFrame
-	if err := json.Unmarshal(raw, &env); err != nil {
-		return tracerFrame{}, fmt.Errorf("frame is not a JSON object: %v (%s)", err, raw)
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &fields); err != nil {
-		return tracerFrame{}, fmt.Errorf("frame has no key set: %v (%s)", err, raw)
-	}
-	for key := range fields {
-		env.keys = append(env.keys, key)
-	}
-	sort.Strings(env.keys)
-	return env, nil
-}
-
-// tracerData decodes the frame's data object.
-func tracerData(t *testing.T, env tracerFrame) map[string]json.RawMessage {
-	t.Helper()
-
-	var data map[string]json.RawMessage
-	if err := json.Unmarshal(env.Data, &data); err != nil {
-		t.Fatalf("data is not a JSON object: %v (%s)", err, env.Data)
-	}
-	return data
-}
-
-// tracerString reads one string field out of a decoded data object.
-func tracerString(t *testing.T, data map[string]json.RawMessage, key string) string {
-	t.Helper()
-
-	raw, ok := data[key]
-	if !ok {
-		t.Fatalf("data has no %q key: %v", key, data)
-	}
-	var value string
-	if err := json.Unmarshal(raw, &value); err != nil {
-		t.Fatalf("data.%s is not a string: %v (%s)", key, err, raw)
-	}
-	return value
-}
-
-// assertErrorCode pins the typed error contract: error{code:<want>}.
-func assertErrorCode(t *testing.T, env tracerFrame, want string) {
-	t.Helper()
-
-	if env.Type != "error" {
-		t.Fatalf("frame type = %q, want \"error\" (with code %q)", env.Type, want)
-	}
-	if got := tracerString(t, tracerData(t, env), "code"); got != want {
-		t.Fatalf("error code = %q, want %q", got, want)
-	}
-}
-
-// TestHandshakePerRole is the tracer's reason for existing (RT-07 / D-23): each
-// of the three roles reaches hello at seq 1 and then a role snapshot at seq 2,
-// both carrying the same revision because no mutation happened in between.
+// TestHandshakePerRole is the handshake's reason for existing (RT-07 / D-23):
+// each of the three roles reaches hello at seq 1 and then a role snapshot at
+// seq 2, both carrying the same revision because no mutation happened in
+// between.
 func TestHandshakePerRole(t *testing.T) {
 	for _, role := range []string{"player", "screen", "admin"} {
 		t.Run(role, func(t *testing.T) {
-			conn := dialTracer(t)
-			tracerWrite(t, conn, fmt.Sprintf(`{"type":"join","role":%q}`, role))
+			h, _ := newTestHub(t)
+			conn := dialWS(t, h)
 
-			hello := tracerRead(t, conn)
-			if hello.Type != "hello" {
-				t.Fatalf("first frame type = %q, want \"hello\" (D-23: hello answers a join)", hello.Type)
+			joinRequest := fmt.Sprintf(`{"type":"join","role":%q`, role)
+			if role == "player" {
+				joinRequest += `,"nickname":"An"`
 			}
+			joinRequest += "}"
+
+			hello, snapshot := join(t, conn, joinRequest)
 			if hello.Seq != 1 {
 				t.Errorf("hello seq = %d, want 1 (D-21: seq starts at 1 on a fresh connection)", hello.Seq)
 			}
+			// Creating a player is a game mutation, so the player handshake is
+			// the first revision; screen and admin mutate nothing (D-35).
+			wantRev := int64(0)
+			if role == "player" {
+				wantRev = 1
+			}
+			if hello.Rev != wantRev {
+				t.Errorf("hello rev = %d, want %d", hello.Rev, wantRev)
+			}
 			assertEnvelopeKeys(t, hello)
-			if got := tracerString(t, tracerData(t, hello), "role"); got != role {
+			if got := frameString(t, frameData(t, hello), "role"); got != role {
 				t.Errorf("hello role = %q, want %q", got, role)
 			}
 
-			snapshot := tracerRead(t, conn)
-			if snapshot.Type != "state.snapshot" {
-				t.Fatalf("second frame type = %q, want \"state.snapshot\" (D-23: the snapshot follows hello)", snapshot.Type)
-			}
 			if snapshot.Seq != 2 {
 				t.Errorf("snapshot seq = %d, want 2 (D-21: the snapshot is the second frame of the stream)", snapshot.Seq)
 			}
@@ -183,25 +65,214 @@ func TestHandshakePerRole(t *testing.T) {
 					snapshot.Rev, hello.Rev)
 			}
 			assertEnvelopeKeys(t, snapshot)
-			if got := tracerString(t, tracerData(t, snapshot), "phase"); got != "LOBBY" {
+			if got := frameString(t, frameData(t, snapshot), "phase"); got != "LOBBY" {
 				t.Errorf("snapshot phase = %q, want \"LOBBY\" (PLAN.md §6: Phase 2 wires the machine only as far as LOBBY)", got)
+			}
+			// The role is observable in the projection's shape: a player view
+			// carries `me`, the screen's is public, and the admin's is
+			// secret-capable (D-25/D-26).
+			data := frameData(t, snapshot)
+			switch role {
+			case "player":
+				if _, ok := data["me"]; !ok {
+					t.Error("player snapshot has no `me` block; the view must be self-sufficient (D-25)")
+				}
+			case "screen":
+				if _, ok := data["me"]; ok {
+					t.Error("screen snapshot carries a player identity (D-25)")
+				}
+			case "admin":
+				if _, ok := data["sealed_bids"]; !ok {
+					t.Error("admin snapshot has no sealed_bids block; AdminView is secret-capable by design (D-24/D-26)")
+				}
 			}
 		})
 	}
 }
 
+// TestPlayerHelloCarriesIdentity pins D-29's exception: hello is the only
+// message that ever carries a token, and only the token of the player it is
+// addressed to. Screen and admin handshakes carry no identity at all.
+func TestPlayerHelloCarriesIdentity(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	player := dialWS(t, h)
+	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)
+	data := frameData(t, hello)
+
+	id := frameString(t, data, "player")
+	if id == "" {
+		t.Error("player hello has no player id (D-23: a player handshake carries the identity)")
+	}
+	token := frameString(t, data, "token")
+	if len(token) != 64 {
+		t.Errorf("player hello token = %q (%d chars), want 64 hex characters (D-29)", token, len(token))
+	}
+	if got := frameString(t, data, "nickname"); got != "An" {
+		t.Errorf("player hello nickname = %q, want %q", got, "An")
+	}
+
+	for _, role := range []string{"screen", "admin"} {
+		conn := dialWS(t, h)
+		env, _ := join(t, conn, fmt.Sprintf(`{"type":"join","role":%q}`, role))
+		if _, ok := frameData(t, env)["token"]; ok {
+			t.Errorf("%s hello carries a token; only a player handshake may (D-29)", role)
+		}
+		if _, ok := frameData(t, env)["player"]; ok {
+			t.Errorf("%s hello carries a player id; screen and admin have no identity (D-23)", role)
+		}
+	}
+}
+
+// TestJoinRejectsDuplicateNickname pins SESS-01/D-28 at the socket: uniqueness
+// is decided on the normalized, case-folded key, and a rejection is answered
+// with the typed error instead of a broken connection.
+func TestJoinRejectsDuplicateNickname(t *testing.T) {
+	h, engine := newTestHub(t)
+
+	holder := dialWS(t, h)
+	first, _ := join(t, holder, `{"type":"join","role":"player","nickname":"An"}`)
+	firstID := frameString(t, frameData(t, first), "player")
+
+	dup := dialWS(t, h)
+	// Whitespace padding and case folding are the same identity (D-27/D-28).
+	writeFrame(t, dup, `{"type":"join","role":"player","nickname":"  an "}`)
+	assertErrorCode(t, readFrame(t, dup), CodeNicknameTaken)
+
+	if got := engine.PlayerCount(); got != 1 {
+		t.Fatalf("player count = %d after a rejected join, want 1 (the collision must not create a row)", got)
+	}
+
+	// The rejected socket is still usable for a corrected nickname (D-23).
+	second, snapshot := join(t, dup, `{"type":"join","role":"player","nickname":"Binh"}`)
+	secondID := frameString(t, frameData(t, second), "player")
+	if secondID == firstID {
+		t.Error("the corrected join reused the first player's id")
+	}
+	if got := meOf(t, snapshot); got.ID != secondID {
+		t.Errorf("snapshot me.id = %q, want the hello's player %q", got.ID, secondID)
+	}
+	if got := engine.PlayerCount(); got != 2 {
+		t.Errorf("player count = %d after a successful retry, want 2", got)
+	}
+}
+
+// TestJoinFailureKeepsSocketOpen pins D-23's retry loop: a rejected join does
+// not consume the connection, so the client fixes the nickname and retries
+// without a reload. (Research Pitfall 13: the cap counts REJECTIONS, not
+// attempts.)
+func TestJoinFailureKeepsSocketOpen(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	holder := dialWS(t, h)
+	join(t, holder, `{"type":"join","role":"player","nickname":"An"}`)
+
+	conn := dialWS(t, h)
+	for attempt := 1; attempt <= 3; attempt++ {
+		writeFrame(t, conn, `{"type":"join","role":"player","nickname":"An"}`)
+		assertErrorCode(t, readFrame(t, conn), CodeNicknameTaken)
+	}
+
+	// Still open, and a valid join succeeds on this very socket.
+	hello, _ := join(t, conn, `{"type":"join","role":"player","nickname":"Binh"}`)
+	if got := frameString(t, frameData(t, hello), "role"); got != "player" {
+		t.Fatalf("hello role = %q, want \"player\" — a retry after a rejection must be served", got)
+	}
+}
+
+// TestJoinFailureCapClosesConnection pins the DoS guard from D-23: rejected
+// joins are capped per connection (a named constant), and the connection that
+// reaches the cap is closed rather than left for another round.
+func TestJoinFailureCapClosesConnection(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	holder := dialWS(t, h)
+	join(t, holder, `{"type":"join","role":"player","nickname":"An"}`)
+
+	conn := dialWS(t, h)
+	for attempt := 1; attempt <= maxRejectedJoins; attempt++ {
+		writeFrame(t, conn, `{"type":"join","role":"player","nickname":"An"}`)
+		env, err := readFrameErr(conn)
+		if err != nil {
+			t.Fatalf("attempt %d of %d: the server closed early (%v); the cap must be reached first",
+				attempt, maxRejectedJoins, err)
+		}
+		assertErrorCode(t, env, CodeNicknameTaken)
+	}
+
+	// The cap was reached: the connection must now end instead of answering.
+	if env, err := readFrameErr(conn); err == nil {
+		t.Fatalf("frame %q after %d rejected joins; want the connection closed (D-23 cap)",
+			env.Type, maxRejectedJoins)
+	}
+}
+
+// TestJoinResolvesByToken pins D-30's ladder end to end: a valid token resumes
+// the same identity and budget, an unknown token with no nickname is
+// token_invalid, and an unknown token with a nickname is a fresh identity whose
+// handshake replaces the stale token.
+func TestJoinResolvesByToken(t *testing.T) {
+	h, engine := newTestHub(t)
+
+	first := dialWS(t, h)
+	hello, snapshot := join(t, first, `{"type":"join","role":"player","nickname":"An"}`)
+	owner := frameString(t, frameData(t, hello), "player")
+	token := frameString(t, frameData(t, hello), "token")
+	wantMe := meOf(t, snapshot)
+
+	t.Run("a valid token resumes the same identity and budget", func(t *testing.T) {
+		resumed := dialWS(t, h)
+		resumedHello, resumedSnapshot := join(t, resumed,
+			fmt.Sprintf(`{"type":"join","role":"player","token":%q}`, token))
+
+		if got := frameString(t, frameData(t, resumedHello), "player"); got != owner {
+			t.Errorf("resumed player = %q, want %q (D-30 (1): the token wins)", got, owner)
+		}
+		if got := frameString(t, frameData(t, resumedHello), "token"); got != token {
+			t.Errorf("resumed token = %q, want the original %q", got, token)
+		}
+		if got := meOf(t, resumedSnapshot); got != wantMe {
+			t.Errorf("resumed me = %+v, want %+v (the resume restores identity and budget)", got, wantMe)
+		}
+		if got := engine.PlayerCount(); got != 1 {
+			t.Errorf("player count = %d after a resume, want 1 (a resume creates nothing)", got)
+		}
+	})
+
+	t.Run("an unknown token with no nickname is token_invalid", func(t *testing.T) {
+		stranger := dialWS(t, h)
+		writeFrame(t, stranger, `{"type":"join","role":"player","token":"deadbeef"}`)
+		assertErrorCode(t, readFrame(t, stranger), CodeTokenInvalid)
+	})
+
+	t.Run("an unknown token with a nickname joins fresh under a new token", func(t *testing.T) {
+		fresh := dialWS(t, h)
+		freshHello, _ := join(t, fresh, `{"type":"join","role":"player","nickname":"Binh","token":"deadbeef"}`)
+		data := frameData(t, freshHello)
+		if got := frameString(t, data, "player"); got == owner {
+			t.Error("a stale token resumed the owner's identity (D-30 (2): the nickname wins)")
+		}
+		if got := frameString(t, data, "token"); got == "deadbeef" {
+			t.Error("the handshake echoed the stale token instead of minting a new one")
+		}
+		if got := engine.PlayerCount(); got != 2 {
+			t.Errorf("player count = %d, want 2", got)
+		}
+	})
+}
+
 // TestPreJoinCommand pins D-23's guard: a command that is not a join is
 // answered with not_joined, and the socket stays open for the client to join.
 func TestPreJoinCommand(t *testing.T) {
-	conn := dialTracer(t)
-	tracerWrite(t, conn, `{"type":"bid.place","amount":1000}`)
-	assertErrorCode(t, tracerRead(t, conn), "not_joined")
+	h, _ := newTestHub(t)
+	conn := dialWS(t, h)
 
-	// The same socket must still be usable: a rejected command is not a
-	// disconnect (D-23 keeps the connection open for the corrected join).
-	tracerWrite(t, conn, `{"type":"join","role":"player"}`)
-	if got := tracerRead(t, conn).Type; got != "hello" {
-		t.Fatalf("frame after the refused command = %q, want \"hello\" — the socket must stay open", got)
+	writeFrame(t, conn, `{"type":"bid.place","amount":1000}`)
+	assertErrorCode(t, readFrame(t, conn), CodeNotJoined)
+
+	writeFrame(t, conn, `{"type":"join","role":"player","nickname":"An"}`)
+	if got := readFrame(t, conn).Type; got != TypeHello {
+		t.Fatalf("frame after the refused command = %q, want %q — the socket must stay open", got, TypeHello)
 	}
 }
 
@@ -209,13 +280,12 @@ func TestPreJoinCommand(t *testing.T) {
 // a later phase is already in the frozen catalog, so it answers the typed
 // unsupported error instead of looking like an unknown message.
 func TestUnsupportedCommand(t *testing.T) {
-	conn := dialTracer(t)
-	tracerWrite(t, conn, `{"type":"join","role":"player"}`)
-	_ = tracerRead(t, conn) // hello
-	_ = tracerRead(t, conn) // state.snapshot
+	h, _ := newTestHub(t)
+	conn := dialWS(t, h)
+	join(t, conn, `{"type":"join","role":"admin"}`)
 
-	tracerWrite(t, conn, `{"type":"admin.item.start","id":"item-1"}`)
-	assertErrorCode(t, tracerRead(t, conn), "unsupported")
+	writeFrame(t, conn, `{"type":"admin.item.start","id":"item-1"}`)
+	assertErrorCode(t, readFrame(t, conn), CodeUnsupported)
 }
 
 // TestBadMessage pins the two malformed-input paths: a frame that is not JSON
@@ -223,10 +293,11 @@ func TestUnsupportedCommand(t *testing.T) {
 // limit terminates the peer instead of buffering it (T-02-05).
 func TestBadMessage(t *testing.T) {
 	t.Run("a frame that is not JSON is answered with bad_message", func(t *testing.T) {
-		conn := dialTracer(t)
-		tracerWrite(t, conn, "this is not json")
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h)
+		writeFrame(t, conn, "this is not json")
 
-		env, err := tracerReadErr(conn)
+		env, err := readFrameErr(conn)
 		if err != nil {
 			t.Fatalf("no frame after a malformed message: %v (D-24 wants error{code:bad_message} on the same socket)", err)
 		}
@@ -234,12 +305,13 @@ func TestBadMessage(t *testing.T) {
 	})
 
 	t.Run("a frame over the 4 KiB limit terminates the peer", func(t *testing.T) {
-		conn := dialTracer(t)
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h)
 
 		// Valid JSON, so the only reason it can be refused is the read limit.
 		oversized := fmt.Sprintf(`{"type":"join","role":"player","pad":%q}`, strings.Repeat("a", 5<<10))
 
-		_ = conn.SetWriteDeadline(time.Now().Add(tracerIOTimeout))
+		_ = conn.SetWriteDeadline(time.Now().Add(testIOTimeout))
 		if err := conn.WriteMessage(websocket.TextMessage, []byte(oversized)); err != nil {
 			// The server may already have closed while the frame was in flight;
 			// that is termination too. The read below is the real assertion.
@@ -249,8 +321,59 @@ func TestBadMessage(t *testing.T) {
 		// The contract is "the payload was not buffered and answered" — not a
 		// specific close code: gorilla's on-limit behaviour (1009, ErrReadLimit)
 		// is an implementation detail this test must not pin.
-		if env, err := tracerReadErr(conn); err == nil {
+		if env, err := readFrameErr(conn); err == nil {
 			t.Fatalf("the server answered an oversized frame with %q; the D-40 read limit is not in effect", env.Type)
 		}
 	})
+}
+
+// TestOriginRejectionIsLoggedOncePerInterval pins the abuse guard (IN-07): a
+// cross-origin handshake is rejected with 403 and its log line is collapsed to
+// one per interval — /ws is unauthenticated, so a scanner must not be able to
+// drive unbounded log writes once the app is published. This is also the one
+// test that exercises gorilla's same-origin CheckOrigin: DefaultDialer sends no
+// Origin header, so every other test here is blind to it.
+func TestOriginRejectionIsLoggedOncePerInterval(t *testing.T) {
+	lastOriginRejectLog.Store(0) // this test owns the package-level gate
+	defer lastOriginRejectLog.Store(0)
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	h, _ := newTestHub(t)
+	srv := newTestServer(t, h)
+
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	for attempt := 1; attempt <= 2; attempt++ {
+		conn, resp, err := websocket.DefaultDialer.Dial(url, http.Header{"Origin": []string{"http://evil.example"}})
+		if conn != nil {
+			_ = conn.Close()
+		}
+		if err == nil {
+			t.Fatalf("attempt %d: cross-origin upgrade succeeded; CheckOrigin is not armed", attempt)
+		}
+		if resp == nil || resp.StatusCode != http.StatusForbidden {
+			status := 0
+			if resp != nil {
+				status = resp.StatusCode
+				_ = resp.Body.Close()
+			}
+			t.Fatalf("attempt %d: HTTP status = %d, want %d", attempt, status, http.StatusForbidden)
+		}
+		_ = resp.Body.Close()
+	}
+
+	// The log call happens in the server handler goroutine, after the 403
+	// reaches this one: wait for the first line, then settle briefly so a
+	// second (buggy) line has time to land before counting.
+	deadline := time.Now().Add(2 * time.Second)
+	for buf.Len() == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond)
+
+	if got := strings.Count(buf.String(), "ws: upgrade failed"); got != 1 {
+		t.Errorf("logged %d upgrade failures for 2 cross-origin attempts, want 1:\n%s", got, buf.String())
+	}
 }

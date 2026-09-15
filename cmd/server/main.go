@@ -74,6 +74,13 @@ func run() error {
 	}
 	log.Printf("game: resumed %s at revision %d with %d player(s)", engine.Phase(), engine.Rev(), engine.PlayerCount())
 
+	// Boot step 3 — the hub. It owns /ws and it IS the engine's fan-out edge:
+	// the engine calls Enqueue with its exclusive lock held after every
+	// committed mutation and every presence change, so the enqueue can never
+	// lose a race with the state it describes (D-33).
+	ws := hub.New(engine)
+	engine.SetPublisher(ws.Enqueue)
+
 	// Boot step 3 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()
 	if err != nil {
@@ -92,7 +99,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
-	mux.HandleFunc("/ws", hub.Echo)
+	mux.HandleFunc("/ws", ws.ServeWS)
 	mux.Handle("/", spaHandler)
 
 	addr := fmt.Sprintf(":%d", *port)

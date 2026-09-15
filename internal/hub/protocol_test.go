@@ -2,7 +2,6 @@ package hub
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 )
 
@@ -21,10 +20,11 @@ import (
 // complete catalog on the wire.
 func TestProtocol(t *testing.T) {
 	t.Run("the envelope carries exactly type/seq/rev/ts/data", func(t *testing.T) {
-		conn := dialTracer(t)
-		tracerWrite(t, conn, `{"type":"join","role":"player"}`)
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h)
+		writeFrame(t, conn, `{"type":"join","role":"screen"}`)
 
-		env := tracerRead(t, conn)
+		env := readFrame(t, conn)
 		assertEnvelopeKeys(t, env)
 		if env.TS <= 0 {
 			t.Errorf("ts = %d, want a positive server millisecond clock (D-21)", env.TS)
@@ -32,11 +32,12 @@ func TestProtocol(t *testing.T) {
 	})
 
 	t.Run("two messages may share one revision", func(t *testing.T) {
-		conn := dialTracer(t)
-		tracerWrite(t, conn, `{"type":"join","role":"player"}`)
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h)
+		writeFrame(t, conn, `{"type":"join","role":"screen"}`)
 
-		first := tracerRead(t, conn)
-		second := tracerRead(t, conn)
+		first := readFrame(t, conn)
+		second := readFrame(t, conn)
 
 		if first.Rev != second.Rev {
 			t.Fatalf("rev %d then %d, want the same revision — one mutation legitimately produces several messages (D-22)",
@@ -124,18 +125,19 @@ func TestProtocol(t *testing.T) {
 			TypeAdminGameReset, TypeAdminConfigUpdate,
 		}
 
-		conn := dialTracer(t)
-		tracerWrite(t, conn, `{"type":"join","role":"admin"}`)
-		_ = tracerRead(t, conn) // hello
-		_ = tracerRead(t, conn) // state.snapshot
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h)
+		writeFrame(t, conn, `{"type":"join","role":"admin"}`)
+		_ = readFrame(t, conn) // hello
+		_ = readFrame(t, conn) // state.snapshot
 
 		for _, kind := range future {
-			tracerWrite(t, conn, fmt.Sprintf(`{"type":%q}`, kind))
-			env := tracerRead(t, conn)
+			writeFrame(t, conn, fmt.Sprintf(`{"type":%q}`, kind))
+			env := readFrame(t, conn)
 			if env.Type != "error" {
 				t.Fatalf("%s: frame type = %q, want \"error\"", kind, env.Type)
 			}
-			if got := tracerString(t, tracerData(t, env), "code"); got != "unsupported" {
+			if got := frameString(t, frameData(t, env), "code"); got != "unsupported" {
 				t.Fatalf("%s: error code = %q, want %q", kind, got, "unsupported")
 			}
 		}
@@ -153,17 +155,4 @@ func TestProtocol(t *testing.T) {
 			t.Errorf("the control-plane marker %q disagrees with the catalog entry %q", tunnelStatusControlPlane, TypeTunnelStatus)
 		}
 	})
-}
-
-// assertEnvelopeKeys pins the exact key set of a frame. Exact, not a superset:
-// D-24's freeze means a renamed or removed field has to be a deliberate edit
-// that breaks this test, and D-21 means a frame without seq/rev is not this
-// protocol at all.
-func assertEnvelopeKeys(t *testing.T, env tracerFrame) {
-	t.Helper()
-
-	want := []string{"data", "rev", "seq", "ts", "type"}
-	if !reflect.DeepEqual(env.keys, want) {
-		t.Fatalf("envelope keys = %v, want exactly %v (D-21/D-24)", env.keys, want)
-	}
 }
