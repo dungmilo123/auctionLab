@@ -235,6 +235,26 @@ func (h *Hub) broadcast(rev int64, typ string, data any) {
 	}
 }
 
+// sendError answers ONE connection with the frozen typed error (D-24). It is
+// the hub's private-error producer, and it takes the engine's exclusive lock for
+// exactly the reason the fan-out runs under it: it writes that connection's seq
+// counter and FIFO, and every producer that touches them must be inside
+// engine.mu (D-21/D-33 — the registry read is lock-free, so the lock is the only
+// thing that makes `c.seq++` race-free). A read pump that enqueued on its own
+// could hand the same seq to two different messages, and the browser gate would
+// silently discard the second as a duplicate (GAP 1).
+//
+// A private answer is not a state event: it carries the CURRENT revision and
+// never bumps it (D-35). Like every other enqueue it is non-blocking, so a
+// client that cannot keep up loses the frame and is fenced for repair rather
+// than stalling the room (D-41/T-02-10).
+func (h *Hub) sendError(c *client, code, message string) {
+	_ = h.engine.Section(func(v game.View) error {
+		c.enqueue(v.Rev(), TypeError, errorPayload{Code: code, Message: message})
+		return nil
+	})
+}
+
 // recover is the consumer half of D-41's fence, run by the connection's writer
 // when a producer has dropped a message.
 //

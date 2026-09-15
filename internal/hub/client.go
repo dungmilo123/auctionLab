@@ -370,10 +370,16 @@ func (c *client) enqueueLocked(rev int64, typ string, data any, recovery bool) b
 	}
 }
 
-// sendError writes the frozen typed error (D-24) at this connection's current
-// revision: a private answer is not a state event and must never move rev.
+// sendError answers this connection with the frozen typed error (D-24). It
+// delegates to the hub's lock-held producer: the read pump must never touch this
+// connection's seq counter or FIFO itself, or a private error could race the
+// mutation fan-out into a duplicate seq that the client's gate would then
+// discard as stale (D-21/D-33, GAP 1).
+//
+// A private answer is not a state event: it carries the current revision and
+// never bumps it (D-35).
 func (c *client) sendError(code, message string) {
-	c.enqueue(c.rev.Load(), TypeError, errorPayload{Code: code, Message: message})
+	c.hub.sendError(c, code, message)
 }
 
 // writePump is the ONLY writer of application envelopes on this connection. It
