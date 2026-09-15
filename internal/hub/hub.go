@@ -279,9 +279,12 @@ func (h *Hub) recover(c *client) {
 	_ = h.engine.Section(func(v game.View) error {
 		if c.enqueueLocked(v.Rev(), TypeStateSnapshot, c.snapshot(v), true) {
 			c.fence.Store(false) // no producer can interleave: the lock is held
+			// A dropped snapshot is not a repair: the fence stays armed and the
+			// writer retries, so only the enqueue that actually succeeded may
+			// count as a resync (D-41's accounting is what a health panel reads).
+			c.resyncN.Add(1)
+			h.resyncs.Add(1)
 		}
-		c.resyncN.Add(1)
-		h.resyncs.Add(1)
 		return nil
 	})
 }
