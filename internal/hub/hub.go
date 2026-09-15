@@ -296,9 +296,14 @@ func (h *Hub) applyResync(c *client) {
 	c.wantsResync.Store(false)
 
 	_ = h.engine.Section(func(v game.View) error {
-		c.enqueue(v.Rev(), TypeStateSnapshot, c.snapshot(v))
-		c.resyncN.Add(1)
-		h.resyncs.Add(1)
+		if c.enqueueLocked(v.Rev(), TypeStateSnapshot, c.snapshot(v), false) {
+			// A dropped snapshot is not a repair (recover's rule): only the
+			// enqueue that delivered one may count. This drop has already armed
+			// the fence, so the writer repairs through recover — which counts
+			// the repair once, on success.
+			c.resyncN.Add(1)
+			h.resyncs.Add(1)
+		}
 		return nil
 	})
 }
