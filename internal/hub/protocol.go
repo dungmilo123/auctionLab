@@ -1,5 +1,5 @@
 // Package hub owns the WebSocket surface: the frozen wire protocol, the
-// per-connection policies and (from plan 02-03) the registry and fan-out.
+// per-connection policies and the connection registry with its fan-out.
 //
 // # Why seq and rev are two different numbers
 //
@@ -47,6 +47,26 @@ const (
 	RoleAdmin  = "admin"
 )
 
+// # D-24 freeze (final, end of Phase 2)
+//
+// Everything below is FROZEN. Later phases may add message types, error codes
+// and optional payload fields. Later phases may NOT rename, remove or repurpose
+// a field, a type or a code, and may not change what a frozen value means on the
+// wire.
+//
+// The freeze is not a comment: it is enforced by two tests, and any change to
+// the catalog has to pass through them deliberately.
+//
+//   - protocol_test.go#TestProtocol compares every constant against the literal
+//     it publishes, so a renamed identifier or a changed value fails there.
+//   - protocol_test.go#TestProtocolFreeze compares the inventory below against
+//     the pinned literal list, so a removal fails and an addition has to be
+//     registered here rather than arriving silently.
+//
+// Adding a type is therefore a two-line edit (append the constant, append it
+// here) plus the test's pinned list — which is exactly the "additive only"
+// contract D-24 promises the client and every later phase.
+//
 // Message types — the complete catalog, defined NOW even where the behaviour
 // lands in a later phase (D-24). An unimplemented command answers
 // error{code: CodeUnsupported} rather than looking like an unknown message.
@@ -96,6 +116,61 @@ const (
 	CodeNotAuthorized   = "not_authorized" // wired in Phase 4 (ADMN-04)
 )
 
+// frozenCatalog is the D-24 freeze made checkable: every message type this
+// protocol publishes, client→server first, then server→client, in catalog
+// order.
+//
+// It is an array rather than a slice so nothing in the package can append to it
+// by accident. The protocol_test.go freeze test asserts it equals the pinned
+// literal list exactly: a rename or a removal fails there, and an addition —
+// the one edit D-24 permits — has to be appended here and in the test, which is
+// what makes a wider wire surface a deliberate act instead of a silent one.
+//
+// Later phases APPEND. They never reorder and never delete.
+var frozenCatalog = [...]string{
+	// client → server
+	TypeJoin,
+	TypeResync,
+	TypeBidPlace,
+	TypeDutchAccept,
+	TypeSealedSubmit,
+	TypeAdminItemUpsert,
+	TypeAdminItemDelete,
+	TypeAdminItemReorder,
+	TypeAdminItemStart,
+	TypeAdminItemForceEnd,
+	TypeAdminItemNext,
+	TypeAdminGameReset,
+	TypeAdminConfigUpdate,
+	// server → client
+	TypeHello,
+	TypeStateSnapshot,
+	TypePhaseChanged,
+	TypeItemIntro,
+	TypeItemLive,
+	TypePriceTick,
+	TypeBidAccepted,
+	TypeBidRejected,
+	TypeSealedReceived,
+	TypeItemSettled,
+	TypeLeaderboard,
+	TypeFinale,
+	TypeTunnelStatus,
+	TypeError,
+}
+
+// frozenErrorCodes is the same freeze for the rejection codes: append-only, and
+// pinned literally by protocol_test.go#TestProtocolFreeze.
+var frozenErrorCodes = [...]string{
+	CodeNicknameInvalid,
+	CodeNicknameTaken,
+	CodeTokenInvalid,
+	CodeNotJoined,
+	CodeBadMessage,
+	CodeUnsupported,
+	CodeNotAuthorized,
+}
+
 // tunnel.status is the one control-plane message in this catalog. It is
 // orthogonal to the game revision space: a client must apply it regardless of
 // seq and must NOT feed it through the revision gate — otherwise a tunnel URL
@@ -110,20 +185,8 @@ type errorPayload struct {
 	Message string `json:"message"`
 }
 
-// helloPayload is D-23's hello. Player identity (id and the D-29 token) arrives
-// with 02-02/02-03, when the engine owns identity: D-24 allows adding optional
-// fields, never renaming or removing one.
-type helloPayload struct {
-	Role string `json:"role"`
-	Rev  int64  `json:"rev"`
-}
-
-// snapshotPayload is the skeleton role snapshot. D-25's self-sufficient
-// projection (me, lobby, leaderboard, server time) lands with 02-02's role
-// projections; what exists at this point in the phase is the phase and the
-// revision, and both already travel in the frame.
-type snapshotPayload struct {
-	Role  string `json:"role"`
-	Phase string `json:"phase"`
-	Rev   int64  `json:"rev"`
-}
+// The handshake and role-snapshot payloads are NOT declared here: the wire
+// payloads are game.Hello and the three role projections in
+// internal/game/project.go, which this package enqueues verbatim. 02-01's
+// skeleton stand-ins were removed at the freeze so this file describes only the
+// contract that is actually on the wire.

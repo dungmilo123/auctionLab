@@ -2,6 +2,7 @@ package hub
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -155,4 +156,86 @@ func TestProtocol(t *testing.T) {
 			t.Errorf("the control-plane marker %q disagrees with the catalog entry %q", tunnelStatusControlPlane, TypeTunnelStatus)
 		}
 	})
+}
+
+// TestProtocolFreeze is the D-24 freeze made executable (end of Phase 2).
+//
+// TestProtocol above compares each constant against the literal it publishes.
+// This test is the other half: it treats the message catalog and the error codes
+// as CLOSED sets, compared against literals written by hand here and never
+// derived from production. That is what makes the freeze's three prohibitions
+// real —
+//
+//   - rename: fails TestProtocol (the constant no longer equals its literal) and
+//     the comparison below;
+//   - removal: the inventory in protocol.go stops matching the pinned list here;
+//   - semantic replacement: an entry repurposed to a different literal fails
+//     both tests, and a duplicate literal is caught below.
+//
+// An addition is allowed (D-24) and this test is where it becomes deliberate:
+// the new entry must be appended to frozenCatalog/frozenErrorCodes AND to the
+// pinned lists below, so the wire surface can only widen in a reviewable diff.
+func TestProtocolFreeze(t *testing.T) {
+	frozen := []string{
+		// client → server
+		"join",
+		"resync",
+		"bid.place",
+		"dutch.accept",
+		"sealed.submit",
+		"admin.item.upsert",
+		"admin.item.delete",
+		"admin.item.reorder",
+		"admin.item.start",
+		"admin.item.force_end",
+		"admin.item.next",
+		"admin.game.reset",
+		"admin.config.update",
+		// server → client
+		"hello",
+		"state.snapshot",
+		"phase.changed",
+		"item.intro",
+		"item.live",
+		"price.tick",
+		"bid.accepted",
+		"bid.rejected",
+		"sealed.received",
+		"item.settled",
+		"leaderboard",
+		"finale",
+		"tunnel.status",
+		"error",
+	}
+
+	if got := frozenCatalog[:]; !slices.Equal(got, frozen) {
+		t.Errorf("the frozen message catalog changed:\n got %q\nwant %q\n"+
+			"D-24 forbids renames and removals; an addition must be appended to both lists",
+			got, frozen)
+	}
+
+	seen := make(map[string]int, len(frozen))
+	for _, literal := range frozen {
+		seen[literal]++
+	}
+	for literal, count := range seen {
+		if count > 1 {
+			t.Errorf("the frozen catalog lists %q %d times — one wire value cannot mean two types", literal, count)
+		}
+	}
+
+	codes := []string{
+		"nickname_invalid",
+		"nickname_taken",
+		"token_invalid",
+		"not_joined",
+		"bad_message",
+		"unsupported",
+		"not_authorized",
+	}
+	if got := frozenErrorCodes[:]; !slices.Equal(got, codes) {
+		t.Errorf("the frozen error catalog changed:\n got %q\nwant %q\n"+
+			"D-24 forbids renames and removals; an addition must be appended to both lists",
+			got, codes)
+	}
 }
