@@ -36,7 +36,7 @@ function App() {
   function renderRoute() {
     switch (routeFor(path)) {
       case 'admin':
-        return <AdminView path={path} />
+        return <AdminView />
       case 'screen':
         return <ScreenView path={path} />
       default:
