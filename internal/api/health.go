@@ -33,9 +33,10 @@ func NewHealth(wal bool) http.HandlerFunc {
 
 // NotFoundJSON answers every unknown /api/* path with a JSON 404.
 //
-// It must be registered before the "/" SPA fallback: otherwise a typo'd
-// endpoint would receive the SPA document with HTTP 200 and a broken API would
-// look like a working one.
+// The "/api/" pattern is what keeps a typo'd endpoint from reaching the SPA
+// fallback: without it, "/api/nope" would receive the SPA document with HTTP
+// 200 and a broken API would look like a working one. (Registration order is
+// not the protection — Go 1.22+ ServeMux matches by specificity.)
 func NotFoundJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

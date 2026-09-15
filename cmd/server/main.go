@@ -63,9 +63,11 @@ func run() error {
 		return err
 	}
 
-	// Boot step 3 — registration order matters: the health endpoint first, then
-	// a JSON 404 for every other /api/* path, then /ws, and only then the SPA
-	// catch-all. A catch-all registered first would swallow API and WS traffic.
+	// Boot step 3 — the route table. Go 1.22+ ServeMux matches patterns by
+	// specificity, not registration order, so the "/" fallback cannot swallow
+	// API or WS traffic no matter where it is registered (the real failure mode
+	// of an overlapping pattern is a registration-time panic). What must hold
+	// is that "/api/" and "/ws" stay non-overlapping with the "/" SPA fallback.
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
