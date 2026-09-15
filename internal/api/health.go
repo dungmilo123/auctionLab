@@ -12,7 +12,8 @@ type healthResponse struct {
 
 // NewHealth builds the GET /api/health handler (D-19).
 //
-// `wal` reports the result of the boot assertion that already happened — it is
+// `wal` reports the mode the boot assertion observed on the live handle — the
+// caller passes `store.Pragmas().JournalMode == "wal"`, not a literal. It is
 // never re-probed per request, so a health 200 always means "this process is
 // running on a WAL database".
 func NewHealth(wal bool) http.HandlerFunc {

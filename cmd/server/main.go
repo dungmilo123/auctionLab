@@ -46,7 +46,12 @@ func run() error {
 		return err
 	}
 	defer func() { _ = st.Close() }()
-	log.Printf("sqlite: opened %s (journal_mode=wal, busy_timeout=5000, foreign_keys=1)", dbPath)
+
+	// The boot log reports the state the assertion actually observed, not what
+	// the DSN intends — same source /api/health is built from below.
+	pragmas := st.Pragmas()
+	log.Printf("sqlite: opened %s (journal_mode=%s, busy_timeout=%dms, foreign_keys=%t)",
+		dbPath, pragmas.JournalMode, pragmas.BusyTimeout, pragmas.ForeignKeys)
 
 	// Boot step 2 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()
@@ -62,7 +67,7 @@ func run() error {
 	// a JSON 404 for every other /api/* path, then /ws, and only then the SPA
 	// catch-all. A catch-all registered first would swallow API and WS traffic.
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/health", api.NewHealth(true))
+	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
 	mux.HandleFunc("/ws", hub.Echo)
 	mux.Handle("/", spaHandler)

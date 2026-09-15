@@ -67,6 +67,17 @@ func TestOpen(t *testing.T) {
 	if foreignKeys != 1 {
 		t.Errorf("foreign_keys = %d, want 1", foreignKeys)
 	}
+
+	// The recorded state must be the observed state: the boot log and
+	// /api/health read from Pragmas(), so a mismatch here is the IN-01 trap —
+	// a report that can drift away from the live handle's configuration.
+	if got := st.Pragmas(); got != (PragmaState{
+		JournalMode: mode,
+		BusyTimeout: busyTimeout,
+		ForeignKeys: foreignKeys == 1,
+	}) {
+		t.Errorf("Pragmas() = %+v, want the state observed directly above", got)
+	}
 }
 
 // TestOpenUnwritablePath pins the fail-hard boot path: sql.Open is lazy, so the
