@@ -174,3 +174,98 @@ func TestEcho(t *testing.T) {
 		}
 	})
 }
+
+// TestEchoKeepalive pins the liveness mechanism (AGENTS.md §4 / WR-01) with
+// timings small enough to observe: the server pings, a peer that answers the
+// pings stays connected past the pong window, and a peer that stops answering
+// is reclaimed instead of holding the handler goroutine forever.
+func TestEchoKeepalive(t *testing.T) {
+	// The mechanism is under test, not the Phase 2 numbers.
+	ka := keepalive{pongWait: 500 * time.Millisecond, pingPeriod: 100 * time.Millisecond}
+
+	dial := func(t *testing.T, tune func(*websocket.Conn)) *websocket.Conn {
+		t.Helper()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			echo(w, r, ka)
+		}))
+		t.Cleanup(srv.Close)
+
+		url := "ws" + strings.TrimPrefix(srv.URL, "http")
+		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+		if err != nil {
+			t.Fatalf("dialing %s: %v", url, err)
+		}
+		t.Cleanup(func() { _ = conn.Close() })
+		if tune != nil {
+			tune(conn)
+		}
+		return conn
+	}
+
+	t.Run("pings keep a healthy silent peer connected past the pong window", func(t *testing.T) {
+		conn := dial(t, nil)
+
+		// The client must be reading for gorilla to service the server's pings
+		// (control frames are handled on the read path) and answer them with a
+		// pong — what a browser does natively.
+		echoes := make(chan []byte, 4)
+		go func() {
+			for {
+				_, raw, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+				echoes <- raw
+			}
+		}()
+
+		// Longer than the pong window and with no application traffic: without
+		// the ping/pong refresh the read deadline would already have fired.
+		time.Sleep(2 * ka.pongWait)
+
+		probe := []byte(`{"probe":"still-alive"}`)
+		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		if err := conn.WriteMessage(websocket.TextMessage, probe); err != nil {
+			t.Fatalf("writing after %v of silence: %v", 2*ka.pongWait, err)
+		}
+
+		select {
+		case raw := <-echoes:
+			var env Envelope
+			if err := json.Unmarshal(raw, &env); err != nil {
+				t.Fatalf("decoding the echo: %v", err)
+			}
+			if string(env.Data) != string(probe) {
+				t.Fatalf("data = %s, want the probe %s", env.Data, probe)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("no echo after the pong window: the server dropped a live, ponging peer")
+		}
+	})
+
+	t.Run("a peer that stops answering pings is reclaimed", func(t *testing.T) {
+		conn := dial(t, func(c *websocket.Conn) {
+			// Read (so the pings are processed) but never pong: a suspended
+			// phone that still holds the socket open behaves exactly like this.
+			c.SetPingHandler(func(string) error { return nil })
+		})
+
+		errc := make(chan error, 1)
+		go func() {
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					errc <- err
+					return
+				}
+			}
+		}()
+
+		select {
+		case err := <-errc:
+			t.Logf("server closed the silent peer after the pong window: %v", err)
+		case <-time.After(10 * ka.pongWait):
+			t.Fatal("a peer that never ponged is still connected; the read deadline is not enforced")
+		}
+	})
+}

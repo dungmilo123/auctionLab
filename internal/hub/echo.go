@@ -27,9 +27,25 @@ type Envelope struct {
 const (
 	// readLimit caps a single client frame at 4 KiB (V5 input validation).
 	readLimit = 4 << 10
-	// writeWait bounds a single envelope write.
+	// writeWait bounds a single envelope or control-frame write.
 	writeWait = 5 * time.Second
 )
+
+// keepalive holds one connection's liveness timings. The mechanism (read
+// deadline + pong refresh + ping ticker) belongs here, with the socket that
+// reads; ROADMAP defers the final numbers to Phase 2, which is why the values
+// are parameters rather than constants.
+type keepalive struct {
+	pongWait   time.Duration // silence longer than this means the peer is gone
+	pingPeriod time.Duration // ping cadence; must be shorter than pongWait
+}
+
+// defaultKeepalive follows AGENTS.md §4: ping at 90% of the pong window, so a
+// live peer always refreshes the deadline before it expires.
+var defaultKeepalive = keepalive{
+	pongWait:   60 * time.Second,
+	pingPeriod: 54 * time.Second, // 90% of pongWait
+}
 
 // upgrader leaves CheckOrigin nil on purpose: gorilla's default requires the
 // Origin host to equal the Host header, and that same-origin check is this
@@ -42,8 +58,16 @@ var upgrader = websocket.Upgrader{
 
 // Echo upgrades GET /ws and answers exactly one echo envelope per received
 // text frame. Non-text frames and payloads that are not valid JSON are dropped
-// without a reply. One writer per connection, as gorilla requires.
+// without a reply. One writer per connection, as gorilla requires. Connections
+// are pinged, and a peer that stops answering pongs is disconnected
+// (AGENTS.md §4) — a vanished phone must not hold a goroutine forever.
 func Echo(w http.ResponseWriter, r *http.Request) {
+	echo(w, r, defaultKeepalive)
+}
+
+// echo is Echo with the liveness timings injected, so the keepalive behaviour
+// can be pinned by tests without waiting out a real pong window.
+func echo(w http.ResponseWriter, r *http.Request, ka keepalive) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// Upgrade already wrote an HTTP error response.
@@ -52,7 +76,38 @@ func Echo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close() }()
 
+	// Liveness (AGENTS.md §4 / threat V5): a peer that vanishes without a close
+	// frame — phone suspended, Wi-Fi drop, NAT rebind — would otherwise hold
+	// this goroutine and its file descriptor until the kernel's TCP keep-alive
+	// gives up. The read deadline is the enforcement; the pong handler is what
+	// spares a healthy but silent peer from it.
 	conn.SetReadLimit(readLimit)
+	_ = conn.SetReadDeadline(time.Now().Add(ka.pongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(ka.pongWait))
+	})
+
+	// Ping from a single ticker goroutine: WriteControl is the one write
+	// gorilla allows concurrently with the envelope writer in the loop below.
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		ticker := time.NewTicker(ka.pingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(writeWait)); err != nil {
+					// Unreachable peer: close so the blocked read returns now
+					// instead of at the deadline.
+					_ = conn.Close()
+					return
+				}
+			}
+		}
+	}()
 
 	for {
 		messageType, payload, err := conn.ReadMessage()
