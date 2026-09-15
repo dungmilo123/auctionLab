@@ -2,15 +2,9 @@ package store
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 	"time"
 )
-
-// errPendingImplementation is the RED contract's placeholder. Go cannot compile
-// a test that names a package member which does not exist yet, so this commit
-// declares the schema/load/commit API the tests bind to and the GREEN commit
-// replaces every returning statement with the real implementation.
-var errPendingImplementation = errors.New("store: not implemented yet (RED contract)")
 
 // UserVersion is D-36's schema version. The bootstrap is one idempotent DDL
 // pass plus this pragma — deliberately no migration framework, because the
@@ -18,21 +12,136 @@ var errPendingImplementation = errors.New("store: not implemented yet (RED contr
 // disposable (delete auction.db to reset).
 const UserVersion = 1
 
-// Schema applies the complete PLAN.md §5 schema (D-36). It must be idempotent:
-// a second boot against an existing file changes nothing and still reports
-// user_version 1.
+// gameConfigJSON is the bootstrapped game row's default configuration (D-36 /
+// PLAN.md §5: starting_budget 1.000.000 VND). It is written by the schema
+// bootstrap, so this is the one place the default lives.
+const gameConfigJSON = `{"starting_budget":1000000,"currency":"VND"}`
+
+// schemaDDL is PLAN.md §5 in full, plus D-28's nickname_key column and its
+// UNIQUE index. Every statement is CREATE … IF NOT EXISTS: the pass runs on
+// every boot, and the second run must change nothing.
 //
-// RED contract declaration: the DDL body lands with the GREEN commit, which is
-// what makes TestSchema fail first.
+// `nickname` keeps PLAN §5's plain UNIQUE constraint; `nickname_key` carries
+// the case-insensitive one that actually decides (SQLite's NOCASE folds ASCII
+// only, which is not enough for Vietnamese names — D-28).
+//
+// One Exec, all statements: SQLite applies a multi-statement script
+// atomically enough for boot, and the research probe verified the whole set is
+// idempotent in a single call.
+const schemaDDL = `
+CREATE TABLE IF NOT EXISTS players (
+  id           TEXT PRIMARY KEY,
+  nickname     TEXT NOT NULL UNIQUE,
+  nickname_key TEXT NOT NULL,
+  token        TEXT NOT NULL UNIQUE,
+  budget       INTEGER NOT NULL,
+  total_value  INTEGER NOT NULL DEFAULT 0,
+  joined_at    INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_players_nickname_key ON players(nickname_key);
+
+CREATE TABLE IF NOT EXISTS items (
+  id                    TEXT PRIMARY KEY,
+  order_index           INTEGER NOT NULL,
+  name                  TEXT NOT NULL,
+  description           TEXT,
+  image_url             TEXT,
+  auction_type          TEXT NOT NULL,
+  truth_value           INTEGER NOT NULL,
+  hint_min              INTEGER,
+  hint_max              INTEGER,
+  start_price           INTEGER NOT NULL,
+  min_increment         INTEGER,
+  floor_price           INTEGER,
+  decrement_step        INTEGER,
+  decrement_interval_ms INTEGER,
+  duration_ms           INTEGER,
+  anti_snipe_mode       TEXT DEFAULT 'disabled',
+  anti_snipe_window_ms  INTEGER,
+  max_extensions        INTEGER,
+  status                TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS sealed_bids (
+  item_id      TEXT NOT NULL REFERENCES items(id),
+  player_id    TEXT NOT NULL REFERENCES players(id),
+  amount       INTEGER NOT NULL,
+  submitted_at INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  PRIMARY KEY (item_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS bids (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id    TEXT NOT NULL REFERENCES items(id),
+  player_id  TEXT NOT NULL REFERENCES players(id),
+  amount     INTEGER NOT NULL,
+  kind       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auction_runtime (
+  item_id     TEXT PRIMARY KEY REFERENCES items(id),
+  started_at  INTEGER NOT NULL,
+  deadline_at INTEGER,
+  settled_at  INTEGER,
+  revision    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS game (
+  id              INTEGER PRIMARY KEY CHECK (id = 1),
+  phase           TEXT NOT NULL,
+  current_item_id TEXT REFERENCES items(id),
+  revision        INTEGER NOT NULL,
+  config_json     TEXT NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  type         TEXT NOT NULL,
+  payload_json TEXT,
+  created_at   INTEGER NOT NULL
+);
+`
+
+// Schema applies the complete PLAN.md §5 schema (D-36) and asserts
+// user_version 1. It is idempotent: a second call on an existing file changes
+// nothing and still reports 1.
+//
+// This is the only place in the project where DDL or PRAGMA statements may
+// live (research Pitfall 12): the mutation path executes no schema work.
 func Schema(db *sql.DB) error {
-	return errPendingImplementation
+	if _, err := db.Exec(schemaDDL); err != nil {
+		return fmt.Errorf("store: applying schema: %w", err)
+	}
+
+	// PRAGMA cannot be parameterized; UserVersion is a compile-time constant.
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", UserVersion)); err != nil {
+		return fmt.Errorf("store: setting user_version: %w", err)
+	}
+	var got int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+		return fmt.Errorf("store: reading user_version: %w", err)
+	}
+	if got != UserVersion {
+		return fmt.Errorf("store: user_version is %d after the bootstrap, want %d", got, UserVersion)
+	}
+	return nil
 }
 
-// Bootstrap inserts the single `game` row if it does not exist (D-36:
-// phase LOBBY, revision 0, config_json {"starting_budget":1000000,"currency":"VND"}).
-//
-// RED contract declaration: implemented in the GREEN commit so TestSchema's
-// boot-row case fails first.
+// Bootstrap inserts the single `game` row if it does not exist (D-36). The
+// phase literal is the frozen wire value (game.PhaseLobby); the engine parses
+// it into a game.Phase on load.
 func Bootstrap(db *sql.DB, now time.Time) error {
-	return errPendingImplementation
+	const insert = `
+INSERT INTO game (id, phase, current_item_id, revision, config_json, updated_at)
+VALUES (1, 'LOBBY', NULL, 0, ?, ?)
+ON CONFLICT(id) DO NOTHING`
+
+	if _, err := db.Exec(insert, gameConfigJSON, now.UnixMilli()); err != nil {
+		return fmt.Errorf("store: bootstrapping the game row: %w", err)
+	}
+	return nil
 }

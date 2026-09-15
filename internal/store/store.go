@@ -57,6 +57,14 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("sqlite open %q: %w", path, err)
 	}
 
+	// SQLite has one writer. The engine lock already serializes mutations, but
+	// boot load, health probes and any future read path can hold a second
+	// connection, and two concurrent writers turn into SQLITE_BUSY — which
+	// D-34 escalates to a process exit mid-auction (research Pitfall 10). One
+	// pooled connection removes the class entirely; the DSN's busy_timeout stays
+	// as the second line of defence.
+	db.SetMaxOpenConns(1)
+
 	var mode string
 	if err := db.QueryRow("PRAGMA journal_mode").Scan(&mode); err != nil {
 		_ = db.Close()

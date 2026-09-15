@@ -12,6 +12,7 @@ import (
 
 	"auctionlab"
 	"auctionlab/internal/api"
+	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
 	"auctionlab/internal/store"
 )
@@ -53,7 +54,27 @@ func run() error {
 	log.Printf("sqlite: opened %s (journal_mode=%s, busy_timeout=%dms, foreign_keys=%t)",
 		dbPath, pragmas.JournalMode, pragmas.BusyTimeout, pragmas.ForeignKeys)
 
-	// Boot step 2 — the embedded SPA must be usable before the listener starts.
+	// Boot step 2 — the complete PLAN.md §5 schema, then the engine that owns
+	// every mutation (D-36/D-39). A commit failure exits the process instead of
+	// continuing on state the database does not have: an auction must never
+	// silently diverge from what a crash would reload (D-34).
+	if err := store.Schema(st.DB); err != nil {
+		return err
+	}
+	engine, err := game.New(game.Config{
+		Store: st,
+		Now:   time.Now,
+		Fatal: func(err error) {
+			log.Printf("fatal: unrecoverable game state: %v", err)
+			os.Exit(1)
+		},
+	})
+	if err != nil {
+		return err
+	}
+	log.Printf("game: resumed %s at revision %d with %d player(s)", engine.Phase(), engine.Rev(), engine.PlayerCount())
+
+	// Boot step 3 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()
 	if err != nil {
 		return fmt.Errorf("embedded SPA: %w", err)
