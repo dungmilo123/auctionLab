@@ -22,6 +22,10 @@
 // DO NOT collapse these two fields. Add fields and types; never rename,
 // repurpose, or remove them — this file is frozen at the end of Phase 2 (D-24),
 // and every later client, loadtest bot and test binds to it.
+//
+// D-21 also supersedes PLAN.md §8's original envelope wording, which used a
+// single `seq` that WAS the game revision. §8's message and error tables still
+// describe this protocol faithfully; its "seq = revision" reading does not.
 package hub
 
 import "encoding/json"
