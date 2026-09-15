@@ -228,6 +228,12 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
     socket.onclose = (event: CloseEvent) => {
       if (current !== socket) return // a deliberate close already ran
       current = null
+      // `superseded` is a status, not a terminal state: the token is kept, so
+      // the next visibility/pageshow runs D-45's resume and reopens with it —
+      // which means two tabs of one identity take turns superseding each other,
+      // each time a backgrounded one comes forward. No token leaks and no data
+      // is lost; making the superseded state terminal is Phase 7's reconnect
+      // policy (RECN-01/02).
       handlers.onStatus(event.code === SUPERSEDED_CLOSE_CODE ? 'superseded' : 'lost')
     }
 
