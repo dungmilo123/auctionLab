@@ -179,6 +179,14 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
   function connect(): void {
     if (closed) return
 
+    // D-21/GAP 2: `seq` is THIS connection's stream position and the server
+    // restarts it at 1 on every accepted upgrade, so the gate is one per
+    // connection. Reusing the dead socket's high-water mark would classify the
+    // replacement's hello — and every later sibling at or below that mark — as
+    // a duplicate and silently drop it: the resume would look alive while its
+    // stream stayed frozen.
+    gate = resetStream()
+
     // Detach and close the connection being replaced BEFORE opening its
     // successor, so a late event from the old socket can never be mistaken for
     // the new one's (the StrictMode double-invoke and the 4001 case).
