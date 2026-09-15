@@ -37,6 +37,7 @@ func TestPhaseMachine(t *testing.T) {
 		{"LIVE", "SETTLED", true},          // deadline reached, or admin item.force_end
 		{"SETTLED", "ITEM_INTRO", true},    // admin item.next with items remaining
 		{"SETTLED", "FINALE", true},        // admin item.next with no item left
+		{"FINALE", "ITEM_INTRO", true},     // D-65: an item added during the finale may still be started
 		// legal — game.reset returns any phase to LOBBY
 		{"ITEM_INTRO", "LOBBY", true},
 		{"LIVE", "LOBBY", true},
@@ -51,7 +52,6 @@ func TestPhaseMachine(t *testing.T) {
 		{"LIVE", "ITEM_INTRO", false},
 		{"LIVE", "FINALE", false},
 		{"SETTLED", "LIVE", false},
-		{"FINALE", "ITEM_INTRO", false},
 		{"FINALE", "LIVE", false},
 		{"FINALE", "SETTLED", false},
 		{"PAUSED", "LIVE", false},  // §6 has no PAUSED state

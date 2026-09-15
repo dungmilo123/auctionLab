@@ -130,6 +130,14 @@ type BidRejection struct {
 	Amount     int64  `json:"amount"`
 }
 
+// PhaseChanged is the D-57 payload of `phase.changed`: the new phase plus the
+// current public item — an explicit null when there is none, as in FINALE — so
+// the frame alone is enough for a client to patch its view.
+type PhaseChanged struct {
+	Phase string      `json:"phase"`
+	Item  *PublicItem `json:"item"`
+}
+
 // ScreenView is the projector's view: public state only. Before SETTLED it
 // carries no truth_value, and it never carries an identity or a token (D-25).
 type ScreenView struct {
