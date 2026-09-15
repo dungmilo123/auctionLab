@@ -219,9 +219,11 @@ type Engine struct {
 }
 
 // New loads the persisted state and returns the engine (D-39). The boot order
-// is Bootstrap → LoadGame → LoadPlayers: a fresh file gets the single LOBBY row,
-// an existing one is rebuilt into memory unchanged, and every load error is
-// fatal rather than a silently empty lobby.
+// is Bootstrap → LoadGame → LoadPlayers → the auction half (D-62): items, the
+// runtime row and the bid trail are rebuilt, the phase↔item↔runtime triple is
+// validated, and a deadline that passed while the process was down settles HERE
+// — before main builds the mux, before the hub exists and long before Listen.
+// Every load error is fatal rather than a silently empty lobby.
 func New(cfg Config) (*Engine, error) {
 	if cfg.Store == nil {
 		return nil, errors.New("game: Config.Store is required")
@@ -291,6 +293,17 @@ func New(cfg Config) (*Engine, error) {
 
 	e.state = s
 	e.revision.Store(s.revision)
+
+	// Phase 3 (D-62): the auction half of the resume. Loading, validating and —
+	// when the wall clock already passed the deadline — settling all happen
+	// before this function returns, so no caller can observe a LIVE auction
+	// that is due (RT-05).
+	if err := e.loadAuctionState(); err != nil {
+		return nil, err
+	}
+	if err := e.settleDueAtBoot(); err != nil {
+		return nil, err
+	}
 
 	// D-37: a restart starts with every player disconnected. Presence is
 	// in-memory state, and nobody can be connected to a process that has not
@@ -694,6 +707,28 @@ func itemRow(it *item) store.ItemRow {
 		DurationMS: opt(it.durationMS), AntiSnipeMode: it.antiSnipeMode,
 		AntiSnipeWindowMS: opt(it.antiSnipeWindowMS), MaxExtensions: opt(it.maxExtensions),
 		Status: it.status,
+	}
+}
+
+// itemFromRow is itemRow's inverse: a persisted row becomes the in-memory value
+// struct with every SQL NULL normalized to 0, which is the same convention
+// itemRow writes back as SQL NULL. Boot is the only caller (D-62).
+func itemFromRow(row store.ItemRow) *item {
+	deref := func(v *int64) int64 {
+		if v == nil {
+			return 0
+		}
+		return *v
+	}
+	return &item{
+		id: row.ID, orderIndex: row.OrderIndex, name: row.Name, description: row.Description,
+		imageURL: row.ImageURL, auctionType: row.AuctionType, truthValue: row.TruthValue,
+		hintMin: deref(row.HintMin), hintMax: deref(row.HintMax), startPrice: row.StartPrice,
+		minIncrement: deref(row.MinIncrement), floorPrice: deref(row.FloorPrice),
+		decrementStep: deref(row.DecrementStep), decrementIntervalMS: deref(row.DecrementIntervalMS),
+		durationMS: deref(row.DurationMS), antiSnipeMode: row.AntiSnipeMode,
+		antiSnipeWindowMS: deref(row.AntiSnipeWindowMS), maxExtensions: deref(row.MaxExtensions),
+		status: row.Status,
 	}
 }
 

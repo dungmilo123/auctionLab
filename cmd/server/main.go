@@ -72,7 +72,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("game: resumed %s at revision %d with %d player(s)", engine.Phase(), engine.Rev(), engine.PlayerCount())
+	// D-62: the boot log names the run this process picked up, so an operator
+	// can read the resumed item and deadline without opening the database. A
+	// deadline that passed while the process was down has already settled
+	// inside game.New, which is why this line reports the phase New returned.
+	if itemID, deadline := engine.ResumedAuction(); itemID != "" {
+		log.Printf("game: resumed %s item=%s deadline=%d at revision %d with %d player(s)",
+			engine.Phase(), itemID, deadline, engine.Rev(), engine.PlayerCount())
+	} else {
+		log.Printf("game: resumed %s at revision %d with %d player(s)", engine.Phase(), engine.Rev(), engine.PlayerCount())
+	}
 
 	// Boot step 3 — the hub. It owns /ws and it IS the engine's fan-out edge:
 	// the engine calls Enqueue with its exclusive lock held after every
