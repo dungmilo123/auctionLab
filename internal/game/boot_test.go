@@ -246,6 +246,55 @@ func TestRestartSettlesWhenDue(t *testing.T) {
 	}
 }
 
+// TestBootIgnoresABidFromAPriorRun pins this plan's prohibition: a resumed LIVE
+// auction must never come back with a top bid from a previous run of the same
+// item. The run boundary is `startedAt` (H4/H5), so a persisted bid row older
+// than the current run cannot lead it — the shape a later item replay would
+// otherwise resurrect.
+func TestBootIgnoresABidFromAPriorRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	base := testStart
+
+	first := newTestEnvAt(t, path, &testClock{t: base})
+	an := mustJoin(t, first, "An")
+	binh := mustJoin(t, first, "Bình")
+	itemID := mustUpsertItem(t, first, validEnglishInput())
+	mustOpenLive(t, first, itemID)
+	startedAt := first.runOf(t).startedAt
+	if err := first.store.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+
+	// A bid from the PREVIOUS run of the same item: accepted, persisted, and
+	// older than the run that is now live.
+	st := openTestStore(t, path)
+	if _, err := st.DB.Exec(
+		`INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES (?, ?, ?, 'bid', ?)`,
+		itemID, binh.PlayerID, 999_000, startedAt-1_000,
+	); err != nil {
+		t.Fatalf("writing the prior run's bid row: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+
+	second := newTestEnvAt(t, path, &testClock{t: base.Add(5 * time.Second)})
+	if top, ok := second.topBid(t); ok {
+		t.Fatalf("the resumed run leads with a bid from a prior run: %+v", top)
+	}
+	if got, ok := second.engine.state.currentPrice(); !ok || got != 100_000 {
+		t.Errorf("resumed current price = %d/%t, want the start price 100000 with no run bid", got, ok)
+	}
+
+	// And the ladder still opens at the start price: the stale row is invisible.
+	doc := decodeObject(t, second.engine.Snapshot(RolePlayer, an.PlayerID))
+	item := asObject(t, doc["item"], "item")
+	if item["min_next_bid"] != float64(100_000) {
+		t.Errorf("resumed min_next_bid = %#v, want 100000: a prior run's bid must not raise it", item["min_next_bid"])
+	}
+	mustBid(t, second, an.PlayerID, 100_000)
+}
+
 // TestBootFailsHardOnBrokenRuntime is D-62's fail-hard half (T-03-04): durable
 // state is trusted only after the phase↔item↔runtime triple checks out. A LIVE
 // phase that cannot be reconstructed must abort the boot rather than fabricate a
