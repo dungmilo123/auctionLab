@@ -255,6 +255,58 @@ func main() {
 	}
 }
 
+// newStreamAs starts a stream for one connection role: the same D-21/D-22
+// contract, with the role-specific parts of the handshake and the snapshot
+// (`me` exists only for a player; the admin and screen snapshots have no such
+// block, and the admin hello carries no player id or token).
+//
+// RED stub: the role-aware validation is the behaviour under test.
+func newStreamAs(role string) *stream { return newStream() }
+
+// stringKey reads one string out of a decoded object.
+//
+// RED stub: the accessor is part of the behaviour under test.
+func stringKey(object map[string]json.RawMessage, key string) (string, error) {
+	return "", fmt.Errorf("stringKey(%s): not implemented yet", key)
+}
+
+// itemIDFromSnapshot reads the id of the item an admin snapshot listed.
+//
+// RED stub: the lookup is the behaviour under test.
+func itemIDFromSnapshot(data json.RawMessage) (string, error) {
+	return "", fmt.Errorf("itemIDFromSnapshot: not implemented yet")
+}
+
+// settleInfo is D-67's reveal as the harness reads it off the wire.
+//
+// RED (declaration only): the decoder is the behaviour under test.
+type settleInfo struct {
+	Outcome string `json:"outcome"`
+	Winner  *struct {
+		Nickname string `json:"nickname"`
+	} `json:"winner"`
+	Price       int64 `json:"price"`
+	TruthValue  int64 `json:"truth_value"`
+	BudgetDelta int64 `json:"budget_delta"`
+}
+
+// itemObj extracts the item object a frame carries, whatever its nesting:
+// `phase.changed` nests it under `item` (an explicit null when there is none),
+// while `item.intro`/`item.live`/`item.settled` carry it directly.
+//
+// RED stub: the extraction is the behaviour under test.
+func itemObj(typ string, data json.RawMessage) (map[string]json.RawMessage, error) {
+	return nil, fmt.Errorf("itemObj(%s): not implemented yet", typ)
+}
+
+// settleOf decodes the reveal a settled item carries, or reports that the
+// boundary is intact (no `settle` key at all).
+//
+// RED stub: the boundary check is the behaviour under test.
+func settleOf(item map[string]json.RawMessage) (*settleInfo, error) {
+	return nil, fmt.Errorf("settleOf: not implemented yet")
+}
+
 // resolveTarget picks the first of: positional argument, WS_URL, the default.
 func resolveTarget() string {
 	flag.Usage = func() {
