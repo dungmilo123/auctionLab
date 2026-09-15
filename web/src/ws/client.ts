@@ -100,6 +100,16 @@ function clearStoredToken(): void {
 }
 
 /**
+ * The stream account a socket starts with. D-21 says `seq` is THIS
+ * connection's position and the server restarts it at 1 on every accepted
+ * upgrade, so the gate is one per connection — a replacement socket must never
+ * inherit the dead connection's high-water mark.
+ */
+export function resetStream(): GateState {
+  return initialGateState()
+}
+
+/**
  * Open the player connection. Returns the handle the effect keeps for the
  * lifetime of the screen; `close()` detaches every listener it installed.
  */
