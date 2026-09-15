@@ -1,0 +1,214 @@
+package store
+
+import (
+	"database/sql"
+	"fmt"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// This file locks D-50: the v1 → v2 migration is a guarded, idempotent
+// ALTER TABLE that lives in the same transaction as the version bump, and the
+// schema pass can never lower a version it did not write.
+//
+// The pre-Phase-3 shape is written here as a literal (never derived from
+// schema.go), so the test proves the migration against a file the old binary
+// could actually have produced — exactly what research §1–2 executed.
+
+// v1AuctionRuntimeDDL is PLAN.md §5's `auction_runtime` as shipped at
+// user_version 1: no `extensions_used`, so the migration has real work to do.
+const v1AuctionRuntimeDDL = `
+CREATE TABLE auction_runtime (
+  item_id     TEXT PRIMARY KEY,
+  started_at  INTEGER NOT NULL,
+  deadline_at INTEGER,
+  settled_at  INTEGER,
+  revision    INTEGER NOT NULL
+);`
+
+// openMigrateStore opens a bare handle (schema NOT applied) so the test can
+// write a v1 file by hand first.
+func openMigrateStore(t *testing.T, path string) *Store {
+	t.Helper()
+
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open(%q): %v", path, err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	return st
+}
+
+// setUserVersion writes the pragma directly; PRAGMA cannot be parameterized and
+// every value here is a test literal.
+func setUserVersion(t *testing.T, db *sql.DB, version int) {
+	t.Helper()
+
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+		t.Fatalf("setting user_version = %d: %v", version, err)
+	}
+}
+
+// hasColumn reports whether table carries the named column.
+func hasColumn(t *testing.T, db *sql.DB, table, column string) bool {
+	t.Helper()
+
+	// PRAGMA table_info cannot be parameterized; the names are test literals.
+	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		t.Fatalf("PRAGMA table_info(%s): %v", table, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	found := false
+	for rows.Next() {
+		var (
+			cid, notNull, pk int
+			name, typ        string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			t.Fatalf("scanning table_info(%s): %v", table, err)
+		}
+		if name == column {
+			found = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("reading table_info(%s): %v", table, err)
+	}
+	return found
+}
+
+// TestMigrationV1ToV2 is D-50's contract: a populated v1 file migrates once to
+// user_version 2, the new column is backfilled for the row that existed before
+// the migration, and a second boot does not re-issue the ALTER (a blind second
+// ALTER fails with "duplicate column name", which is NOT a UNIQUE violation and
+// would therefore hit D-34's fatal path — research §1).
+func TestMigrationV1ToV2(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	st := openMigrateStore(t, path)
+
+	// A v1 file with one populated runtime row: the migration must preserve it.
+	if _, err := st.DB.Exec(v1AuctionRuntimeDDL); err != nil {
+		t.Fatalf("writing the v1 auction_runtime DDL: %v", err)
+	}
+	if _, err := st.DB.Exec(
+		`INSERT INTO auction_runtime (item_id, started_at, deadline_at, settled_at, revision)
+		 VALUES ('it-legacy', 111, 222, NULL, 3)`); err != nil {
+		t.Fatalf("inserting the pre-migration runtime row: %v", err)
+	}
+	setUserVersion(t, st.DB, 1)
+
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema on a v1 file: %v", err)
+	}
+
+	t.Run("reports user_version 2", func(t *testing.T) {
+		var got int
+		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+			t.Fatalf("PRAGMA user_version: %v", err)
+		}
+		if got != UserVersion {
+			t.Errorf("user_version = %d, want %d", got, UserVersion)
+		}
+	})
+
+	t.Run("adds extensions_used and backfills the existing row with 0", func(t *testing.T) {
+		if !hasColumn(t, st.DB, "auction_runtime", "extensions_used") {
+			t.Fatal("auction_runtime does not have extensions_used after the migration")
+		}
+		var (
+			startedAt int64
+			extensions int
+		)
+		err := st.DB.QueryRow(
+			`SELECT started_at, extensions_used FROM auction_runtime WHERE item_id = 'it-legacy'`).
+			Scan(&startedAt, &extensions)
+		if err != nil {
+			t.Fatalf("reading the migrated row: %v", err)
+		}
+		if startedAt != 111 {
+			t.Errorf("started_at = %d after the migration, want the pre-migration value 111", startedAt)
+		}
+		if extensions != 0 {
+			t.Errorf("extensions_used = %d for the pre-migration row, want the column default 0", extensions)
+		}
+	})
+
+	t.Run("a second schema pass does not re-issue the ALTER", func(t *testing.T) {
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("a second Schema pass on a v2 file failed: %v — the version guard must skip the ALTER", err)
+		}
+		var got int
+		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+			t.Fatalf("PRAGMA user_version: %v", err)
+		}
+		if got != 2 {
+			t.Errorf("user_version = %d after a second pass, want 2", got)
+		}
+	})
+}
+
+// TestMigrationSurvivesTheCrashWindow is research §2's failure mode: a boot that
+// ALTERed and died before the version bump leaves a file where the column
+// exists but user_version is still 1. A guard that trusted the version alone
+// would re-run the ALTER, fail with "duplicate column name", and hit the D-34
+// fatal path forever — the column probe is what makes that boot recover.
+func TestMigrationSurvivesTheCrashWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	st := openMigrateStore(t, path)
+
+	if _, err := st.DB.Exec(v1AuctionRuntimeDDL); err != nil {
+		t.Fatalf("writing the v1 auction_runtime DDL: %v", err)
+	}
+	// The exact crash window: the ALTER committed, the pragma did not.
+	if _, err := st.DB.Exec(`ALTER TABLE auction_runtime ADD COLUMN extensions_used INTEGER NOT NULL DEFAULT 0`); err != nil {
+		t.Fatalf("pre-applying the ALTER: %v", err)
+	}
+	setUserVersion(t, st.DB, 1)
+
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema on the crash-window file: %v — the table_info probe must make the ALTER a no-op", err)
+	}
+
+	var got int
+	if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+		t.Fatalf("PRAGMA user_version: %v", err)
+	}
+	if got != UserVersion {
+		t.Errorf("user_version = %d after a crash-window boot, want %d", got, UserVersion)
+	}
+}
+
+// TestSchemaNeverLowersANewerFile is research Pitfall 10's guard: the Phase 2
+// bootstrap wrote the version unconditionally, which would drag a v2 file back
+// to 1 and re-run the migration. A file written by a newer build must be left
+// alone — and reported, so the operator sees why the server refused to start.
+func TestSchemaNeverLowersANewerFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	st := openMigrateStore(t, path)
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema: %v", err)
+	}
+
+	future := UserVersion + 5
+	setUserVersion(t, st.DB, future)
+
+	err := Schema(st.DB)
+	if err == nil {
+		t.Fatal("Schema accepted a file written by a newer schema version; it must refuse to touch it")
+	}
+	if !strings.Contains(err.Error(), "schema version") {
+		t.Errorf("Schema error = %v, want it to name the schema version conflict", err)
+	}
+
+	var got int
+	if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+		t.Fatalf("PRAGMA user_version: %v", err)
+	}
+	if got != future {
+		t.Errorf("user_version = %d after a refused boot, want the untouched %d", got, future)
+	}
+}

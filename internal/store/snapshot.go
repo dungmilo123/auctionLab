@@ -36,13 +36,22 @@ type PlayerRow struct {
 
 // Mutation is the write set of one engine mutation: the game row plus every
 // player row, committed in ONE transaction together with game.revision (D-34).
-// Phase 3 extends it additively with item and bid write sets.
+// Phase 3 extends it additively with the item, runtime and bid write sets:
+// nothing here may become a second transaction (RT-06).
 type Mutation struct {
 	Phase         string
 	CurrentItemID string
 	Revision      int64
 	UpdatedAt     int64
 	Players       []PlayerRow
+
+	// Phase 3 (D-49): the auction write set. Items carries only the rows that
+	// changed (the engine diffs), DeletedItems names removed ids, Runtime is nil
+	// unless the timing row moved, and Bids is append-only.
+	Items        []ItemRow
+	DeletedItems []string
+	Runtime      *RuntimeRow
+	Bids         []BidRow
 }
 
 // LoadGame returns the `game` row. A missing row is an error: boot is
