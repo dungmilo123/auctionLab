@@ -19,13 +19,7 @@
  * needs it.
  */
 
-import {
-  ERROR,
-  HELLO,
-  STATE_SNAPSHOT,
-  TUNNEL_STATUS,
-  type Envelope,
-} from './protocol'
+import { STATE_SNAPSHOT, TUNNEL_STATUS, type Envelope } from './protocol'
 
 /**
  * WebSocket readyState values, spelled as literals on purpose: the `WebSocket`
@@ -76,10 +70,53 @@ export type GateStep = {
  * discarded — ends the episode because it is the server's answer by
  * construction.
  */
-export function nextOutcome(_state: GateState, _env: Envelope): GateStep {
-  // RED sentinel: the surface is declared, the gate's rules are not — every
-  // frame is reported as a duplicate until the GREEN commit replaces this body.
-  return { state: _state, outcome: { kind: 'duplicate' } }
+export function nextOutcome(state: GateState, env: Envelope): GateStep {
+  // The control plane first (D-24): tunnel.status is applied as it arrives and
+  // is NEVER fed through the revision gate — a rotated tunnel URL whose rev
+  // looked stale is exactly when the venue needs it. Its stream position still
+  // counts, so the next game message is not misread as a gap.
+  if (env.type === TUNNEL_STATUS) {
+    return {
+      state: { ...state, lastSeq: Math.max(state.lastSeq, env.seq) },
+      outcome: { kind: 'control' },
+    }
+  }
+
+  // The sync point. A snapshot is self-sufficient (D-25), so applying one
+  // resets both the reconciled revision and the expected stream position.
+  if (env.type === STATE_SNAPSHOT) {
+    const apply = env.rev >= state.rev
+    return {
+      state: {
+        lastSeq: Math.max(state.lastSeq, env.seq),
+        rev: apply ? env.rev : state.rev,
+        // A snapshot frame is the answer to a pending request (D-42) or the
+        // automatic repair after a drop (D-41), so the episode ends here either
+        // way — a discarded (older) one included.
+        resyncPending: false,
+      },
+      outcome: { kind: 'snapshot', apply },
+    }
+  }
+
+  // Dedupe on seq ONLY. A message is never discarded because its rev has been
+  // seen: several messages legitimately share one revision, and dropping the
+  // siblings is the Pitfall 3 bug this gate exists to prevent.
+  if (env.seq <= state.lastSeq) {
+    return { state, outcome: { kind: 'duplicate' } }
+  }
+
+  const gap = env.seq > state.lastSeq + 1
+  const requestResync = gap && !state.resyncPending
+  return {
+    state: {
+      // The newest message is applied even across a gap — it IS newer.
+      lastSeq: env.seq,
+      rev: Math.max(state.rev, env.rev),
+      resyncPending: state.resyncPending || requestResync,
+    },
+    outcome: { kind: 'apply', requestResync },
+  }
 }
 
 /** What a visibility/pageshow event should do about a closed socket (D-45). */
@@ -96,11 +133,7 @@ export type ResumeDecision = 'reconnect' | 'none'
  * a socket that has nothing to say. Backoff, jitter and stale-socket detection
  * are deliberately absent (RECN-01/02 is Phase 7).
  */
-export function resumeOutcome(_readyState: number, _hasToken: boolean): ResumeDecision {
-  // RED sentinel — see nextOutcome.
-  return 'none'
+export function resumeOutcome(readyState: number, hasToken: boolean): ResumeDecision {
+  if (!hasToken) return 'none'
+  return readyState === SOCKET_OPEN ? 'none' : 'reconnect'
 }
-
-// The message-type literals the gate branches on, kept in one place so the
-// rules and the tests cannot drift from the catalog in protocol.ts.
-export const GATE_TYPES = { HELLO, STATE_SNAPSHOT, ERROR, TUNNEL_STATUS } as const

@@ -153,6 +153,13 @@ export type PlayerSnapshot = {
   item: PublicItem | null
 }
 
+/**
+ * The one rejection code the client acts on by itself: D-30's third rung —
+ * an unknown token with no nickname — clears the stored token, so the next
+ * attempt is a fresh join instead of a loop of rejected resumes.
+ */
+export const CODE_TOKEN_INVALID = 'token_invalid'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -165,37 +172,145 @@ function readInt(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function readRole(value: unknown): Role | null {
+  return value === 'player' || value === 'screen' || value === 'admin' ? value : null
+}
+
+function parseJSON(raw: string): unknown {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 /**
  * Decode one frame off the socket. Returns null for anything that is not a
  * well-formed envelope, so no malformed input can reach the reconciliation
- * gate or the UI (T-02-01).
+ * gate or the UI (T-02-01). Unknown extra keys are kept in `data`, never
+ * rejected: D-24's freeze is additive.
  */
-export function parseEnvelope(_raw: unknown): Envelope | null {
-  // RED sentinel: the surface is declared, the decode rules are not — every
-  // frame decodes to null until the GREEN commit replaces this body.
-  return null
+export function parseEnvelope(raw: unknown): Envelope | null {
+  const value = typeof raw === 'string' ? parseJSON(raw) : raw
+  if (!isRecord(value)) return null
+
+  const type = readString(value.type)
+  const seq = readInt(value.seq)
+  const rev = readInt(value.rev)
+  const ts = readInt(value.ts)
+  if (type === null || type === '' || seq === null || rev === null || ts === null) return null
+
+  return { type, seq, rev, ts, data: value.data ?? null }
 }
 
 /** Decode a `hello` payload. */
-export function readHello(_data: unknown): Hello | null {
-  // RED sentinel — see parseEnvelope.
-  return null
+export function readHello(data: unknown): Hello | null {
+  if (!isRecord(data)) return null
+  const role = readRole(data.role)
+  const rev = readInt(data.rev)
+  if (role === null || rev === null) return null
+
+  return {
+    role,
+    playerId: readString(data.player) ?? '',
+    nickname: readString(data.nickname) ?? '',
+    token: readString(data.token) ?? '',
+    rev,
+  }
 }
 
 /** Decode an `error` payload. */
-export function readError(_data: unknown): ErrorPayload | null {
-  // RED sentinel — see parseEnvelope.
-  return null
+export function readError(data: unknown): ErrorPayload | null {
+  if (!isRecord(data)) return null
+  const code = readString(data.code)
+  if (code === null || code === '') return null
+  return { code, message: readString(data.message) ?? '' }
 }
 
-/** Decode the player `state.snapshot` payload. */
-export function readPlayerSnapshot(_data: unknown): PlayerSnapshot | null {
-  // RED sentinel — see parseEnvelope.
-  return null
+/**
+ * Decode the player `state.snapshot` payload (D-25).
+ *
+ * A payload with a missing or ill-typed required field decodes to null rather
+ * than to a half-populated lobby: an unapplied snapshot leaves the last known
+ * good state on screen, which is exactly what UI-SPEC requires when the
+ * connection is lost or superseded.
+ */
+export function readPlayerSnapshot(data: unknown): PlayerSnapshot | null {
+  if (!isRecord(data)) return null
+
+  const phase = readString(data.phase)
+  const revision = readInt(data.revision)
+  const serverTs = readInt(data.server_ts)
+  const me = readPlayerMe(data.me)
+  const lobby = readLobby(data.lobby)
+  if (phase === null || revision === null || serverTs === null || me === null || lobby === null) {
+    return null
+  }
+
+  return {
+    phase,
+    revision,
+    serverTs,
+    me,
+    lobby,
+    leaderboard: readLeaderboard(data.leaderboard),
+    item: readPublicItem(data.item),
+  }
 }
 
-// Referenced by the decoders once they are implemented; kept here so the
-// module's surface (and its imports) do not change between RED and GREEN.
-void isRecord
-void readString
-void readInt
+function readPlayerMe(value: unknown): PlayerMe | null {
+  if (!isRecord(value)) return null
+  const id = readString(value.id)
+  const nickname = readString(value.nickname)
+  const budget = readInt(value.budget)
+  const totalValue = readInt(value.total_value)
+  const connected = typeof value.connected === 'boolean' ? value.connected : null
+  if (id === null || nickname === null || budget === null || totalValue === null || connected === null) {
+    return null
+  }
+  return { id, nickname, budget, totalValue, connected }
+}
+
+function readLobby(value: unknown): LobbyEntry[] | null {
+  if (!Array.isArray(value)) return null
+  const entries: LobbyEntry[] = []
+  for (const raw of value) {
+    if (!isRecord(raw)) return null
+    const nickname = readString(raw.nickname)
+    const connected = typeof raw.connected === 'boolean' ? raw.connected : null
+    if (nickname === null || connected === null) return null
+    entries.push({ nickname, connected })
+  }
+  return entries
+}
+
+// The standings and the current item are not rendered by the Phase 2 lobby,
+// but they are part of the self-sufficient snapshot (D-25), so they are decoded
+// the moment they arrive rather than re-derived from events later.
+function readLeaderboard(value: unknown): LeaderEntry[] {
+  if (!Array.isArray(value)) return []
+  const entries: LeaderEntry[] = []
+  for (const raw of value) {
+    if (!isRecord(raw)) continue
+    const rank = readInt(raw.rank)
+    const nickname = readString(raw.nickname)
+    const totalValue = readInt(raw.total_value)
+    const budget = readInt(raw.budget)
+    if (rank === null || nickname === null || totalValue === null || budget === null) continue
+    entries.push({ rank, nickname, totalValue, budget })
+  }
+  return entries
+}
+
+function readPublicItem(value: unknown): PublicItem | null {
+  if (!isRecord(value)) return null
+  const id = readString(value.id)
+  const name = readString(value.name)
+  const auctionType = readString(value.auction_type)
+  const startPrice = readInt(value.start_price)
+  const status = readString(value.status)
+  if (id === null || name === null || auctionType === null || startPrice === null || status === null) {
+    return null
+  }
+  return { id, name, auctionType, startPrice, status }
+}
