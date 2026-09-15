@@ -74,31 +74,31 @@ func validateItemInput(in ItemInput) error {
 	if in.StartPrice < 0 || in.StartPrice > MaxAmount {
 		return fmt.Errorf("game: item input start_price %d must be within [0, %d]", in.StartPrice, MaxAmount)
 	}
-	if err := boundedAmount("hint_min", in.HintMin, 0); err != nil {
+	if err := boundedAmount("hint_min", in.HintMin); err != nil {
 		return err
 	}
-	if err := boundedAmount("hint_max", in.HintMax, 0); err != nil {
+	if err := boundedAmount("hint_max", in.HintMax); err != nil {
 		return err
 	}
 	if in.HintMin != nil && in.HintMax != nil && *in.HintMin > *in.HintMax {
 		return fmt.Errorf("game: item input hint_min %d must not exceed hint_max %d", *in.HintMin, *in.HintMax)
 	}
 
-	// The shared optional mechanics, bounded wherever present.
+	// The shared optional mechanics, bounded wherever present. The order is
+	// fixed so a doubly-invalid input always reports the same field first.
 	for _, field := range []struct {
 		name  string
 		value *int64
-		min   int64
 	}{
-		{"min_increment", in.MinIncrement, 0},
-		{"floor_price", in.FloorPrice, 0},
-		{"decrement_step", in.DecrementStep, 0},
-		{"decrement_interval_ms", in.DecrementIntervalMS, 0},
-		{"duration_ms", in.DurationMS, 0},
-		{"anti_snipe_window_ms", in.AntiSnipeWindowMS, 0},
-		{"max_extensions", in.MaxExtensions, 0},
+		{"min_increment", in.MinIncrement},
+		{"floor_price", in.FloorPrice},
+		{"decrement_step", in.DecrementStep},
+		{"decrement_interval_ms", in.DecrementIntervalMS},
+		{"duration_ms", in.DurationMS},
+		{"anti_snipe_window_ms", in.AntiSnipeWindowMS},
+		{"max_extensions", in.MaxExtensions},
 	} {
-		if err := boundedAmount(field.name, field.value, field.min); err != nil {
+		if err := boundedAmount(field.name, field.value); err != nil {
 			return err
 		}
 	}
@@ -135,13 +135,13 @@ func validateItemInput(in ItemInput) error {
 }
 
 // boundedAmount validates one nullable amount: nil is "absent", otherwise the
-// value must lie inside [min, MaxAmount].
-func boundedAmount(field string, v *int64, min int64) error {
+// value must lie inside [0, MaxAmount].
+func boundedAmount(field string, v *int64) error {
 	if v == nil {
 		return nil
 	}
-	if *v < min || *v > MaxAmount {
-		return fmt.Errorf("game: item input %s %d must be within [%d, %d]", field, *v, min, MaxAmount)
+	if *v < 0 || *v > MaxAmount {
+		return fmt.Errorf("game: item input %s %d must be within [0, %d]", field, *v, MaxAmount)
 	}
 	return nil
 }
