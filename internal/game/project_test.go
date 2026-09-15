@@ -139,83 +139,119 @@ func (env *testEnv) installState(next *state) {
 }
 
 // TestPlayerAndScreenPayloadsLeakNothing is RT-01's contract: every player and
-// screen projection is a self-sufficient snapshot that contains no secret key at
-// any depth, and — the other half of the assertion — actually contains the data
-// the UI needs, so an accidentally empty projection cannot pass.
+// screen wire candidate is recursively inspected for the keys D-26 forbids, and
+// — the other half of the assertion — the snapshots must actually carry the data
+// the UI needs, so an accidentally empty projection cannot pass by being empty.
+//
+// The table covers every message a player or the screen can receive in Phase 2:
+// the two snapshots and `hello`. `hello` is the one message allowed to carry a
+// token, and only the token of the player it is addressed to (D-29) — which is
+// why the exception is a column here rather than a comment.
 func TestPlayerAndScreenPayloadsLeakNothing(t *testing.T) {
 	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
 	env.installState(populatedState())
 
-	t.Run("player self view", func(t *testing.T) {
-		doc := decodeObject(t, env.engine.Snapshot(RolePlayer, "p-an"))
+	hello := Hello{
+		Role:     RolePlayer,
+		PlayerID: "p-an",
+		Nickname: "An",
+		Token:    fixtureToken,
+		Rev:      7,
+	}
 
-		assertNoForbiddenKeys(t, doc, "player view")
+	cases := []struct {
+		name          string
+		snapshot      Role // when set, ask the engine for this role's projection
+		playerID      string
+		message       any // when set, marshal this message instead of a snapshot
+		allowOwnToken bool
+		wantMe        bool
+	}{
+		{name: "player self view", snapshot: RolePlayer, playerID: "p-an", wantMe: true},
+		{name: "screen view", snapshot: RoleScreen},
+		{name: "player hello", message: hello, allowOwnToken: true},
+	}
 
-		if got := doc["phase"]; got != string(PhaseLobby) {
-			t.Errorf("phase = %#v, want %q", got, PhaseLobby)
-		}
-		if got := doc["revision"]; got != float64(7) {
-			t.Errorf("revision = %#v, want 7", got)
-		}
-		if got := doc["server_ts"]; got != float64(testStart.UnixMilli()) {
-			t.Errorf("server_ts = %#v, want the injected clock %d", got, testStart.UnixMilli())
-		}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := tc.message
+			if payload == nil {
+				payload = env.engine.Snapshot(tc.snapshot, tc.playerID)
+			}
+			doc := decodeObject(t, payload)
 
-		me := asObject(t, doc["me"], "me")
-		if me["id"] != "p-an" || me["nickname"] != "An" {
-			t.Errorf("me = %#v, want the joined identity {id: p-an, nickname: An}", me)
-		}
-		if me["budget"] != float64(1_000_000) || me["total_value"] != float64(250_000) {
-			t.Errorf("me budget/total_value = %#v/%#v, want 1000000/250000", me["budget"], me["total_value"])
-		}
-		if me["connected"] != true {
-			t.Errorf("me.connected = %#v, want true", me["connected"])
-		}
+			walkKeys(doc, func(key string) {
+				if !forbiddenKey(key) {
+					return
+				}
+				if tc.allowOwnToken && key == "token" {
+					return // D-29's single exception: the caller's own token in hello
+				}
+				t.Errorf("%s carries the forbidden key %q: a player/screen payload must not be able to express a secret (D-26)", tc.name, key)
+			})
 
-		lobby := asArray(t, doc["lobby"], "lobby")
-		if len(lobby) != 2 {
-			t.Fatalf("lobby has %d entries, want 2", len(lobby))
-		}
-		first := asObject(t, lobby[0], "lobby[0]")
-		if first["nickname"] != "An" || first["connected"] != true {
-			t.Errorf("lobby[0] = %#v, want An connected", first)
-		}
-		if _, hasBudget := first["budget"]; hasBudget {
-			t.Errorf("lobby[0] carries another player's budget: %#v", first)
-		}
+			if tc.message != nil {
+				if doc["token"] != fixtureToken {
+					t.Errorf("hello carries %#v for token, want the caller's own token — it is the one place a token travels", doc["token"])
+				}
+				return
+			}
 
-		leaderboard := asArray(t, doc["leaderboard"], "leaderboard")
-		if len(leaderboard) != 2 {
-			t.Errorf("leaderboard has %d entries, want 2", len(leaderboard))
-		}
+			// D-25: the snapshot must be self-sufficient, not merely secret-free.
+			if doc["phase"] != string(PhaseLobby) {
+				t.Errorf("phase = %#v, want %q", doc["phase"], PhaseLobby)
+			}
+			if doc["revision"] != float64(7) {
+				t.Errorf("revision = %#v, want 7", doc["revision"])
+			}
+			if doc["server_ts"] != float64(testStart.UnixMilli()) {
+				t.Errorf("server_ts = %#v, want the injected clock %d", doc["server_ts"], testStart.UnixMilli())
+			}
 
-		// The public item carries the hint range and the start price, and no
-		// truth value (D-25/D-26).
-		item := asObject(t, doc["item"], "item")
-		if item["name"] != "Bức tranh" || item["start_price"] != float64(100_000) {
-			t.Errorf("item = %#v, want the public item parameters", item)
-		}
-		if item["hint_min"] != float64(200_000) || item["hint_max"] != float64(500_000) {
-			t.Errorf("item hint range = %#v..%#v, want 200000..500000", item["hint_min"], item["hint_max"])
-		}
-	})
+			lobby := asArray(t, doc["lobby"], "lobby")
+			if len(lobby) != 2 {
+				t.Fatalf("lobby has %d entries, want 2", len(lobby))
+			}
+			first := asObject(t, lobby[0], "lobby[0]")
+			if first["nickname"] != "An" || first["connected"] != true {
+				t.Errorf("lobby[0] = %#v, want An connected", first)
+			}
+			if _, hasBudget := first["budget"]; hasBudget {
+				t.Errorf("lobby[0] carries another player's budget: %#v", first)
+			}
 
-	t.Run("screen view", func(t *testing.T) {
-		doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+			if got := len(asArray(t, doc["leaderboard"], "leaderboard")); got != 2 {
+				t.Errorf("leaderboard has %d entries, want 2", got)
+			}
 
-		assertNoForbiddenKeys(t, doc, "screen view")
+			// The current item carries its public parameters and the hint range.
+			item := asObject(t, doc["item"], "item")
+			if item["name"] != "Bức tranh" || item["start_price"] != float64(100_000) {
+				t.Errorf("item = %#v, want the public item parameters", item)
+			}
+			if item["hint_min"] != float64(200_000) || item["hint_max"] != float64(500_000) {
+				t.Errorf("item hint range = %#v..%#v, want 200000..500000", item["hint_min"], item["hint_max"])
+			}
 
-		if _, hasMe := doc["me"]; hasMe {
-			t.Error("the screen view carries a `me` section: the projector has no identity")
-		}
-		if len(asArray(t, doc["lobby"], "lobby")) != 2 {
-			t.Errorf("lobby has %d entries, want 2", len(asArray(t, doc["lobby"], "lobby")))
-		}
-		item := asObject(t, doc["item"], "item")
-		if _, hasTruth := item["truth_value"]; hasTruth {
-			t.Error("the public item carries truth_value before SETTLED")
-		}
-	})
+			if !tc.wantMe {
+				if _, hasMe := doc["me"]; hasMe {
+					t.Errorf("the screen view carries a `me` section: the projector has no identity")
+				}
+				return
+			}
+
+			me := asObject(t, doc["me"], "me")
+			if me["id"] != "p-an" || me["nickname"] != "An" {
+				t.Errorf("me = %#v, want the joined identity {id: p-an, nickname: An}", me)
+			}
+			if me["budget"] != float64(1_000_000) || me["total_value"] != float64(250_000) {
+				t.Errorf("me budget/total_value = %#v/%#v, want 1000000/250000", me["budget"], me["total_value"])
+			}
+			if me["connected"] != true {
+				t.Errorf("me.connected = %#v, want true", me["connected"])
+			}
+		})
+	}
 }
 
 // TestAdminViewPositiveControl proves the fixture really is populated: the admin
@@ -313,17 +349,4 @@ func TestPlayerViewTracksPresence(t *testing.T) {
 	if !flags["Bình"] {
 		t.Errorf("the other player's presence changed too: %#v", flags)
 	}
-}
-
-// assertNoForbiddenKeys walks the whole document and fails on any key D-26
-// forbids, naming the key and the path it was found at so a regression is
-// actionable.
-func assertNoForbiddenKeys(t *testing.T, doc map[string]any, what string) {
-	t.Helper()
-
-	walkKeys(doc, func(key string) {
-		if forbiddenKey(key) {
-			t.Errorf("%s carries the forbidden key %q: the role projection must not be able to express a secret (D-26)", what, key)
-		}
-	})
 }
