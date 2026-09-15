@@ -95,13 +95,22 @@ type Hello struct {
 type View interface {
 	Rev() int64
 	Snapshot(role Role, playerID string) any
+	// Tick builds the D-56 timing frame, or reports false when no open window
+	// exists (not LIVE, or no run). It reads the same lock-held state the
+	// mutation just committed.
+	Tick() (PriceTick, bool)
 }
 
 // Publisher is the engine's fan-out edge. The engine calls it with the
 // exclusive lock held, after a mutation or presence change has been applied and
 // persisted; implementations must not block and must not do socket I/O — the
 // hub's implementation enqueues into per-client channels (D-33/D-41).
-type Publisher func(rev int64, v View)
+//
+// events is the exact ordered list the committed mutation recorded on the state
+// (D-57): the hub expands it into typed frames on this same lock-held path. An
+// empty list means the mutation produced no typed frame of its own (a join, a
+// presence change), and the role snapshot is the frame (D-33/H2).
+type Publisher func(rev int64, v View, events []Event)
 
 // Config wires the engine's dependencies. Store, Now and Fatal are injected so
 // tests can pin timestamps (D-38) and observe commit failures (D-34).
@@ -617,7 +626,7 @@ func (e *Engine) publishLocked() {
 	if p == nil {
 		return
 	}
-	(*p)(e.state.revision, view{e})
+	(*p)(e.state.revision, view{e}, e.state.events)
 }
 
 // view is the read-only window the engine hands to Publisher and Section
@@ -629,6 +638,12 @@ func (v view) Rev() int64 { return v.e.state.revision }
 func (v view) Snapshot(role Role, playerID string) any {
 	return v.e.snapshotLocked(role, playerID)
 }
+
+// Tick is the D-56 timing frame, built from the same lock-held state the
+// mutation just committed.
+//
+// RED stub: the payload builder is the behaviour under test.
+func (v view) Tick() (PriceTick, bool) { return PriceTick{}, false }
 
 // clone deep-copies the state so a mutation that fails validation can never
 // leave the live state half-updated, and so the committed state is published

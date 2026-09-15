@@ -52,8 +52,18 @@ func testPolicyWithBuffer(depth int) Policy {
 		PongWait:   2 * time.Second,
 		PingPeriod: 200 * time.Millisecond,
 		WriteWait:  2 * time.Second,
+		// D-56: the mechanism is what the tests pin, never the production
+		// cadence — a fast beat keeps the ticker cases well under the read
+		// budget instead of sleeping on 250 ms (H16).
+		TickPeriod: 10 * time.Millisecond,
 	}
 }
+
+// testClock is the injectable clock D-38 requires: tests move time instead of
+// sleeping, and the SAME instant drives both the engine and the envelope clock.
+type testClock struct{ t time.Time }
+
+func (c *testClock) now() time.Time { return c.t }
 
 // newTestHub builds a hub on its own engine and database, with the fan-out edge
 // installed exactly as cmd/server installs it.
@@ -66,6 +76,20 @@ func newTestHub(t *testing.T) (*Hub, *game.Engine) {
 // cases that need a deeper FIFO or a different liveness window.
 func newTestHubWithPolicy(t *testing.T, policy Policy) (*Hub, *game.Engine) {
 	t.Helper()
+	return newTestHubAt(t, policy, nil)
+}
+
+// newTestHubWithClock pins the engine's injected clock and the hub's envelope
+// clock to the same instant, so a ticker test can advance time as data: the
+// deadline, the tick's remaining_ms and the envelope ts all move together.
+func newTestHubWithClock(t *testing.T, policy Policy, clock *testClock) (*Hub, *game.Engine) {
+	t.Helper()
+	return newTestHubAt(t, policy, clock)
+}
+
+// newTestHubAt is the shared constructor: nil clock means the real one.
+func newTestHubAt(t *testing.T, policy Policy, clock *testClock) (*Hub, *game.Engine) {
+	t.Helper()
 
 	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
 	if err != nil {
@@ -76,9 +100,13 @@ func newTestHubWithPolicy(t *testing.T, policy Policy) (*Hub, *game.Engine) {
 		t.Fatalf("applying the schema: %v", err)
 	}
 
+	now := time.Now
+	if clock != nil {
+		now = clock.now
+	}
 	engine, err := game.New(game.Config{
 		Store: st,
-		Now:   time.Now,
+		Now:   now,
 		// A commit failure is fatal in production; here it fails the test with
 		// the engine's own message instead of exiting the test binary.
 		Fatal: func(err error) { t.Errorf("engine reported an unrecoverable commit failure: %v", err) },
@@ -88,7 +116,10 @@ func newTestHubWithPolicy(t *testing.T, policy Policy) (*Hub, *game.Engine) {
 	}
 
 	h := newHub(engine, policy)
-	engine.SetPublisher(h.Enqueue) // the boot's fan-out edge (D-33)
+	if clock != nil {
+		h.now = clock.now
+	}
+	engine.SetPublisher(h.Fanout) // the boot's fan-out edge (D-33/D-57)
 	return h, engine
 }
 

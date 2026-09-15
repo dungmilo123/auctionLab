@@ -68,7 +68,7 @@ func newTestEnvAt(t *testing.T, path string, clock *testClock) *testEnv {
 		t.Fatalf("game.New: %v", err)
 	}
 	env.engine = eng
-	eng.SetPublisher(func(rev int64, _ View) {
+	eng.SetPublisher(func(rev int64, _ View, _ []Event) {
 		env.mu.Lock()
 		defer env.mu.Unlock()
 		env.published = append(env.published, rev)

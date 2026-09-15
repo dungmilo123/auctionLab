@@ -17,6 +17,7 @@ type Policy struct {
 	PongWait   time.Duration // silence longer than this means the peer is gone
 	PingPeriod time.Duration // ping cadence; must stay well under PongWait
 	WriteWait  time.Duration // bound on a single envelope or control write
+	TickPeriod time.Duration // D-56 price.tick cadence; the ticker's only timing knob
 }
 
 // DefaultPolicy carries D-40's production numbers: 64 buffered messages, a

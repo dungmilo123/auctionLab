@@ -230,6 +230,18 @@ func (h *Hub) Enqueue(rev int64, v game.View) {
 	}
 }
 
+// Fanout is the engine's fan-out edge (D-33/D-57). The engine calls it with its
+// exclusive lock held, after every committed mutation, handing over the typed
+// event list that mutation recorded.
+//
+// RED stub: the committed revision is fanned out as each connection's role
+// snapshot. The typed event expansion and the D-56 immediate tick are the
+// behaviour under test.
+func (h *Hub) Fanout(rev int64, v game.View, events []game.Event) {
+	_ = events
+	h.Enqueue(rev, v)
+}
+
 // broadcast sends one already-built payload to every joined connection. It is
 // the sibling-message primitive: a single revision may legitimately produce
 // several messages (D-21), each taking its own seq.

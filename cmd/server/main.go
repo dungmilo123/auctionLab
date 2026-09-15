@@ -88,7 +88,7 @@ func run() error {
 	// committed mutation and every presence change, so the enqueue can never
 	// lose a race with the state it describes (D-33).
 	ws := hub.New(engine)
-	engine.SetPublisher(ws.Enqueue)
+	engine.SetPublisher(ws.Fanout)
 
 	// Boot step 3 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()

@@ -138,6 +138,25 @@ type PhaseChanged struct {
 	Item  *PublicItem `json:"item"`
 }
 
+// PriceTick is the D-56 timing frame. The hub's ticker emits it every beat while
+// an item is LIVE, and the mutation path emits one immediately after entering
+// LIVE and after every accepted bid (a D-59 extension included), so a client
+// never waits up to the tick period to see a moved deadline.
+//
+// Every number is derived from the lock-held state with the engine's own clock
+// (D-60): `remaining_ms` is server-computed and clamped at zero, because a
+// negative remaining would end the auction on the phone before the server
+// settled it (Pitfall 5). `deadline_at` rides along so the client re-anchors on
+// every beat (TIME-02). The frame carries the CURRENT revision and never bumps
+// it (D-58).
+type PriceTick struct {
+	ItemID       string `json:"item_id"`
+	CurrentPrice int64  `json:"current_price"`
+	MinNextBid   int64  `json:"min_next_bid"`
+	DeadlineAt   *int64 `json:"deadline_at,omitempty"`
+	RemainingMS  *int64 `json:"remaining_ms,omitempty"`
+}
+
 // ScreenView is the projector's view: public state only. Before SETTLED it
 // carries no truth_value, and it never carries an identity or a token (D-25).
 type ScreenView struct {
