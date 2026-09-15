@@ -1,9 +1,11 @@
 package hub
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -92,14 +94,16 @@ type inbound struct {
 
 	// Phase 3 (D-52/D-66), additive:
 	//
-	//   amount — `bid.place`'s amount, a whole number. The ladder, not this
-	//            struct, decides what is acceptable (D-52).
+	//   amount — `bid.place`'s amount, kept as the RAW JSON literal so that the
+	//            D-52 ladder, not the decoder, owns every refusal (WR-01). The
+	//            hub reads it with amountFromLiteral; a literal that is not a
+	//            whole number reaches the ladder as 0, i.e. `invalid_amount`.
 	//   id     — the item an `admin.item.*` command names.
 	//   item   — D-66's full-object upsert payload; nil means the frame carried
 	//            no `item` key at all, which is a bad_message rather than an
 	//            empty create.
 	//   ids    — the complete permutation `admin.item.reorder` demands.
-	Amount int64           `json:"amount"`
+	Amount json.RawMessage `json:"amount"`
 	ID     string          `json:"id"`
 	Item   *game.ItemInput `json:"item"`
 	IDs    []string        `json:"ids"`
@@ -214,6 +218,17 @@ func (c *client) readPump() {
 func (c *client) handle(payload []byte) {
 	var in inbound
 	if err := json.Unmarshal(payload, &in); err != nil {
+		// WR-01: bad_message covers two different failures, and the log-only
+		// message must not conflate them. A JSON *syntax* error means the frame
+		// is not JSON at all; a *type* error means a valid-JSON frame whose
+		// field cannot be read as the catalog's type (a numeric admin field
+		// sent as a float, say), which is a field-level problem the operator
+		// should be able to see. The CODE stays the frozen bad_message (D-24).
+		var typeErr *json.UnmarshalTypeError
+		if errors.As(err, &typeErr) && typeErr.Field != "" {
+			c.sendError(CodeBadMessage, "message field "+typeErr.Field+" has the wrong type")
+			return
+		}
 		c.sendError(CodeBadMessage, "message is not valid JSON")
 		return
 	}
@@ -268,11 +283,18 @@ func (c *client) handleBid(in inbound) {
 		return
 	}
 
+	// D-52 #2 is a LADDER step, so the amount is parsed here and never
+	// pre-refused (WR-01): a literal the decoder cannot read as a whole number
+	// becomes 0, which the ladder answers with the frozen `invalid_amount`
+	// reason — the copy the player is owed — instead of a frame-level
+	// bad_message that would claim the frame was not JSON.
+	//
 	// D-53's refusal travels through this callback, which PlaceBid invokes with
 	// the engine's exclusive lock held: the min_next_bid and budget it reports
 	// are the numbers of that moment, and the private frame takes its seq on the
 	// same lock-held FIFO as every state event (Pitfall 1).
-	err := c.hub.engine.PlaceBid(c.playerID(), in.Amount, func(v game.View, rejection game.BidRejection) {
+	amount := amountFromLiteral(in.Amount)
+	err := c.hub.engine.PlaceBid(c.playerID(), amount, func(v game.View, rejection game.BidRejection) {
 		c.enqueue(v.Rev(), TypeBidRejected, rejection)
 	})
 	if err == nil {
@@ -287,6 +309,24 @@ func (c *client) handleBid(in inbound) {
 	}
 	log.Printf("ws: bid from %s: %v", c.describe(), err)
 	c.sendError(CodeBadMessage, "the bid could not be placed")
+}
+
+// amountFromLiteral reads a `bid.place` amount out of its raw JSON literal
+// (D-52 #2/WR-01). ONLY a base-10 integer literal parses: a fraction (1.5), a
+// whole number spelled with a decimal point (250000.0), an exponent (1e5), a
+// quoted number, a bool, an array or an absent key all report 0 — and 0 can
+// never be a valid bid, so the ladder refuses every one of them with the frozen
+// `invalid_amount` reason instead of the decoder answering a frame-level
+// bad_message that tells the player nothing.
+//
+// strconv returns a CLAMPED value alongside ErrRange, so the error is what
+// decides; the parsed value is never used when err != nil.
+func amountFromLiteral(raw json.RawMessage) int64 {
+	amount, err := strconv.ParseInt(string(bytes.TrimSpace(raw)), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return amount
 }
 
 // handleAdmin routes one `admin.item.*` command (D-64/D-65/D-66). Every command

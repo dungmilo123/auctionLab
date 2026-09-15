@@ -3,6 +3,7 @@ package hub
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -295,6 +296,111 @@ func TestBidRejectionIsPrivateAndDoesNotBumpRev(t *testing.T) {
 		if frames := drainFrames(t, conn, 250*time.Millisecond); len(frames) != 0 {
 			t.Errorf("%s received %d frame(s) after a private rejection: %s", name, len(frames), frameSummary(frames))
 		}
+	}
+}
+
+// TestNonWholeAmountIsTheFrozenInvalidAmount is WR-01/D-52 #2 at the transport
+// boundary: `amount` is the LADDER's business, so a literal that is not a whole
+// number reaches PlaceBid as 0 and comes back as the frozen `invalid_amount`
+// reason on the same private `bid.rejected` frame every other refusal uses —
+// never as a frame-level `bad_message` claiming the frame was not JSON, which
+// is what the dictionary key `reason.invalidAmount` exists for.
+func TestNonWholeAmountIsTheFrozenInvalidAmount(t *testing.T) {
+	h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+	admin := joinRole(t, h, RoleAdmin)
+	an, _ := joinPlayer(t, h, "An")
+	expectAll(t, []*websocket.Conn{admin}, TypeStateSnapshot) // An's join fan-out
+
+	id := createItem(t, admin)
+	expectAll(t, []*websocket.Conn{an}, TypeStateSnapshot)
+
+	startItem(t, admin, id)
+	expectAll(t, []*websocket.Conn{admin, an}, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)
+
+	startItem(t, admin, id)
+	expectAll(t, []*websocket.Conn{admin, an}, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+
+	rev := engine.Rev()
+
+	// Every literal below is a VALID JSON frame whose amount is not a whole
+	// number: none of them may be answered by the decoder, because the frozen
+	// reason for an amount the ladder cannot use is the LADDER's to give.
+	cases := []struct {
+		name    string
+		literal string
+	}{
+		{"a fraction", `1.5`},
+		{"a whole number spelled with a decimal point", `250000.0`},
+		{"an exponent", `1e5`},
+		{"a quoted number", `"250000"`},
+		{"a bool", `true`},
+		{"a number past int64", `9223372036854775808`},
+		{"null", `null`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			writeFrame(t, an, `{"type":"bid.place","amount":`+tc.literal+`}`)
+			rejected := readType(t, an, TypeBidRejected)
+
+			var payload struct {
+				Reason string `json:"reason"`
+				Amount int64  `json:"amount"`
+			}
+			if err := json.Unmarshal(rejected.Data, &payload); err != nil {
+				t.Fatalf("bid.rejected payload is not a rejection: %v (%s)", err, rejected.Data)
+			}
+			if payload.Reason != "invalid_amount" {
+				t.Errorf("reason = %q, want the frozen invalid_amount (D-52 #2)", payload.Reason)
+			}
+			if payload.Amount != 0 {
+				t.Errorf("refused amount = %d, want the 0 the ladder saw", payload.Amount)
+			}
+			if got := engine.Rev(); got != rev {
+				t.Errorf("revision = %d after a refused amount, want the unchanged %d (D-53)", got, rev)
+			}
+		})
+	}
+
+	// The refusal never touched the ladder's state: the next valid bid on the
+	// same socket is accepted.
+	placeBid(t, an, 100_000)
+	accepted := expectFrames(t, an, TypeBidAccepted, TypePriceTick)
+	if got := frameString(t, frameData(t, accepted[0]), "nickname"); got != "An" {
+		t.Errorf("bid.accepted nickname = %q, want An", got)
+	}
+}
+
+// TestWrongTypedFieldIsNotReportedAsMalformedJSON is the second half of WR-01:
+// a field the decoder cannot read still answers the frozen `bad_message` code,
+// but the log-only message names the field at fault instead of claiming — for a
+// frame that IS valid JSON — that it is not JSON, which is what would send the
+// first person debugging a float-serializing client after the wrong bug.
+func TestWrongTypedFieldIsNotReportedAsMalformedJSON(t *testing.T) {
+	h, _ := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+	admin := joinRole(t, h, RoleAdmin)
+
+	// WR-01's case (c): one float literal inside the D-66 item object.
+	writeFrame(t, admin, `{"type":"admin.item.upsert","item":{"name":"Phase 3 lot",`+
+		`"auction_type":"english","truth_value":1.5,"start_price":100000,`+
+		`"min_increment":10000,"duration_ms":60000,"anti_snipe_mode":"disabled"}}`)
+
+	env := readType(t, admin, TypeError)
+	assertErrorCode(t, env, "bad_message")
+	message := frameString(t, frameData(t, env), "message")
+	if !strings.Contains(message, "item.truth_value") {
+		t.Errorf("error message = %q, want it to name the field at fault", message)
+	}
+	if strings.Contains(message, "not valid JSON") {
+		t.Errorf("error message = %q: the frame IS valid JSON (WR-01)", message)
+	}
+
+	// A genuinely malformed frame keeps the original wording.
+	writeFrame(t, admin, `{"type":`)
+	env = readType(t, admin, TypeError)
+	assertErrorCode(t, env, "bad_message")
+	if message := frameString(t, frameData(t, env), "message"); !strings.Contains(message, "not valid JSON") {
+		t.Errorf("a syntax error's message = %q, want the not-valid-JSON wording", message)
 	}
 }
 
