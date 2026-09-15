@@ -1,6 +1,3 @@
-// Package hub owns the WebSocket surface. Phase 1 ships a temporary echo
-// handler in this file so that Phase 2 can replace exactly this file with the
-// real hub (engine-backed revisions, roles, resync).
 package hub
 
 import (
@@ -13,42 +10,15 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"auctionlab/internal/game"
 )
 
-// Envelope is the wire shape of a Phase 1 echo reply. It carries exactly three
-// fields: type, ts, data.
-//
-// There is deliberately NO seq/revision field: revision is Phase 2 semantics,
-// and emitting a plausible-looking sequence number here would misrepresent the
-// protocol as frozen before it is.
-type Envelope struct {
-	Type string          `json:"type"` // "echo"
-	TS   int64           `json:"ts"`   // server clock, milliseconds
-	Data json.RawMessage `json:"data"` // the received payload, verbatim
-}
-
-const (
-	// readLimit caps a single client frame at 4 KiB (V5 input validation).
-	readLimit = 4 << 10
-	// writeWait bounds a single envelope or control-frame write.
-	writeWait = 5 * time.Second
-)
-
-// keepalive holds one connection's liveness timings. The mechanism (read
-// deadline + pong refresh + ping ticker) belongs here, with the socket that
-// reads; ROADMAP defers the final numbers to Phase 2, which is why the values
-// are parameters rather than constants.
-type keepalive struct {
-	pongWait   time.Duration // silence longer than this means the peer is gone
-	pingPeriod time.Duration // ping cadence; must be shorter than pongWait
-}
-
-// defaultKeepalive follows AGENTS.md §4: ping at 90% of the pong window, so a
-// live peer always refreshes the deadline before it expires.
-var defaultKeepalive = keepalive{
-	pongWait:   60 * time.Second,
-	pingPeriod: 54 * time.Second, // 90% of pongWait
-}
+// This file is the Phase-2 protocol skeleton. Plan 02-03 Task 1 replaces it
+// wholesale with the real Hub/Client pair (registry, drop/resync, supersede);
+// until then `Echo` stays exported because cmd/server/main.go registers it at
+// /ws — the Phase 1 echo behaviour it was named for is gone (D-01: Phase 2
+// replaces the temporary echo handler wholesale).
 
 // originRejectLogInterval bounds how often the routine cross-origin rejection
 // is logged: /ws is unauthenticated, so once the app is published any scanner
@@ -88,18 +58,17 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// Echo upgrades GET /ws and answers exactly one echo envelope per received
-// text frame. Non-text frames and payloads that are not valid JSON are dropped
-// without a reply. One writer per connection, as gorilla requires. Connections
-// are pinged, and a peer that stops answering pongs is disconnected
-// (AGENTS.md §4) — a vanished phone must not hold a goroutine forever.
+// Echo upgrades GET /ws and serves the protocol skeleton: a join is answered by
+// hello (seq 1) followed by the role snapshot (seq 2), and every other frame by
+// the frozen catalog's answer — never by an echo.
 func Echo(w http.ResponseWriter, r *http.Request) {
-	echo(w, r, defaultKeepalive)
+	serve(w, r, DefaultPolicy)
 }
 
-// echo is Echo with the liveness timings injected, so the keepalive behaviour
-// can be pinned by tests without waiting out a real pong window.
-func echo(w http.ResponseWriter, r *http.Request, ka keepalive) {
+// serve is Echo with the D-40 policy injected, so tests can pin the keepalive
+// mechanism and the frame cap with timings short enough to observe (the WR-01
+// handoff: Phase 1's numbers were placeholders and are replaced here).
+func serve(w http.ResponseWriter, r *http.Request, policy Policy) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// Upgrade already wrote an HTTP error response.
@@ -108,30 +77,30 @@ func echo(w http.ResponseWriter, r *http.Request, ka keepalive) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	// Liveness (AGENTS.md §4 / threat V5): a peer that vanishes without a close
+	// Liveness (D-40 / threat T-02-03): a peer that vanishes without a close
 	// frame — phone suspended, Wi-Fi drop, NAT rebind — would otherwise hold
 	// this goroutine and its file descriptor until the kernel's TCP keep-alive
 	// gives up. The read deadline is the enforcement; the pong handler is what
 	// spares a healthy but silent peer from it.
-	conn.SetReadLimit(readLimit)
-	_ = conn.SetReadDeadline(time.Now().Add(ka.pongWait))
+	conn.SetReadLimit(policy.ReadLimit)
+	_ = conn.SetReadDeadline(time.Now().Add(policy.PongWait))
 	conn.SetPongHandler(func(string) error {
-		return conn.SetReadDeadline(time.Now().Add(ka.pongWait))
+		return conn.SetReadDeadline(time.Now().Add(policy.PongWait))
 	})
 
 	// Ping from a single ticker goroutine: WriteControl is the one write
-	// gorilla allows concurrently with the envelope writer in the loop below.
+	// gorilla allows concurrently with the envelope writer below.
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
-		ticker := time.NewTicker(ka.pingPeriod)
+		ticker := time.NewTicker(policy.PingPeriod)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-done:
 				return
 			case <-ticker.C:
-				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(writeWait)); err != nil {
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(policy.WriteWait)); err != nil {
 					// Unreachable peer: close so the blocked read returns now
 					// instead of at the deadline.
 					_ = conn.Close()
@@ -141,27 +110,146 @@ func echo(w http.ResponseWriter, r *http.Request, ka keepalive) {
 		}
 	}()
 
+	s := &session{
+		conn:   conn,
+		policy: policy,
+		now:    time.Now,
+		rev:    0, // D-36: the bootstrapped game row is LOBBY at revision 0; 02-02's engine owns this
+	}
+
 	for {
 		messageType, payload, err := conn.ReadMessage()
 		if err != nil {
 			return
 		}
 		if messageType != websocket.TextMessage {
+			// The catalog is JSON text; anything else is malformed input and
+			// gets the typed answer instead of silence (T-02-05).
+			s.sendError(CodeBadMessage, "only text frames carry protocol messages")
 			continue
 		}
-		if !json.Valid(payload) {
-			continue
-		}
-
-		envelope := Envelope{
-			Type: "echo",
-			TS:   time.Now().UnixMilli(),
-			Data: json.RawMessage(payload),
-		}
-
-		_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
-		if err := conn.WriteJSON(envelope); err != nil {
-			return
-		}
+		s.handle(payload)
 	}
+}
+
+// session is one connection's protocol state.
+//
+// seq is per-connection and starts at 1 with hello (D-21); rev is the game
+// revision every frame of this connection carries, and this skeleton has only
+// the bootstrapped value (D-35/D-36). role is empty until a successful join,
+// which is what D-23's not_joined guard keys on.
+type session struct {
+	conn   *websocket.Conn
+	policy Policy
+	now    func() time.Time
+
+	seq  int64
+	rev  int64
+	role string
+}
+
+// inbound is the union of the client→server fields Phase 2 needs to route a
+// frame. Unknown fields are ignored on purpose: D-24 freezes the catalog, not
+// the payload structs, and later phases add optional fields to the same
+// commands (D-24's additive rule).
+type inbound struct {
+	Type     string `json:"type"`
+	Role     string `json:"role"`
+	Nickname string `json:"nickname"` // consumed by 02-02's identity resolution
+	Token    string `json:"token"`    // consumed by 02-02's identity resolution
+	Key      string `json:"key"`      // ADMIN_KEY check is Phase 4 (D-24: accepted unchecked for now)
+}
+
+// handle routes one text frame against the frozen catalog.
+func (s *session) handle(payload []byte) {
+	var in inbound
+	if err := json.Unmarshal(payload, &in); err != nil {
+		s.sendError(CodeBadMessage, "message is not valid JSON")
+		return
+	}
+	if in.Type == "" {
+		s.sendError(CodeBadMessage, "message has no type")
+		return
+	}
+
+	// D-23: every command except join is refused before a successful join — and
+	// the socket stays open, so the client can fix its nickname and retry
+	// without a reload.
+	if s.role == "" && in.Type != TypeJoin {
+		s.sendError(CodeNotJoined, "join first")
+		return
+	}
+
+	switch in.Type {
+	case TypeJoin:
+		s.handleJoin(in)
+	case TypeResync:
+		// D-42: 02-03 enqueues this snapshot into the connection's own FIFO;
+		// the skeleton writes it back on the same stream, which is what makes
+		// the ordering the client sees identical either way.
+		s.sendSnapshot()
+	default:
+		// D-24: the Phase 3–6 commands are already in the catalog, so a client
+		// that sends one now gets a typed answer instead of silence.
+		s.sendError(CodeUnsupported, "command not implemented in this phase")
+	}
+}
+
+// handleJoin completes D-23's handshake for all three roles.
+//
+// The skeleton has no engine lock yet, so hello and the snapshot are written
+// back to back; 02-03's Hub performs exactly this pair inside one engine.mu
+// critical section, which is what turns the ordering this tracer pins into a
+// guarantee (D-23: registration + hello + snapshot share one critical section).
+func (s *session) handleJoin(in inbound) {
+	if s.role != "" {
+		s.sendError(CodeUnsupported, "this connection has already joined")
+		return
+	}
+	switch in.Role {
+	case RolePlayer, RoleScreen, RoleAdmin:
+	default:
+		s.sendError(CodeBadMessage, "join needs role player|screen|admin")
+		return
+	}
+
+	s.role = in.Role
+	s.send(TypeHello, helloPayload{Role: s.role, Rev: s.rev})
+	s.sendSnapshot()
+}
+
+// send stamps the next per-connection seq and writes one envelope. It is the
+// only application writer on this socket; the ping goroutine above uses
+// WriteControl, which gorilla documents as the one safe concurrent write.
+func (s *session) send(kind string, data any) {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("ws: marshaling %s: %v", kind, err)
+		return
+	}
+
+	s.seq++
+	env := Envelope{Type: kind, Seq: s.seq, Rev: s.rev, TS: s.now().UnixMilli(), Data: payload}
+
+	_ = s.conn.SetWriteDeadline(time.Now().Add(s.policy.WriteWait))
+	if err := s.conn.WriteJSON(env); err != nil {
+		// The read loop owns teardown; closing here just guarantees this
+		// connection cannot write a half-sent stream.
+		_ = s.conn.Close()
+	}
+}
+
+// sendError writes the frozen typed error (D-24).
+func (s *session) sendError(code, message string) {
+	s.send(TypeError, errorPayload{Code: code, Message: message})
+}
+
+// sendSnapshot writes the role snapshot — the sync point of D-22's client
+// reconciliation rules, and the second frame of a handshake.
+func (s *session) sendSnapshot() {
+	s.send(TypeStateSnapshot, snapshotPayload{
+		Role:  s.role,
+		Phase: string(game.PhaseLobby),
+		Rev:   s.rev,
+	})
 }
