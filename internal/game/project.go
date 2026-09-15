@@ -32,12 +32,19 @@ type PlayerView struct {
 // PlayerMe is the player's own row: the values they are allowed to know about
 // themselves. `connected` is live presence, which is why it rides the current
 // revision (D-37).
+//
+// Phase 3 (D-67, additive): `last_bid` is this player's most recent accepted bid
+// in the CURRENT run — a pointer so "never bid" is the key's absence while a
+// real 0 would still travel — and `is_top_bidder` is computed by the server so
+// the outbid banner never has to (D-72).
 type PlayerMe struct {
-	ID         string `json:"id"`
-	Nickname   string `json:"nickname"`
-	Budget     int64  `json:"budget"`
-	TotalValue int64  `json:"total_value"`
-	Connected  bool   `json:"connected"`
+	ID          string `json:"id"`
+	Nickname    string `json:"nickname"`
+	Budget      int64  `json:"budget"`
+	TotalValue  int64  `json:"total_value"`
+	Connected   bool   `json:"connected"`
+	LastBid     *int64 `json:"last_bid,omitempty"`
+	IsTopBidder bool   `json:"is_top_bidder"`
 }
 
 // LobbyEntry is one row of the lobby list: a nickname and whether that player is
@@ -59,6 +66,12 @@ type LeaderEntry struct {
 
 // PublicItem is the item information a player or the projector may see: every
 // public parameter and the hint range, but never truth_value (D-26).
+//
+// Phase 3 (D-67, additive): the live fields are pointers with `omitempty` so the
+// wire states are distinguishable — `current_price`/`min_next_bid`/`deadline_at`
+// exist for a live English item, and `settle` EXISTS ONLY at SETTLED. The leak
+// boundary is the presence of the whole `settle` object: `truth_value` never
+// travels at the top level, only inside it, and only after the reveal.
 type PublicItem struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -68,6 +81,53 @@ type PublicItem struct {
 	HintMax     *int64 `json:"hint_max,omitempty"`
 	StartPrice  int64  `json:"start_price"`
 	Status      string `json:"status"`
+
+	CurrentPrice   *int64      `json:"current_price,omitempty"`
+	TopBidder      *Bidder     `json:"top_bidder,omitempty"`
+	DeadlineAt     *int64      `json:"deadline_at,omitempty"`
+	MinNextBid     *int64      `json:"min_next_bid,omitempty"`
+	ExtensionsUsed *int        `json:"extensions_used,omitempty"`
+	Settle         *SettleInfo `json:"settle,omitempty"`
+}
+
+// Bidder is the public identity of the leading (or winning) player: a nickname
+// and nothing else — no id, no budget (D-67).
+type Bidder struct {
+	Nickname string `json:"nickname"`
+}
+
+// SettleInfo is D-67's reveal, shared by every role (D-68). `winner` is an
+// explicit JSON null for an unsold item — the client treats null as "no winner";
+// the UI omitting the row is a render rule, not a payload rule.
+type SettleInfo struct {
+	Outcome     string  `json:"outcome"` // "sold" | "unsold"
+	Winner      *Bidder `json:"winner"`  // null when unsold
+	Price       int64   `json:"price"`
+	TruthValue  int64   `json:"truth_value"`
+	BudgetDelta int64   `json:"budget_delta"` // truth_value − price for a sold item, 0 for unsold
+}
+
+// BidAccepted is the D-54 broadcast: the accepted bid plus every authoritative
+// number a client would otherwise have to compute (D-54/D-72 — min_next_bid in
+// particular is never client-side maths).
+type BidAccepted struct {
+	PlayerID       string `json:"player_id"`
+	Nickname       string `json:"nickname"`
+	Amount         int64  `json:"amount"`
+	CurrentPrice   int64  `json:"current_price"`
+	MinNextBid     int64  `json:"min_next_bid"`
+	DeadlineAt     *int64 `json:"deadline_at,omitempty"`
+	ExtensionsUsed int    `json:"extensions_used"`
+}
+
+// BidRejection is D-53's private payload: the structured reason plus the numbers
+// that make the refusal actionable. It travels to the submitting player only,
+// and it never bumps the revision.
+type BidRejection struct {
+	Reason     string `json:"reason"`
+	MinNextBid *int64 `json:"min_next_bid,omitempty"`
+	Budget     int64  `json:"budget"`
+	Amount     int64  `json:"amount"`
 }
 
 // ScreenView is the projector's view: public state only. Before SETTLED it

@@ -133,20 +133,30 @@ type player struct {
 	lastSeenAt  int64
 }
 
-// item mirrors the `items` table (PLAN.md §5). Phase 2 never loads items — the
-// item flow is Phase 3 — but truth_value lives here so the projection boundary
-// is real and testable today (D-26's positive control).
+// item mirrors the `items` table (PLAN.md §5). It is a flat, comparable value
+// struct on purpose: the write set is diff-based, so `*a != *b` is the entire
+// "this row changed" test (H3). Every nullable numeric column is normalized to 0
+// at load, and 0 is written back as SQL NULL by the store.
 type item struct {
-	id          string
-	orderIndex  int64
-	name        string
-	description string
-	auctionType string
-	truthValue  int64
-	hintMin     int64
-	hintMax     int64
-	startPrice  int64
-	status      string
+	id                  string
+	orderIndex          int64
+	name                string
+	description         string
+	imageURL            string
+	auctionType         string
+	truthValue          int64
+	hintMin             int64
+	hintMax             int64
+	startPrice          int64
+	minIncrement        int64
+	floorPrice          int64
+	decrementStep       int64
+	decrementIntervalMS int64
+	durationMS          int64
+	antiSnipeMode       string
+	antiSnipeWindowMS   int64
+	maxExtensions       int64 // 0 = no cap (NULL in the table)
+	status              string
 }
 
 // sealedBid mirrors one `sealed_bids` row (PLAN.md §5). Phase 6 owns the flow;
@@ -176,6 +186,18 @@ type state struct {
 	items      map[string]*item
 	itemOrder  []string
 	sealedBids []sealedBid
+
+	// Phase 3 (D-49): the live auction. currentAuction is nil outside a run;
+	// bids is the process-wide append-only trail the projections and settle
+	// derive from (the run boundary is startedAt).
+	currentAuction *auctionRun
+	bids           []bid
+
+	// events is what the mutation that produced THIS state emitted, in order.
+	// It is not durable state and clone() never copies it: it exists so the
+	// lock-held fan-out edge (publishLocked) hands the hub the exact frames the
+	// committed mutation produced (D-57).
+	events []Event
 }
 
 // Engine is the authoritative game state and the single mutation path. All
