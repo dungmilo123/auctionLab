@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -92,11 +93,27 @@ func newTestHubWithPolicy(t *testing.T, policy Policy) (*Hub, *game.Engine) {
 }
 
 // newTestServer serves the hub's WebSocket handler on a real listener.
+//
+// httptest does not track a *hijacked* connection as an outstanding request, so
+// Server.Close can return while the handler goroutine is still running its
+// deferred teardown. That teardown writes presence (D-37), i.e. it commits —
+// and a commit against a store this fixture has already closed would trip the
+// engine's fatal hook. The wait group below is what makes the shutdown order
+// deterministic: the connection is closed first, then the server, then this
+// waits for the last handler to return, and only then does the store close.
 func newTestServer(t *testing.T, h *Hub) *httptest.Server {
 	t.Helper()
 
-	srv := httptest.NewServer(http.HandlerFunc(h.ServeWS))
-	t.Cleanup(srv.Close)
+	var handlers sync.WaitGroup
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlers.Add(1)
+		defer handlers.Done()
+		h.ServeWS(w, r)
+	}))
+	t.Cleanup(func() {
+		srv.Close()
+		handlers.Wait()
+	})
 	return srv
 }
 
