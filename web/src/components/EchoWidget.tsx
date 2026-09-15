@@ -92,7 +92,17 @@ function EchoWidget() {
     if (socketRef.current !== null) return // guarded against double-connect
     setState('connecting')
 
-    const socket = new WebSocket(echoURL())
+    let socket: WebSocket
+    try {
+      socket = new WebSocket(echoURL())
+    } catch {
+      // The constructor throws on an unusable URL — an empty host, e.g. the
+      // built index.html opened from file://. Without this guard the state
+      // stayed 'connecting' with both buttons disabled: an unrecoverable
+      // widget, which mid-demo reads as a hung server.
+      setState('error')
+      return
+    }
     socketRef.current = socket
 
     socket.onopen = () => {
