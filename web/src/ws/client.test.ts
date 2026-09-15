@@ -47,11 +47,21 @@ class FakeSocket {
   }
 
   send(data: string): void {
+    // The browser throws InvalidStateError outside OPEN; `client.ts` guards on
+    // readyState before every send, so a future path that forgets the guard
+    // fails here instead of recording a frame the browser would never send.
+    if (this.readyState !== 1) throw new Error('InvalidStateError: still CONNECTING or CLOSED')
     this.sent.push(data)
   }
 
-  close(): void {
+  close(code = 1000): void {
     this.readyState = 3
+    // The browser queues the close event rather than firing it inside close().
+    // Queued, it is a no-op for today's callers — `client.ts` nulls onclose
+    // before it closes a socket — but if a future edit moves that detach, the
+    // spurious onclose becomes a visible `lost` status instead of a silent
+    // pass.
+    queueMicrotask(() => this.onclose?.({ code }))
   }
 
   /** Server side: the upgrade completed. */
