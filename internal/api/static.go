@@ -20,6 +20,13 @@ const (
 	assetCacheControl = "public, max-age=31536000, immutable"
 
 	// assetPrefix is the directory Vite emits content-hashed files into.
+	//
+	// Everything under it is assumed content-hashed, so it must stay a build
+	// output: a file dropped into `web/public/assets/` is copied here verbatim
+	// (Vite copies public/ as-is) and would then be granted `immutable` for a
+	// year — the silent stale-content failure this cache policy exists to
+	// prevent. Keep hand-managed public assets at the dist root instead of
+	// under assets/.
 	assetPrefix = "assets/"
 )
 
