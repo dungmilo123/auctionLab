@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"auctionlab"
 	"auctionlab/internal/api"
@@ -69,5 +70,21 @@ func run() error {
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("listening on %s", addr)
 
-	return http.ListenAndServe(addr, mux)
+	return newServer(addr, mux).ListenAndServe()
+}
+
+// newServer builds the HTTP server this project can live with: a client that
+// dribbles its request headers cannot hold a connection slot indefinitely
+// (gosec G112 — the slowloris class), and idle keep-alives are bounded too.
+//
+// ReadTimeout and WriteTimeout stay unset on purpose: they cover the whole
+// connection lifetime, and /ws is a long-lived upgrade that must never be cut
+// off mid-presentation.
+func newServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 }
