@@ -139,8 +139,13 @@ function LiveStats({ live }: { live: LiveOverlay }) {
  * (Phases 5–6 own the real bodies), or a projection the decoder would have
  * refused. It keeps the item name and any timing the server sent, and says what
  * is missing instead of rendering a blank screen.
+ *
+ * Exported because it is the whole family's fallback, not this arm's: the Dutch
+ * body (05-04) renders it for the types it cannot play too, and `PlayerView`
+ * keeps routing those to `LiveEnglish`, so there is exactly one "not yet"
+ * sentence in the app.
  */
-function PendingLive({ item, live }: { item: PublicItem | null; live: LiveOverlay | null }) {
+export function PendingLive({ item, live }: { item: PublicItem | null; live: LiveOverlay | null }) {
   const { t } = useLanguage()
 
   return (

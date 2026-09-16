@@ -13,6 +13,7 @@ import { initialViewState, type ViewState } from '@/ws/view'
 import Finale from './Finale'
 import ItemIntro from './ItemIntro'
 import JoinForm from './JoinForm'
+import LiveDutch from './LiveDutch'
 import LiveEnglish from './LiveEnglish'
 import Lobby from './Lobby'
 import SettledReveal from './SettledReveal'
@@ -148,6 +149,14 @@ function PlayerView() {
     connectionRef.current?.send({ type: 'bid.place', amount })
   }
 
+  function placeAccept() {
+    // D-95/D-104: the Dutch acceptance carries NO value at all — the server
+    // derives the price it charges at the instant it handles the frame, so
+    // there is nothing here a tampered client could inflate or discount
+    // (T-05-01). One tap sends exactly this one frame.
+    connectionRef.current?.send({ type: 'dutch.accept' })
+  }
+
   function renderBody() {
     // No snapshot has been applied yet: the player has not joined (or is
     // resuming), so the join screen is the only body that exists.
@@ -170,7 +179,20 @@ function PlayerView() {
         // The LIVE body must render `price.tick` and `bid.accepted` updates as
         // well as the snapshot, so an anti-snipe deadline jump and a moving
         // `min_next_bid` are visible without waiting for a snapshot (D-56/D-71).
-        return (
+        //
+        // D-103: the LIVE arm branches on the item's own type BEFORE the
+        // English body is chosen. `LiveEnglish` keeps its gate and its
+        // `PendingLive` fallback for the sealed types (Phase 6 replaces that);
+        // a Dutch item never reaches it.
+        return view.item?.auctionType === 'dutch' ? (
+          <LiveDutch
+            view={view}
+            status={status}
+            rejection={rejection}
+            onClearRejection={() => setRejection(null)}
+            onAccept={placeAccept}
+          />
+        ) : (
           <LiveEnglish
             view={view}
             status={status}
