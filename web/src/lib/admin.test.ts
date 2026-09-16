@@ -125,6 +125,20 @@ describe('the item draft (D-82b)', () => {
     expect(validateDraft(filled({ hintMin: '100', hintMax: '500' })).hintMin).toBeUndefined()
   })
 
+  it("refuses a Dutch floor above the start price with the field's own key (D-92)", () => {
+    const above = filled({ auctionType: 'dutch', floorPrice: '200000', startPrice: '100000' })
+    expect(validateDraft(above).floorPrice).toBe('admin.err.floorOrder')
+    expect(draftValid(above)).toBe(false)
+  })
+
+  it('keeps a Dutch floor at or below the start valid, and the pair rule Dutch-only', () => {
+    expect(validateDraft(filled({ auctionType: 'dutch', floorPrice: '100000' }))).toEqual({})
+    // The floor field is hidden on every other type, so the rule cannot strand
+    // an invisible error under a field the form never renders — the server
+    // scopes the same rule to `dutch` (items.go's validateItemInput).
+    expect(validateDraft(filled({ floorPrice: '200000' })).floorPrice).toBeUndefined()
+  })
+
   it('loads a stored row into the form unchanged, already valid', () => {
     const draft = draftFromItem(ITEM)
     expect(draft.id).toBe(ITEM.id)

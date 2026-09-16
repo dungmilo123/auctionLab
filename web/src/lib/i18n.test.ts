@@ -342,8 +342,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 171 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 − 1 deleted)', () => {
-    expect(KEYS).toHaveLength(171)
+  it('carries exactly the 178 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch − 1 deleted)', () => {
+    expect(KEYS).toHaveLength(178)
   })
 })
 

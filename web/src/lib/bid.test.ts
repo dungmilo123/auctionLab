@@ -63,6 +63,10 @@ describe('bidReasonKey (D-52/D-53)', () => {
     ['below_minimum', 'reason.belowMinimum'],
     ['exceeds_budget', 'reason.exceedsBudget'],
     ['already_leading', 'reason.alreadyLeading'],
+    // Phase 5 (D-97): the Dutch accept race loser's own reason — never the
+    // generic fallback, which would tell the loser nothing about why their tap
+    // did not count.
+    ['already_sold', 'reason.alreadySold'],
   ]
 
   it.each(known)('maps the %s rejection to its copy key', (reason, key) => {
