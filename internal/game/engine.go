@@ -385,6 +385,13 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		next.revision = e.state.revision + 1
 	}
 
+	// Phase 4 (D-78): the reset half of the write set. Every field above is
+	// growth-only — a cleared trail is invisible to bidTail, sealed bids have no
+	// diff at all, and a nil Runtime means "unchanged" rather than "removed" — so
+	// the removals travel as the explicit write set the store needs, read from
+	// the intent Reset recorded rather than inferred from a difference.
+	isReset := next.reset != ""
+
 	if err := e.store.Commit(store.Mutation{
 		Phase:         string(next.phase),
 		CurrentItemID: next.currentItemID,
@@ -399,16 +406,12 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		DeletedItems: next.deletedItems(e.state),
 		Runtime:      next.runtimeRow(e.state),
 		Bids:         next.bidTail(e.state),
-		// Phase 4 (D-78): the reset half of the write set. Every field above is
-		// growth-only — a cleared trail is invisible to bidTail, sealed bids have
-		// no diff at all, and a nil Runtime means "unchanged" rather than
-		// "removed" — so the removals travel as the explicit write set the store
-		// needs, read from the intent Reset recorded rather than inferred from a
-		// difference. `DeletedPlayers` is the one removal a diff CAN see, because
-		// a player row does have an in-memory identity to compare against.
-		ClearBids:       next.reset != "",
-		ClearSealedBids: next.reset != "",
-		DeleteRuntime:   next.reset != "",
+		// A reset empties the trail, the sealed bids and the runtime rows;
+		// `DeletedPlayers` is the one removal a diff CAN see, because a player
+		// row does have an in-memory identity to compare against.
+		ClearBids:       isReset,
+		ClearSealedBids: isReset,
+		DeleteRuntime:   isReset,
 		DeletedPlayers:  next.deletedPlayers(e.state),
 	}); err != nil {
 		if store.IsUniqueViolation(err) {
