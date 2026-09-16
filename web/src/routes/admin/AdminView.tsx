@@ -695,7 +695,11 @@ function AdminView() {
                   className="flex min-h-11 flex-wrap items-center gap-2 border-t-2 border-t-border px-2 py-1 first:border-t-0"
                 >
                   <span className="text-sm leading-[1.5] font-bold">{index + 1}</span>
-                  <span className="min-w-0 flex-1 break-words text-base leading-[1.5]">
+                  {/* The name keeps a 10rem floor, so a crowded line breaks
+                      BELOW it: the row's `flex-wrap` drops the action group to
+                      the next line instead of squeezing the name to a sliver
+                      (03-UI-SPEC.md §UI Considerations, overflow row). */}
+                  <span className="min-w-40 flex-1 break-words text-base leading-[1.5]">
                     {item.name}
                   </span>
                   <span className="text-sm leading-[1.5] text-muted-foreground">
