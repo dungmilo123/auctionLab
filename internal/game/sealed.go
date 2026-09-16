@@ -3,16 +3,18 @@ package game
 import (
 	"fmt"
 	"slices"
+	"sort"
 )
 
 // This file is the sealed-bid auction engine (Phase 6): the ONE submit path
-// (D-108/D-109/D-110/D-111) and — from the settle plan of this phase — the ONE
-// winner/charge derivation every surface reads (D-113/D-114).
+// (D-108/D-109/D-110/D-111) and the ONE winner/charge derivation every surface
+// reads (D-113/D-114).
 //
 // Nothing here is a second settle path and nothing here persists a price: a
 // submit writes ONE effective row per (item, player) plus ONE audit row in the
 // SAME mutation, and the private confirmation carries a count and nothing else
-// (D-111).
+// (D-111). The settle reads sealedOutcome, which the existing settle path and
+// the boot's rebuild both call.
 
 // trailSealedEdit is the third kind of the append-only `bids` audit (PLAN.md §5's
 // vocabulary `bid | accept | sealed_edit`, D-109): one row per sealed submit or
@@ -109,6 +111,73 @@ func (s *state) sealedBidOf(itemID, playerID string) (*sealedBid, bool) {
 		}
 	}
 	return nil, false
+}
+
+// sealedOutcome is the sealed run's WHOLE settlement — the winner, the price
+// the settle charges and whether there is a winner at all — derived from the
+// effective set alone (D-113/D-114). It is one pure function in the shape
+// dutchPriceAt set: the one settle path and the one reveal constructor (and
+// therefore the boot's rebuild) all read it, so the price the projector
+// publishes and the price the winner pays can never disagree.
+//
+// It is total: a missing item, no rows, or rows that all belong to another item
+// answer `unsold`, and the one-bidder Vickrey case falls out of
+// max(0, start_price) rather than out of a branch of its own (SEAL-04).
+func sealedOutcome(it *item, sheets []sealedBid) (winner sealedBid, price int64, ok bool) {
+	if it == nil {
+		return sealedBid{}, 0, false
+	}
+
+	// The set is the CURRENT item's rows only: s.sealedBids accumulates across
+	// items until a reset clears it, so an unscoped scan would settle today's
+	// item on the previous item's sheet (research Pitfall 10).
+	set := make([]sealedBid, 0, len(sheets))
+	for _, sheet := range sheets {
+		if sheet.itemID == it.id {
+			set = append(set, sheet)
+		}
+	}
+	if len(set) == 0 {
+		return sealedBid{}, 0, false
+	}
+
+	// The TOTAL order (D-113/SEAL-05): the highest effective amount first, the
+	// earliest FIRST submission next, and the player id last. The final rung
+	// exists only so a pair that ties on both real rules is still decidable —
+	// the same documented last rung ECON-05's standing keeps — which is also
+	// why sorting can never fall back on the order the rows happen to sit in.
+	sort.SliceStable(set, func(i, j int) bool {
+		a, b := set[i], set[j]
+		switch {
+		case a.amount != b.amount:
+			return a.amount > b.amount
+		case a.submittedAt != b.submittedAt:
+			return a.submittedAt < b.submittedAt
+		default:
+			return a.playerID < b.playerID
+		}
+	})
+	winner = set[0]
+
+	switch it.auctionType {
+	case "vickrey":
+		// SEAL-04: the runner-up's effective amount, floored at the item's
+		// start price. One bidder leaves `second` at zero, so the floor IS the
+		// one-bidder rule; a top-two tie charges the tied amount, which can
+		// never exceed the winner's own bid because the submit path enforced
+		// amount >= start_price.
+		var second int64
+		if len(set) > 1 {
+			second = set[1].amount
+		}
+		price = second
+		if price < it.startPrice {
+			price = it.startPrice
+		}
+	default: // sealed_first
+		price = winner.amount
+	}
+	return winner, price, true
 }
 
 // applySealedSubmit applies ONE submission to the scratch state. It runs only

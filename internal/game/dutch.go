@@ -1,11 +1,14 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // This file is the Dutch auction engine (Phase 5): the ONE pure price
 // derivation (D-91/DTCH-01), the serialized accept that settles the item at the
 // server's own number (D-95/D-96) and the type-aware winner lookup the shared
-// settle path reads (D-98/D-100).
+// settle path reads (D-98/D-100/D-114).
 //
 // Nothing here is a second settle path and nothing here persists a price. The
 // accept records ONE entry in the append-only trail — carrying the `accept`
@@ -123,16 +126,43 @@ func (s *state) runAcceptance() (bid, bool) {
 }
 
 // runWinner is the ONE type-aware winner lookup (D-100): the English ladder's
-// top bid, or the Dutch run's recorded acceptance. settleLocked and settleReveal
-// both read it, so a Dutch settle can grow neither a second settle path nor a
-// second reveal constructor — and a force-ended Dutch run with no acceptance is
-// `unsold` through exactly the same branch an English run with no bids takes
-// (D-102).
-func (s *state) runWinner() (bid, bool) {
-	if it := s.items[s.currentItemID]; it != nil && it.auctionType == "dutch" {
-		return s.runAcceptance()
+// top bid, the Dutch run's recorded acceptance, or the sealed run's charged
+// outcome. settleLocked and settleReveal both read it, so a Dutch or sealed
+// settle can grow neither a second settle path nor a second reveal constructor
+// — and a force-ended run with no winner is `unsold` through exactly the same
+// branch an English run with no bids takes (D-102/D-114).
+//
+// The PRICE travels beside the winner (D-114). For a first-price or Dutch run
+// the two are the same number, but for a Vickrey run the winner's bid and what
+// they pay are different by design — so the charge has to come out of this one
+// accessor, or the budget mutation and the published reveal could disagree.
+func (s *state) runWinner() (bid, int64, bool) {
+	it := s.items[s.currentItemID]
+	if it != nil && it.auctionType == "dutch" {
+		w, ok := s.runAcceptance()
+		if !ok {
+			return bid{}, 0, false
+		}
+		return w, w.amount, true
 	}
-	return s.topBid()
+	if it != nil && slices.Contains(sealedTypes, it.auctionType) {
+		winner, price, ok := sealedOutcome(it, s.sealedBids)
+		if !ok {
+			return bid{}, 0, false
+		}
+		// The reveal reads only the winner's identity; the rest of the struct is
+		// filled so a caller always looks at the shape the other arms answer —
+		// the instant is the tie-break field the outcome ranked by.
+		return bid{
+			itemID: winner.itemID, playerID: winner.playerID,
+			amount: winner.amount, createdAt: winner.submittedAt, kind: trailSealedEdit,
+		}, price, true
+	}
+	w, ok := s.topBid()
+	if !ok {
+		return bid{}, 0, false
+	}
+	return w, w.amount, true
 }
 
 // AcceptDutch is `dutch.accept {}` (D-95/D-96): the ordered validation, then ONE

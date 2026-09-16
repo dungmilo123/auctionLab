@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"log"
+	"slices"
 )
 
 // This file is the boot half of RT-05/D-62: an engine never starts from nothing,
@@ -46,6 +47,12 @@ func (e *Engine) loadAuctionState() error {
 		// file rebuild the reveal its settle produced — the reconstruction set is
 		// exactly the set the mutation path writes, never wider.
 		//
+		// `sealed_edit` rows (D-109) are deliberately NOT loaded: no in-memory
+		// reader consumes them — the ladder, the feed and the Dutch acceptance
+		// all filter on their own kind — and the sealed state a restart needs is
+		// rebuilt from the effective rows below, so a reloaded audit row could
+		// only ever be data nothing reads.
+		//
 		// The table is the append-only audit and a later phase may write other
 		// kinds; anything this build does not understand stays out, because a
 		// reader that meets an unknown kind would treat it as data (H5).
@@ -65,6 +72,26 @@ func (e *Engine) loadAuctionState() error {
 		})
 	}
 
+	// D-110/D-114: the effective sealed set is durable state, and loading it is
+	// LOAD-BEARING rather than a convenience — a process that restarts on a
+	// SETTLED sealed file rebuilds the reveal and the charged price from these
+	// rows through the same sealedOutcome the live settle read, and an empty
+	// load would answer `unsold`. The store's own total order (item, first
+	// submission instant, player id) is the order the tie-break ranks by.
+	sheets, err := e.store.LoadSealedBids()
+	if err != nil {
+		return err
+	}
+	for _, row := range sheets {
+		s.sealedBids = append(s.sealedBids, sealedBid{
+			itemID:      row.ItemID,
+			playerID:    row.PlayerID,
+			amount:      row.Amount,
+			submittedAt: row.SubmittedAt,
+			updatedAt:   row.UpdatedAt,
+		})
+	}
+
 	return e.validateResumedAuction()
 }
 
@@ -75,7 +102,7 @@ func (e *Engine) loadAuctionState() error {
 //   - LOBBY and FINALE have no current item;
 //   - ITEM_INTRO names an existing item whose row is still `intro`;
 //   - LIVE names an existing `live` item with a runtime row (and, for an
-//     English item, a persisted deadline);
+//     english or sealed item, a persisted deadline);
 //   - SETTLED names an existing `settled` item whose runtime row proves the
 //     settle with a `settled_at`.
 //
@@ -136,6 +163,14 @@ func (e *Engine) validateResumedAuction() error {
 			// A resumed English auction whose wall clock is unknown could
 			// neither settle nor tick; there is no correct value to guess.
 			return fmt.Errorf("game: phase LIVE on english item %q with no persisted deadline — a resumed English auction must have one (D-62)", current.id)
+		}
+		if slices.Contains(sealedTypes, current.auctionType) && rt.DeadlineAt == nil {
+			// D-107/T-06-07: a resumed sealed run settles on the WALL CLOCK
+			// exactly like English — the ticker's settle arm reads deadline_at
+			// and nothing else — so a row without one could never close its
+			// window. It is not repaired: a deadline invented here would be a
+			// window the room never agreed to.
+			return fmt.Errorf("game: phase LIVE on sealed item %q with no persisted deadline — a resumed sealed run must have one (D-107)", current.id)
 		}
 		if current.auctionType == "dutch" {
 			// D-101: a Dutch LIVE run's clock IS started_at — every projection

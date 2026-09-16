@@ -212,19 +212,24 @@ func (s *state) settleLocked(now int64) error {
 		return fmt.Errorf("game: settle for unknown item %q", run.itemID)
 	}
 
-	// D-100: the winner lookup is type-aware — the English ladder's top bid, or
-	// the Dutch run's recorded acceptance. One accessor, so a Dutch settle takes
-	// exactly this branch rather than growing a settle of its own.
-	top, hasWinner := s.runWinner()
+	// D-100/D-114: the winner lookup is type-aware AND carries the price — the
+	// English ladder's top bid, the Dutch run's recorded acceptance, or the
+	// sealed run's charged outcome. One accessor, so a Dutch or sealed settle
+	// takes exactly this branch rather than growing a settle of its own, and
+	// the Vickrey charge cannot drift from the reveal it is published beside.
+	top, price, hasWinner := s.runWinner()
 	if hasWinner {
 		p := s.players[top.playerID]
 		if p == nil {
 			return fmt.Errorf("game: settle for unknown player %q", top.playerID)
 		}
-		// ECON-02: the winner pays their own bid exactly once, and the item's
-		// truth value moves into total_value. price <= budget was enforced at
-		// bid time and budgets only move here, so the result cannot go negative.
-		p.budget = p.budget - top.amount + it.truthValue
+		// ECON-02: the winner pays the price this ONE accessor answered —
+		// their own bid for English/first-price, the accepted price for Dutch,
+		// max(second_highest, start_price) for Vickrey — exactly once, and the
+		// item's truth value moves into total_value. `price <= budget` was
+		// enforced at (or before) submit time and budgets only move here, so
+		// the result cannot go negative.
+		p.budget = p.budget - price + it.truthValue
 		p.totalValue += it.truthValue
 	}
 

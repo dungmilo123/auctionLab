@@ -680,18 +680,20 @@ func (s *state) currentPublicItem(now int64) *PublicItem {
 func (s *state) settleReveal(it *item) *SettleInfo {
 	reveal := &SettleInfo{Outcome: "unsold", TruthValue: it.truthValue}
 
-	// D-100: the SAME type-aware accessor settleLocked charged with, so a Dutch
-	// restart derives the identical sold object from the acceptance row and an
-	// English restart derives the identical one from the ladder.
-	top, ok := s.runWinner()
+	// D-100/D-114: the SAME type-aware accessor (and the same charged price)
+	// settleLocked mutated the budget with, so a Dutch restart derives the
+	// identical sold object from the acceptance row, a sealed restart derives it
+	// from the effective rows, and an English restart derives it from the ladder
+	// — including the Vickrey case where the price is not the winner's bid.
+	top, price, ok := s.runWinner()
 	if !ok {
 		// ECON-03: unsold is a first-class outcome — price 0, delta 0 and an
 		// explicit null winner — and no budget moves.
 		return reveal
 	}
 	reveal.Outcome = "sold"
-	reveal.Price = top.amount
-	reveal.BudgetDelta = it.truthValue - top.amount
+	reveal.Price = price
+	reveal.BudgetDelta = it.truthValue - price
 	if p := s.players[top.playerID]; p != nil {
 		reveal.Winner = &Bidder{Nickname: p.nickname}
 	}
