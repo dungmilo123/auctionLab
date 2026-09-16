@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -55,6 +56,161 @@ func storedConfig(t *testing.T, env *testEnv) engineConfig {
 		t.Fatalf("unmarshalling the persisted config_json %q: %v", row.ConfigJSON, err)
 	}
 	return persisted
+}
+
+// storedConfigJSON is storedConfig's raw form: the byte-for-byte value of
+// game.config_json. It is the stronger witness for "this edit wrote nothing",
+// which a decoded comparison cannot prove (a rewrite with the same values would
+// look identical once parsed).
+func storedConfigJSON(t *testing.T, env *testEnv) string {
+	t.Helper()
+
+	row, err := env.store.LoadGame()
+	if err != nil {
+		t.Fatalf("store.LoadGame: %v", err)
+	}
+	return row.ConfigJSON
+}
+
+// TestUpdateConfigRefusals is D-81/D-84's guard: every invalid input is a
+// REFUSAL — no error is stored, no revision moves, nothing is rewritten, and the
+// fatal hook is never touched, because a bad form value must not take the show
+// down (D-34 escalates only real commit failures).
+func TestUpdateConfigRefusals(t *testing.T) {
+	ptrInt := func(v int64) *int64 { return &v }
+	ptrStr := func(v string) *string { return &v }
+
+	cases := []struct {
+		name string
+		in   ConfigInput
+	}{
+		{"a zero starting budget", ConfigInput{StartingBudget: ptrInt(0)}},
+		{"a negative starting budget", ConfigInput{StartingBudget: ptrInt(-1)}},
+		{"a starting budget above MaxAmount", ConfigInput{StartingBudget: ptrInt(MaxAmount + 1)}},
+		{"an empty join url", ConfigInput{JoinURL: ptrStr("")}},
+		{"a non-http scheme", ConfigInput{JoinURL: ptrStr("ftp://192.168.0.103:8080/")}},
+		{"a scheme-less url", ConfigInput{JoinURL: ptrStr("192.168.0.103:8080/")}},
+		{"an overlong join url", ConfigInput{JoinURL: ptrStr("http://" + strings.Repeat("a", MaxJoinURLLen) + "/")}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+			before := env.engine.Rev()
+			beforeJSON := storedConfigJSON(t, env)
+
+			if err := env.engine.UpdateConfig(tc.in); err == nil {
+				t.Fatalf("UpdateConfig(%+v) accepted an invalid input", tc.in)
+			}
+			if got := env.engine.Rev(); got != before {
+				t.Errorf("revision = %d, want %d: a refusal is not a mutation", got, before)
+			}
+			if got := storedConfigJSON(t, env); got != beforeJSON {
+				t.Errorf("config_json = %q, want the untouched %q", got, beforeJSON)
+			}
+			select {
+			case err := <-env.fatal:
+				t.Fatalf("a refused config edit escalated to the fatal hook: %v", err)
+			default:
+			}
+		})
+	}
+}
+
+// TestUpdateConfigUnchangedValuesKeepTheStoredJSON pins the middle ground
+// between "refuse" and "rewrite": a VALID edit that changes nothing still
+// commits (the admin's own panel needs the snapshot that says so, and every
+// other admin command behaves the same way), but game.config_json is not
+// rewritten, because the write set is a diff.
+func TestUpdateConfigUnchangedValuesKeepTheStoredJSON(t *testing.T) {
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+
+	selected := configCandidates[0]
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selected}); err != nil {
+		t.Fatalf("UpdateConfig: %v", err)
+	}
+	afterFirst := storedConfigJSON(t, env)
+	if !strings.Contains(afterFirst, "join_url") {
+		t.Fatalf("config_json = %q, want the selected join_url persisted", afterFirst)
+	}
+
+	before := env.engine.Rev()
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selected}); err != nil {
+		t.Fatalf("UpdateConfig(unchanged): %v", err)
+	}
+	if got := env.engine.Rev(); got != before+1 {
+		t.Errorf("revision = %d, want %d: a valid edit is still one committed mutation", got, before+1)
+	}
+	if got := storedConfigJSON(t, env); got != afterFirst {
+		t.Errorf("config_json = %q, want the unchanged %q: an identical value is not a write", got, afterFirst)
+	}
+}
+
+// TestUpdateConfigStartingBudgetAffectsFutureJoinsOnly is D-81's economics
+// contract: editing starting_budget never rewrites a balance that is already in
+// play. It is the budget the next join is minted with, and the budget a reset
+// restores — nothing else.
+func TestUpdateConfigStartingBudgetAffectsFutureJoinsOnly(t *testing.T) {
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+
+	first, err := env.engine.Join(JoinRequest{Role: RolePlayer, Nickname: "An"}, nil)
+	if err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+
+	raised := int64(2_500_000)
+	if err := env.engine.UpdateConfig(ConfigInput{StartingBudget: &raised}); err != nil {
+		t.Fatalf("UpdateConfig: %v", err)
+	}
+
+	existing, ok := env.engine.Snapshot(RolePlayer, first.PlayerID).(PlayerView)
+	if !ok {
+		t.Fatalf("player snapshot has type %T", env.engine.Snapshot(RolePlayer, first.PlayerID))
+	}
+	if existing.Me.Budget != 1_000_000 {
+		t.Errorf("the player already in play has budget %d, want the untouched 1_000_000", existing.Me.Budget)
+	}
+
+	second, err := env.engine.Join(JoinRequest{Role: RolePlayer, Nickname: "Bình"}, nil)
+	if err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+	fresh, ok := env.engine.Snapshot(RolePlayer, second.PlayerID).(PlayerView)
+	if !ok {
+		t.Fatalf("player snapshot has type %T", env.engine.Snapshot(RolePlayer, second.PlayerID))
+	}
+	if fresh.Me.Budget != raised {
+		t.Errorf("a join after the edit has budget %d, want the new starting budget %d", fresh.Me.Budget, raised)
+	}
+
+	if err := env.engine.Reset(ResetKeepPlayers); err != nil {
+		t.Fatalf("Reset(keep_players): %v", err)
+	}
+	afterReset, ok := env.engine.Snapshot(RolePlayer, first.PlayerID).(PlayerView)
+	if !ok {
+		t.Fatalf("player snapshot has type %T", env.engine.Snapshot(RolePlayer, first.PlayerID))
+	}
+	if afterReset.Me.Budget != raised {
+		t.Errorf("after a reset the player has budget %d, want the new starting budget %d", afterReset.Me.Budget, raised)
+	}
+}
+
+// TestUpdateConfigCannotCarryAKeyShapedValue is D-74's boundary spelled out:
+// the persisted config carries the budget and the join URL, and the ADMIN_KEY
+// (which lives in server_config, never here) must not be reachable through any
+// config path — including by being smuggled in as a URL.
+func TestUpdateConfigCannotCarryAKeyShapedValue(t *testing.T) {
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+
+	key := strings.Repeat("a", 64)
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &key}); err == nil {
+		// The scheme guard is what keeps this closed even for a value shaped
+		// like a secret.
+		t.Fatalf("UpdateConfig accepted %q as a join url", key)
+	}
+	if stored := storedConfigJSON(t, env); strings.Contains(stored, key) {
+		t.Errorf("config_json = %q, want no key-shaped value persisted", stored)
+	}
 }
 
 // TestUpdateConfig is D-81/D-84's write path: one `admin.config.update` moves

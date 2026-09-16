@@ -773,3 +773,87 @@ func TestPlayerViewTracksPresence(t *testing.T) {
 		t.Errorf("the other player's presence changed too: %#v", flags)
 	}
 }
+
+// TestProjectionsCarryJoinURLByRole is D-83/D-84/D-86's shape contract for the
+// Join URLs panel, asserted on the marshaled wire rather than on the Go types:
+// the admin panel receives the candidate list AND the selection (it is the only
+// role that chooses), the projector receives the selection alone (a list on a
+// projector is a list of wrong answers), and a player receives neither — nor any
+// `config` object it could read a budget out of.
+//
+// It is also the leak assertion for the new surface: assertNoSecrets runs over
+// every role's document, so a future field that puts a token or a truth value
+// next to the URL fails here.
+func TestProjectionsCarryJoinURLByRole(t *testing.T) {
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+
+	joined, err := env.engine.Join(JoinRequest{Role: RolePlayer, Nickname: "An"}, nil)
+	if err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+
+	adminDoc := decodeObject(t, env.engine.Snapshot(RoleAdmin, ""))
+	// The admin projection is the leak lock's POSITIVE control — it carries
+	// tokens and sealed bids on purpose — so the assertion here is the
+	// D-74 one instead: the capability that guards the panel never enters game
+	// state, and therefore can never reach the panel.
+	for _, key := range []string{"key", "admin_key"} {
+		if _, present := adminDoc[key]; present {
+			t.Errorf("the admin snapshot carries %q: the ADMIN_KEY is server_config's, never game state (D-74)", key)
+		}
+	}
+	urls, ok := adminDoc["join_urls"].([]any)
+	if !ok {
+		t.Fatalf("admin join_urls = %#v, want the candidate array: the panel has nothing to offer without it", adminDoc["join_urls"])
+	}
+	if len(urls) != len(configCandidates) {
+		t.Errorf("admin join_urls = %v, want all %d candidates", urls, len(configCandidates))
+	}
+	for i, want := range configCandidates {
+		if i < len(urls) && urls[i] != want {
+			t.Errorf("admin join_urls[%d] = %#v, want %q", i, urls[i], want)
+		}
+	}
+	if got := adminDoc["selected_join_url"]; got != configCandidates[0] {
+		t.Errorf("admin selected_join_url = %#v, want the first candidate %q before any selection", got, configCandidates[0])
+	}
+
+	screenDoc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	assertNoSecrets(t, "screen", screenDoc)
+	if got := screenDoc["join_url"]; got != configCandidates[0] {
+		t.Errorf("screen join_url = %#v, want %q", got, configCandidates[0])
+	}
+	for _, key := range []string{"join_urls", "selected_join_url", "config"} {
+		if _, present := screenDoc[key]; present {
+			t.Errorf("the screen snapshot carries %q: the projector has no choice to make", key)
+		}
+	}
+
+	playerDoc := decodeObject(t, env.engine.Snapshot(RolePlayer, joined.PlayerID))
+	assertNoSecrets(t, "player", playerDoc)
+	for _, key := range []string{"join_url", "join_urls", "selected_join_url", "config"} {
+		if _, present := playerDoc[key]; present {
+			t.Errorf("the player snapshot carries %q: a player never needs the show's URLs or config", key)
+		}
+	}
+
+	// Selecting a NON-first candidate is the whole point of the panel: the
+	// projector follows the admin's choice, and the list itself does not move.
+	selected := configCandidates[2]
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selected}); err != nil {
+		t.Fatalf("UpdateConfig: %v", err)
+	}
+
+	adminDoc = decodeObject(t, env.engine.Snapshot(RoleAdmin, ""))
+	if got := adminDoc["selected_join_url"]; got != selected {
+		t.Errorf("admin selected_join_url = %#v, want the selected %q", got, selected)
+	}
+	if got, ok := adminDoc["join_urls"].([]any); !ok || len(got) != len(configCandidates) {
+		t.Errorf("admin join_urls = %#v after a selection, want the unchanged candidate list", adminDoc["join_urls"])
+	}
+
+	screenDoc = decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	if got := screenDoc["join_url"]; got != selected {
+		t.Errorf("screen join_url = %#v, want the selected %q: every projector renders the admin's choice", got, selected)
+	}
+}

@@ -15,6 +15,12 @@ type ConfigInput struct {
 	JoinURL        *string `json:"join_url"`
 }
 
+// MaxJoinURLLen is D-86's cap on a join URL. The bound exists because the URL is
+// rendered as QR text and echoed back to every projector: an unbounded string is
+// a frame-size and a QR-encoding problem, and the cap is far above any real
+// `http://192.168.x.y:8080/` (D-83's candidates are ~30 characters).
+const MaxJoinURLLen = 200
+
 // UpdateConfig is `admin.config.update` (D-81/D-84): an ordinary applyLocked
 // mutation that edits the persisted configuration and nothing else.
 //
