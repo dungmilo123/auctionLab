@@ -33,11 +33,11 @@ export const SCREEN_SCALE_CLASS = 'screen-scale'
  * `screen.noJoinUrl` in the plate's place.
  */
 export function joinUrlInvitable(url: string): boolean {
-  // RED sentinel: the declaration `screen.test.ts` compiles against. GREEN
-  // implements the server's own rule (`internal/game/config.go`'s
-  // validateJoinURL: non-empty, `http://` or `https://`).
-  void url
-  return false
+  // The server's rule, character for character: a case-sensitive scheme prefix
+  // and no trimming (internal/game/config.go's validateJoinURL). A second,
+  // tighter rule here could hide a URL the admin legitimately selected — and a
+  // looser one could put a URL in a QR that the server would refuse.
+  return url.startsWith('http://') || url.startsWith('https://')
 }
 
 /**
@@ -46,9 +46,7 @@ export function joinUrlInvitable(url: string): boolean {
  * them. `english` and `dutch` never carry one.
  */
 export function isSealedAuction(auctionType: string): boolean {
-  // RED sentinel — see the module header.
-  void auctionType
-  return false
+  return auctionType === 'sealed_first' || auctionType === 'vickrey'
 }
 
 /**
@@ -58,7 +56,5 @@ export function isSealedAuction(auctionType: string): boolean {
  * blank body and never an invented one.
  */
 export function isEnglishAuction(auctionType: string): boolean {
-  // RED sentinel — see the module header.
-  void auctionType
-  return false
+  return auctionType === 'english'
 }

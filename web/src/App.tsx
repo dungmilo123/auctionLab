@@ -9,7 +9,9 @@ import ScreenView from '@/routes/screen/ScreenView'
 // history handling. The pathname is passed to the shells that print their own
 // `route: … · path: …` line — the human-verifiable proof of BUILD-03 when
 // /admin or /screen is refreshed inside the built binary. The player route is
-// real UI now and no longer prints one.
+// real UI now and no longer prints one, and `/screen` is real UI as of 04-08:
+// its placeholder document (and the mono meta line with it) is gone, so the
+// projector route takes no props at all.
 //
 // Anything that is not /admin or /screen renders the player route: that is the
 // walking-skeleton fallback (01-UI-SPEC.md §Routes), revisited when real
@@ -38,7 +40,7 @@ function App() {
       case 'admin':
         return <AdminView />
       case 'screen':
-        return <ScreenView path={path} />
+        return <ScreenView />
       default:
         return <PlayerView />
     }

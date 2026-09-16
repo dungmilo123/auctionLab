@@ -169,3 +169,34 @@
     outline-offset: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The projector base (D-90) — the ONE addition Phase 4 makes to this
+   stylesheet: two rules, one intent. No token is declared, no colour changes
+   and nothing outside the screen route is touched.
+
+   The first rule is the route base. Every declared role is rem-based
+   (0.875rem / 1rem / 1.25rem / 2rem), so the four type sizes and the seven
+   spacing steps render at their declared RATIOS on a projector instead of at
+   the 16px document base — a fifth size would still be wrong on the next
+   projector, which is why this is one clamp and not a new type family
+   (04-UI-SPEC §Typography).
+
+   The second is the route's outline step: a 2px hairline is a 2.7mm line on a
+   2.6m image and disappears from the back row, so the route renders every
+   border at the declared xs step (4px). It is written UNLAYERED on purpose —
+   Tailwind v4 emits `border-2` inside `@layer utilities`, so one unlayered
+   rule outranks it for every bordered box on the route at once, with no
+   call-site change and no per-element class (04-UI-SPEC §Spacing).
+
+   Both rules are scoped to the class `ScreenView` puts on the document root
+   for the route's lifetime — and `lib/screen.ts` exports that class name, so
+   `screen.test.ts` fails if the two ever drift apart.
+   ------------------------------------------------------------------------- */
+html.screen-scale {
+  font-size: clamp(20px, 4.2vmin, 48px);
+}
+
+html.screen-scale .border-2 {
+  border-width: 4px;
+}

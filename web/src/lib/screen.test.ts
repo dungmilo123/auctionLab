@@ -1,7 +1,16 @@
+/// <reference types="node" />
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { SCREEN_SCALE_CLASS, isEnglishAuction, isSealedAuction, joinUrlInvitable } from './screen'
+
+// This is the one test in the suite that reads a shipped file instead of
+// importing a module: `tsconfig.app.json` scopes the app's type environment to
+// `vite/client` (browser code must not see Node globals), so the reference
+// directive above is what lets this file — and only its own imports — reach
+// `node:fs`. Vitest itself never needed it: `vitest run` does not type-check.
+// (The alternative, `../index.css?raw`, is stubbed to an empty string by
+// Vitest's CSS handling, which is why the file is read from disk.)
 
 // The projector's pure rules (D-86/D-88/D-90), pinned in Vitest's node
 // environment: there is no DOM harness in this phase, so `/screen` is tested
