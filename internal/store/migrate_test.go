@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -120,7 +121,7 @@ func TestMigrationV1ToV2(t *testing.T) {
 			t.Fatal("auction_runtime does not have extensions_used after the migration")
 		}
 		var (
-			startedAt int64
+			startedAt  int64
 			extensions int
 		)
 		err := st.DB.QueryRow(
@@ -211,4 +212,427 @@ func TestSchemaNeverLowersANewerFile(t *testing.T) {
 	if got != future {
 		t.Errorf("user_version = %d after a refused boot, want the untouched %d", got, future)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// D-74 (Phase 4): the user_version 2→3 step and the server_config KV that
+// carries the admin capability. The v1 precedent above is followed exactly — the
+// pre-migration file is written as a literal, never derived from schema.go, so
+// the test proves the step against a file the previous build could produce.
+// ---------------------------------------------------------------------------
+
+// v2AuctionRuntimeDDL is PLAN.md §5's `auction_runtime` as shipped at
+// user_version 2: D-50's `extensions_used` column is present, so the v1→v2
+// ALTER is history and the 2→3 step is the only migration left to run.
+const v2AuctionRuntimeDDL = `
+CREATE TABLE auction_runtime (
+  item_id         TEXT PRIMARY KEY,
+  started_at      INTEGER NOT NULL,
+  deadline_at     INTEGER,
+  settled_at      INTEGER,
+  revision        INTEGER NOT NULL,
+  extensions_used INTEGER NOT NULL DEFAULT 0
+);`
+
+// hasTable asks sqlite_master — the file's own ground truth — rather than a
+// production helper that could agree with itself.
+func hasTable(t *testing.T, db *sql.DB, table string) bool {
+	t.Helper()
+
+	var name string
+	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+	if err != nil {
+		t.Fatalf("probing sqlite_master for %q: %v", table, err)
+	}
+	return name == table
+}
+
+// isLowerHex reports whether s is made only of 0-9a-f. It is the test's own
+// shape check (identity_test.go's is package-private), so a key that came back
+// uppercased or with punctuation fails here rather than at the venue.
+func isLowerHex(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return false
+		}
+	}
+	return true
+}
+
+// TestMigrationV2ToV3 is D-74's contract: a populated v2 file migrates once to
+// user_version 3 with the additive `server_config` table, the row the file
+// already had survives, and a key written into the new table is still there
+// after a real restart (a new handle on the same file with Schema run again —
+// the boot a crash would perform).
+func TestMigrationV2ToV3(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	st := openMigrateStore(t, path)
+
+	// A v2 file with one populated runtime row and NO server_config table.
+	if _, err := st.DB.Exec(v2AuctionRuntimeDDL); err != nil {
+		t.Fatalf("writing the v2 auction_runtime DDL: %v", err)
+	}
+	if _, err := st.DB.Exec(
+		`INSERT INTO auction_runtime (item_id, started_at, deadline_at, settled_at, revision, extensions_used)
+		 VALUES ('it-v2', 111, 222, NULL, 7, 2)`); err != nil {
+		t.Fatalf("inserting the pre-migration runtime row: %v", err)
+	}
+	setUserVersion(t, st.DB, 2)
+
+	if hasTable(t, st.DB, "server_config") {
+		t.Fatal("the v2 fixture already carries server_config — the migration test would prove nothing")
+	}
+
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema on a v2 file: %v", err)
+	}
+
+	t.Run("reports user_version 3", func(t *testing.T) {
+		var got int
+		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+			t.Fatalf("PRAGMA user_version: %v", err)
+		}
+		if got != 3 {
+			t.Errorf("user_version = %d, want the D-74 version 3", got)
+		}
+	})
+
+	t.Run("creates an empty server_config table", func(t *testing.T) {
+		if !hasTable(t, st.DB, "server_config") {
+			t.Fatal("server_config does not exist after the 2→3 migration")
+		}
+		var n int
+		if err := st.DB.QueryRow("SELECT COUNT(*) FROM server_config").Scan(&n); err != nil {
+			t.Fatalf("counting server_config rows: %v", err)
+		}
+		if n != 0 {
+			t.Errorf("server_config carries %d rows after the migration, want 0", n)
+		}
+	})
+
+	t.Run("preserves the v2 row it migrated past", func(t *testing.T) {
+		var (
+			startedAt  int64
+			revision   int64
+			extensions int
+		)
+		err := st.DB.QueryRow(
+			`SELECT started_at, revision, extensions_used FROM auction_runtime WHERE item_id = 'it-v2'`).
+			Scan(&startedAt, &revision, &extensions)
+		if err != nil {
+			t.Fatalf("reading the v2 row after the migration: %v", err)
+		}
+		if startedAt != 111 || revision != 7 || extensions != 2 {
+			t.Errorf("v2 row = (started_at %d, revision %d, extensions_used %d), want (111, 7, 2)",
+				startedAt, revision, extensions)
+		}
+	})
+
+	// The key is written through the new table, then the file is reopened and a
+	// real boot (Open + Schema) is run against it: the capability must be there.
+	const stored = "3b1f6c0e9a5d47b28c6f0e1a4d7c9b2e5f8a1c4e7b0d3f6a9c2e5b8d1f4a7c0e"
+	if err := st.SetServerConfig(adminKeyRow, stored); err != nil {
+		t.Fatalf("persisting the admin key: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("closing the migrated store: %v", err)
+	}
+	reopened, err := Open(path)
+	if err != nil {
+		t.Fatalf("reopening the migrated file: %v", err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	if err := Schema(reopened.DB); err != nil {
+		t.Fatalf("Schema on the reopened file: %v", err)
+	}
+
+	t.Run("a stored key survives a reopen", func(t *testing.T) {
+		got, found, err := reopened.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig: %v", err)
+		}
+		if !found {
+			t.Fatal("the persisted admin_key row is gone after a reopen")
+		}
+		if got != stored {
+			t.Errorf("admin_key after a reopen = %q, want the stored %q", got, stored)
+		}
+	})
+
+	t.Run("a second schema pass leaves the version and the row alone", func(t *testing.T) {
+		var got int
+		if err := reopened.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+			t.Fatalf("PRAGMA user_version: %v", err)
+		}
+		if got != 3 {
+			t.Errorf("user_version = %d after a second pass, want 3", got)
+		}
+		var n int
+		if err := reopened.DB.QueryRow("SELECT COUNT(*) FROM server_config").Scan(&n); err != nil {
+			t.Fatalf("counting server_config rows: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("server_config carries %d rows after a second pass, want the 1 persisted key", n)
+		}
+	})
+}
+
+// TestServerConfig is D-74's resolver contract: the narrow KV pair, the
+// env → row → mint precedence ladder, the minted key persisted BEFORE it is
+// served, and the fail-hard rule that a broken read or write is an error —
+// never a silent re-mint that would invalidate the link the presenter is
+// holding. The injected getenv/mint make each rung observable without touching
+// the process environment or the real entropy source.
+func TestServerConfig(t *testing.T) {
+	newStore := func(t *testing.T) (*Store, string) {
+		t.Helper()
+
+		path := filepath.Join(t.TempDir(), "auction.db")
+		st, err := Open(path)
+		if err != nil {
+			t.Fatalf("Open(%q): %v", path, err)
+		}
+		t.Cleanup(func() { _ = st.Close() })
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("Schema: %v", err)
+		}
+		return st, path
+	}
+
+	const (
+		persistedKey = "1111111111111111111111111111111111111111111111111111111111111111"
+		envKey       = "2222222222222222222222222222222222222222222222222222222222222222"
+		mintedKey    = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	)
+	var (
+		noEnv          = func(string) string { return "" }
+		mintMustNotRun = func() (string, error) {
+			return "", errors.New("the mint must not run when a higher rung answered")
+		}
+	)
+
+	t.Run("an absent row is not found, never an empty value", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		value, found, err := st.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig: %v", err)
+		}
+		if found {
+			t.Errorf("found = true for a row that was never written (value %q)", value)
+		}
+	})
+
+	t.Run("a stored row round-trips and overwrites in place", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		if err := st.SetServerConfig(adminKeyRow, persistedKey); err != nil {
+			t.Fatalf("SetServerConfig: %v", err)
+		}
+		value, found, err := st.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig: %v", err)
+		}
+		if !found || value != persistedKey {
+			t.Fatalf("after Set: found = %t, value = %q, want true and %q", found, value, persistedKey)
+		}
+
+		if err := st.SetServerConfig(adminKeyRow, mintedKey); err != nil {
+			t.Fatalf("SetServerConfig (overwrite): %v", err)
+		}
+		value, found, err = st.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig (after overwrite): %v", err)
+		}
+		if !found || value != mintedKey {
+			t.Errorf("after overwrite: found = %t, value = %q, want true and %q", found, value, mintedKey)
+		}
+
+		var n int
+		if err := st.DB.QueryRow(`SELECT COUNT(*) FROM server_config`).Scan(&n); err != nil {
+			t.Fatalf("counting server_config rows: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("server_config carries %d rows after an overwrite, want the 1 upserted row", n)
+		}
+	})
+
+	t.Run("the env pin wins over the persisted row", func(t *testing.T) {
+		st, _ := newStore(t)
+		if err := st.SetServerConfig(adminKeyRow, persistedKey); err != nil {
+			t.Fatalf("seeding the persisted row: %v", err)
+		}
+
+		key, err := st.ResolveAdminKey(func(name string) string {
+			if name != adminKeyEnv {
+				t.Errorf("getenv(%q), want %q", name, adminKeyEnv)
+			}
+			return envKey
+		}, mintMustNotRun)
+		if err != nil {
+			t.Fatalf("ResolveAdminKey: %v", err)
+		}
+		if key != envKey {
+			t.Errorf("key = %q, want the env pin %q", key, envKey)
+		}
+
+		// An env pin does not overwrite the durable row: dropping the env var on
+		// the next boot must fall back to the same key, not to a fresh one.
+		value, found, err := st.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig: %v", err)
+		}
+		if !found || value != persistedKey {
+			t.Errorf("persisted row = (%t, %q) after an env-pinned boot, want it untouched as (%q)", found, value, persistedKey)
+		}
+	})
+
+	t.Run("an env pin arrives trimmed", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		// A shell export or a .env line can carry trailing whitespace; the
+		// printed /admin?k=… link is copy-pasted, so a stray newline would
+		// produce a link the gate refuses.
+		key, err := st.ResolveAdminKey(func(string) string { return "  " + envKey + "\n" }, mintMustNotRun)
+		if err != nil {
+			t.Fatalf("ResolveAdminKey: %v", err)
+		}
+		if key != envKey {
+			t.Errorf("key = %q, want the whitespace-trimmed env pin %q", key, envKey)
+		}
+	})
+
+	t.Run("a blank env falls through to the persisted row", func(t *testing.T) {
+		st, _ := newStore(t)
+		if err := st.SetServerConfig(adminKeyRow, persistedKey); err != nil {
+			t.Fatalf("seeding the persisted row: %v", err)
+		}
+
+		key, err := st.ResolveAdminKey(func(string) string { return "   " }, mintMustNotRun)
+		if err != nil {
+			t.Fatalf("ResolveAdminKey: %v", err)
+		}
+		if key != persistedKey {
+			t.Errorf("key = %q, want the persisted %q", key, persistedKey)
+		}
+	})
+
+	t.Run("an empty persisted row is absent, not the key", func(t *testing.T) {
+		st, _ := newStore(t)
+		if err := st.SetServerConfig(adminKeyRow, ""); err != nil {
+			t.Fatalf("seeding the empty row: %v", err)
+		}
+
+		// A row that lost its value must not authorize an empty key; the
+		// resolver heals by minting rather than serving "".
+		key, err := st.ResolveAdminKey(noEnv, func() (string, error) { return mintedKey, nil })
+		if err != nil {
+			t.Fatalf("ResolveAdminKey: %v", err)
+		}
+		if key != mintedKey {
+			t.Errorf("key = %q, want a freshly minted key %q", key, mintedKey)
+		}
+	})
+
+	t.Run("no env and no row mints and persists before returning", func(t *testing.T) {
+		st, path := newStore(t)
+
+		key, err := st.ResolveAdminKey(noEnv, func() (string, error) { return mintedKey, nil })
+		if err != nil {
+			t.Fatalf("ResolveAdminKey: %v", err)
+		}
+		if key != mintedKey {
+			t.Errorf("key = %q, want the minted %q", key, mintedKey)
+		}
+		if len(key) != 64 || !isLowerHex(key) {
+			t.Errorf("minted key %q is not 64 lowercase hex characters (the 32 crypto/rand bytes D-74 pins)", key)
+		}
+
+		// Durable BEFORE it is served: a fresh handle on the same file — the
+		// boot a restart performs — reads the same key back.
+		if err := st.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+		reopened, err := Open(path)
+		if err != nil {
+			t.Fatalf("reopening the file: %v", err)
+		}
+		t.Cleanup(func() { _ = reopened.Close() })
+
+		got, found, err := reopened.GetServerConfig(adminKeyRow)
+		if err != nil {
+			t.Fatalf("GetServerConfig after reopen: %v", err)
+		}
+		if !found || got != mintedKey {
+			t.Errorf("the minted key was not persisted before it was returned: found = %t, value = %q", found, got)
+		}
+	})
+
+	t.Run("a mint failure is an error and nothing is persisted", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		_, err := st.ResolveAdminKey(noEnv, func() (string, error) { return "", errors.New("entropy exhausted") })
+		if err == nil {
+			t.Fatal("ResolveAdminKey returned no error when the mint failed")
+		}
+		if !strings.Contains(err.Error(), "entropy exhausted") {
+			t.Errorf("error = %v, want it to carry the mint's own failure", err)
+		}
+		if _, found, gerr := st.GetServerConfig(adminKeyRow); gerr != nil {
+			t.Fatalf("GetServerConfig: %v", gerr)
+		} else if found {
+			t.Error("a key row was persisted although the mint failed")
+		}
+	})
+
+	t.Run("an empty mint is refused, never served as the key", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		_, err := st.ResolveAdminKey(noEnv, func() (string, error) { return "", nil })
+		if err == nil {
+			t.Fatal("ResolveAdminKey served an empty key — an empty cookie would satisfy Equal")
+		}
+		if _, found, gerr := st.GetServerConfig(adminKeyRow); gerr != nil {
+			t.Fatalf("GetServerConfig: %v", gerr)
+		} else if found {
+			t.Error("an empty key was persisted")
+		}
+	})
+
+	t.Run("a closed store is an error, never a silent re-mint", func(t *testing.T) {
+		st, _ := newStore(t)
+		if err := st.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+
+		// The row cannot be read (or written) on a dead handle: booting on
+		// anything but an error here would mint a key the file does not hold.
+		if _, err := st.ResolveAdminKey(noEnv, func() (string, error) { return mintedKey, nil }); err == nil {
+			t.Fatal("ResolveAdminKey answered from a closed store instead of failing the boot")
+		}
+	})
+
+	t.Run("a write failure is an error, never an in-memory key", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		// MaxOpenConns(1) puts this pragma on the one connection the resolver
+		// uses: the row read still works, the INSERT cannot land.
+		if _, err := st.DB.Exec("PRAGMA query_only = 1"); err != nil {
+			t.Fatalf("setting query_only: %v", err)
+		}
+
+		_, err := st.ResolveAdminKey(noEnv, func() (string, error) { return mintedKey, nil })
+		if err == nil {
+			t.Fatal("ResolveAdminKey served a key the write could not persist — a restart would invalidate the link")
+		}
+		if !strings.Contains(err.Error(), "server_config") {
+			t.Errorf("error = %v, want it to name the row that could not be written", err)
+		}
+	})
 }
