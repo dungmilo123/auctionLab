@@ -362,7 +362,14 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
                 key={delta}
                 type="button"
                 variant="outline"
-                className="flex-1"
+                // A `flex-1`-only button gets `flex-basis: 0%`, so the row held
+                // all three on one ever-shrinking line and its wrap never
+                // engaged: at 320px the labels (85–93px) overflowed their 68px
+                // boxes and collided (03-UI-REVIEW.md Pillar 2 BLOCKER). The
+                // max-content floor makes a button at least as wide as its own
+                // label — the declared wrap (03-UI-SPEC §Spacing) happens at
+                // narrow widths, and rows with room stay single-line.
+                className="flex-1 min-w-max"
                 disabled={bidding || outOfBudget}
                 onClick={() => edit(String(amount))}
               >
