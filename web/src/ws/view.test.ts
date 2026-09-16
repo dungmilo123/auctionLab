@@ -7,6 +7,7 @@ import type {
   PlayerSnapshot,
   PriceTick,
   PublicItem,
+  ScreenSnapshot,
 } from './protocol'
 import { initialViewState, reduceView, type ViewFrame } from './view'
 
@@ -62,6 +63,22 @@ function playerSnapshot(overrides: Partial<PlayerSnapshot> = {}): PlayerSnapshot
   }
 }
 
+/** The `/screen` projection (D-87/D-88). */
+function screenSnapshot(overrides: Partial<ScreenSnapshot> = {}): ScreenSnapshot {
+  return {
+    phase: 'LOBBY',
+    revision: 4,
+    serverTs: TS,
+    joinUrl: 'http://192.168.1.10:8080',
+    lobby: [{ nickname: 'An', connected: true }],
+    leaderboard: [{ rank: 1, nickname: 'An', totalValue: 0, budget: 1_000_000 }],
+    item: null,
+    recentBids: [],
+    sealedProgress: null,
+    ...overrides,
+  }
+}
+
 function tick(overrides: Partial<PriceTick> = {}): ViewFrame {
   return {
     kind: 'price.tick',
@@ -111,6 +128,9 @@ describe('initialViewState', () => {
       item: null,
       items: [],
       live: null,
+      joinUrl: '',
+      recentBids: [],
+      sealedProgress: null,
     })
   })
 })
@@ -365,5 +385,83 @@ describe('phase.changed and the item events (Q3)', () => {
     const entries = [{ rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 }]
     const state = applied(live(), { kind: 'leaderboard', entries, ts: TS })
     expect(state.leaderboard).toEqual(entries)
+  })
+})
+
+describe('the projector view (D-87/D-88/D-89)', () => {
+  it('replaces the whole view from one screen snapshot, extras included', () => {
+    const feed = [
+      { nickname: 'Bình', amount: 140_000, ts: TS + 900 },
+      { nickname: 'An', amount: 130_000, ts: TS + 500 },
+    ]
+    const state = applied(initialViewState(), {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({
+        phase: 'LIVE',
+        item: publicItem(),
+        recentBids: feed,
+        sealedProgress: { submitted: 2, total: 3 },
+      }),
+    })
+    expect(state.phase).toBe('LIVE')
+    expect(state.me).toBeNull()
+    expect(state.items).toEqual([])
+    expect(state.item?.id).toBe('i1')
+    expect(state.joinUrl).toBe('http://192.168.1.10:8080')
+    expect(state.recentBids).toEqual(feed)
+    expect(state.sealedProgress).toEqual({ submitted: 2, total: 3 })
+    expect(state.live?.itemId).toBe('i1')
+  })
+
+  it('resets the role extras when the next snapshot belongs to another role', () => {
+    const screenView = applied(initialViewState(), {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({
+        phase: 'LIVE',
+        item: publicItem(),
+        recentBids: [{ nickname: 'An', amount: 120_000, ts: TS }],
+        sealedProgress: { submitted: 1, total: 3 },
+      }),
+    })
+    expect(screenView.joinUrl).not.toBe('')
+
+    const player = applied(screenView, { kind: 'player-snapshot', snapshot: playerSnapshot() })
+    expect(player.me?.id).toBe('p1')
+    expect(player.joinUrl).toBe('')
+    expect(player.recentBids).toEqual([])
+    expect(player.sealedProgress).toBeNull()
+  })
+
+  it('patches the standings from a finale frame, in server order', () => {
+    const standings = [
+      { rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 },
+      { rank: 2, nickname: 'An', totalValue: 0, budget: 1_000_000 },
+      { rank: 3, nickname: 'Cường', totalValue: 0, budget: 800_000 },
+      { rank: 4, nickname: 'Hạnh', totalValue: 0, budget: 700_000 },
+    ]
+    const state = applied(initialViewState(), {
+      kind: 'finale',
+      payload: { podium: standings.slice(0, 3), standings },
+      ts: TS + 5_000,
+    })
+    expect(state.leaderboard).toEqual(standings)
+  })
+
+  it('keeps the snapshot authoritative after a finale frame', () => {
+    const patched = applied(initialViewState(), {
+      kind: 'finale',
+      payload: {
+        podium: [{ rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 }],
+        standings: [{ rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 }],
+      },
+      ts: TS,
+    })
+    const replaced = applied(patched, {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({ phase: 'FINALE' }),
+    })
+    expect(replaced.leaderboard).toEqual([
+      { rank: 1, nickname: 'An', totalValue: 0, budget: 1_000_000 },
+    ])
   })
 })

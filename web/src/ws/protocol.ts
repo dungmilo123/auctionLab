@@ -102,6 +102,8 @@ export const PRICE_TICK = 'price.tick'
 export const BID_ACCEPTED = 'bid.accepted'
 export const BID_REJECTED = 'bid.rejected'
 export const LEADERBOARD = 'leaderboard'
+/** D-89's reserved ceremony frame: the podium and the complete standings. */
+export const FINALE = 'finale'
 
 /** `error` payload (D-24). `message` is for logs — the UI renders `code`. */
 export type ErrorPayload = {
@@ -692,4 +694,64 @@ function readAdminItem(value: unknown): AdminItem | null {
     maxExtensions: readInt(value.max_extensions),
     status,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 (D-87/D-88/D-89). The wire payloads are declared by
+// `internal/game/project.go`; the readers below are RED stubs until the GREEN
+// commit.
+// ---------------------------------------------------------------------------
+
+/** One entry of D-88's public bid feed: a nickname, an amount and the bid's instant. */
+export type RecentBid = {
+  nickname: string
+  amount: number
+  ts: number
+}
+
+/**
+ * D-88's count-only sealed indicator. The type has no amount field at all, so
+ * "the projector may only know how many sheets arrived" is structural rather
+ * than a convention.
+ */
+export type SealedProgress = {
+  submitted: number
+  total: number
+}
+
+/**
+ * The `/screen` `state.snapshot` (D-87/D-88): public state only, plus the two
+ * additive extras the projector renders and the ONE join URL every QR is built
+ * from (D-84/D-85) — never the candidate list.
+ */
+export type ScreenSnapshot = {
+  phase: Phase
+  revision: number
+  serverTs: number
+  joinUrl: string
+  lobby: LobbyEntry[]
+  leaderboard: LeaderEntry[]
+  item: PublicItem | null
+  /** newest five accepted bids of the CURRENT run, newest first; never null */
+  recentBids: RecentBid[]
+  /** {submitted,total} for a sealed item, an explicit null for every other type */
+  sealedProgress: SealedProgress | null
+}
+
+/** D-89's `finale` payload: the podium is a PREFIX of the standings. */
+export type FinaleReveal = {
+  podium: LeaderEntry[]
+  standings: LeaderEntry[]
+}
+
+/** Decode the screen `state.snapshot` (D-87/D-88). RED stub: nothing decodes yet. */
+export function readScreenSnapshot(data: unknown): ScreenSnapshot | null {
+  void data
+  return null
+}
+
+/** Decode a `finale` payload (D-89). RED stub: nothing decodes yet. */
+export function readFinale(data: unknown): FinaleReveal | null {
+  void data
+  return null
 }

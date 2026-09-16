@@ -69,7 +69,7 @@ export const SUPERSEDED_CLOSE_CODE = 4001
 export type ConnectionStatus = 'connecting' | 'open' | 'lost' | 'superseded'
 
 /** The role a socket joins as (D-23). It selects the snapshot decoder. */
-export type SocketRole = 'player' | 'admin'
+export type SocketRole = 'player' | 'admin' | 'screen'
 
 /**
  * The role-neutral socket contract (H17). The lifecycle — same-origin URL,

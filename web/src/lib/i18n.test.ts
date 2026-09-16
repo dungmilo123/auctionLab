@@ -11,11 +11,12 @@ import {
 } from './i18n'
 
 // The approved copy table, transcribed by hand from 03-UI-SPEC.md §Copywriting
-// Contract (Phase 2's rows carried verbatim, Phase 3's 105 appended) — NOT
-// imported from the module — so a reworded string fails here instead of
-// shipping to a classroom. Typing it as a full Record<CopyKey, …> means a new
-// dictionary key is a compile error until its copy is approved here too, which
-// is the same guarantee the typed dictionary gives on the other side.
+// Contract (Phase 2's rows carried verbatim, Phase 3's 105 appended, Phase 4's
+// one QR accessible name added by 04-06) — NOT imported from the module — so a
+// reworded string fails here instead of shipping to a classroom. Typing it as a
+// full Record<CopyKey, …> means a new dictionary key is a compile error until
+// its copy is approved here too, which is the same guarantee the typed
+// dictionary gives on the other side.
 const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   h1: { en: 'Player', vi: 'Người chơi' },
   'cta.join': { en: 'Join', vi: 'Tham gia' },
@@ -218,6 +219,9 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     en: "Hint min can't be above hint max.",
     vi: 'Gợi ý thấp nhất không được lớn hơn gợi ý cao nhất.',
   },
+
+  // Phase 4 — the shared QR component's accessible name (04-06)
+  'screen.qrTitle': { en: 'Join QR code', vi: 'Mã QR vào phòng' },
 }
 
 const KEYS = Object.keys(APPROVED) as CopyKey[]
@@ -256,8 +260,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 130 approved keys (25 carried + 105 Phase 3)', () => {
-    expect(KEYS).toHaveLength(130)
+  it('carries exactly the 131 approved keys (25 carried + 105 Phase 3 + 1 Phase 4)', () => {
+    expect(KEYS).toHaveLength(131)
   })
 })
 

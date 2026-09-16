@@ -11,10 +11,12 @@ import {
   readBidAccepted,
   readBidRejected,
   readError,
+  readFinale,
   readHello,
   readPhaseChanged,
   readPlayerSnapshot,
   readPriceTick,
+  readScreenSnapshot,
   type Envelope,
 } from './protocol'
 
@@ -37,6 +39,7 @@ const FROZEN_CLIENT_TYPES = [
   'admin.item.next',
   'admin.game.reset',
   'admin.config.update',
+  'admin.player.release',
 ]
 
 const FROZEN_SERVER_TYPES = [
@@ -633,5 +636,152 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
     expect(
       readAdminSnapshot({ phase: 'LOBBY', revision: 1, server_ts: SERVER_TS, lobby: [], leaderboard: [] }),
     ).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 4: the screen projection and the reserved finale frame (D-87/D-88/D-89).
+// Every literal here is copied by hand from internal/game/project.go.
+// ---------------------------------------------------------------------------
+
+/** The `/screen` projection as the hub sends it (D-87/D-88). */
+function screenSnapshot(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    phase: 'LOBBY',
+    revision: 4,
+    server_ts: SERVER_TS,
+    join_url: 'http://192.168.1.10:8080',
+    lobby: [
+      { nickname: 'An', connected: true },
+      { nickname: 'Bình', connected: false },
+    ],
+    leaderboard: [{ rank: 1, nickname: 'An', total_value: 0, budget: 1_000_000 }],
+    item: null,
+    recent_bids: [],
+    sealed_progress: null,
+    ...overrides,
+  }
+}
+
+describe('readScreenSnapshot (D-87/D-88)', () => {
+  it('decodes the public snapshot, the selected join URL and the two extras', () => {
+    expect(readScreenSnapshot(screenSnapshot())).toEqual({
+      phase: 'LOBBY',
+      revision: 4,
+      serverTs: SERVER_TS,
+      joinUrl: 'http://192.168.1.10:8080',
+      lobby: [
+        { nickname: 'An', connected: true },
+        { nickname: 'Bình', connected: false },
+      ],
+      leaderboard: [{ rank: 1, nickname: 'An', totalValue: 0, budget: 1_000_000 }],
+      item: null,
+      recentBids: [],
+      sealedProgress: null,
+    })
+  })
+
+  it('decodes the feed in wire order and a count-only sealed counter', () => {
+    const snapshot = readScreenSnapshot(
+      screenSnapshot({
+        phase: 'LIVE',
+        item: LIVE_ITEM,
+        recent_bids: [
+          { nickname: 'Bình', amount: 140_000, ts: SERVER_TS + 900 },
+          { nickname: 'An', amount: 130_000, ts: SERVER_TS + 500 },
+        ],
+        sealed_progress: { submitted: 3, total: 12 },
+      }),
+    )
+    expect(snapshot?.recentBids).toEqual([
+      { nickname: 'Bình', amount: 140_000, ts: SERVER_TS + 900 },
+      { nickname: 'An', amount: 130_000, ts: SERVER_TS + 500 },
+    ])
+    expect(snapshot?.sealedProgress).toEqual({ submitted: 3, total: 12 })
+  })
+
+  it('drops a malformed feed entry and a malformed counter, and still applies the snapshot', () => {
+    // The projector must never freeze on a convenience field (UI-SPEC): the
+    // price, the countdown and the bidder line are the authoritative numbers.
+    const snapshot = readScreenSnapshot(
+      screenSnapshot({
+        recent_bids: [
+          { nickname: 'An', amount: 130_000, ts: SERVER_TS },
+          { nickname: 'Bình', amount: '140000', ts: SERVER_TS },
+          { amount: 150_000, ts: SERVER_TS },
+        ],
+        sealed_progress: { submitted: '3' },
+      }),
+    )
+    expect(snapshot).not.toBeNull()
+    expect(snapshot?.recentBids).toEqual([{ nickname: 'An', amount: 130_000, ts: SERVER_TS }])
+    expect(snapshot?.sealedProgress).toBeNull()
+  })
+
+  it('reads an absent feed or counter as "this build does not send one"', () => {
+    const snapshot = readScreenSnapshot(
+      screenSnapshot({ recent_bids: undefined, sealed_progress: undefined }),
+    )
+    expect(snapshot?.recentBids).toEqual([])
+    expect(snapshot?.sealedProgress).toBeNull()
+  })
+
+  const violations: Array<[label: string, input: unknown]> = [
+    ['a null payload', null],
+    ['a snapshot with no join URL', screenSnapshot({ join_url: undefined })],
+    ['a join URL that is not a string', screenSnapshot({ join_url: null })],
+    ['a snapshot with no lobby', screenSnapshot({ lobby: undefined })],
+    ['a revision that is not a number', screenSnapshot({ revision: 'four' })],
+    [
+      'an english LIVE item without a deadline',
+      screenSnapshot({ phase: 'LIVE', item: { ...LIVE_ITEM, deadline_at: undefined } }),
+    ],
+    [
+      'a SETTLED snapshot without the settle object',
+      screenSnapshot({
+        phase: 'SETTLED',
+        item: (() => {
+          const { settle: _settle, ...rest } = SETTLED_ITEM
+          return rest
+        })(),
+      }),
+    ],
+    [
+      'a settle object before SETTLED (the leak boundary, D-67)',
+      screenSnapshot({ phase: 'LIVE', item: { ...LIVE_ITEM, settle: SETTLED_ITEM.settle } }),
+    ],
+  ]
+
+  it.each(violations)('rejects %s', (_label, input) => {
+    expect(readScreenSnapshot(input)).toBeNull()
+  })
+
+  it('accepts a FINALE screen snapshot exactly like the player route does', () => {
+    expect(readScreenSnapshot(screenSnapshot({ phase: 'FINALE', item: null }))?.phase).toBe('FINALE')
+  })
+})
+
+describe('readFinale (D-89)', () => {
+  const STANDINGS = [
+    { rank: 1, nickname: 'Bình', total_value: 200_000, budget: 900_000 },
+    { rank: 2, nickname: 'An', total_value: 0, budget: 1_000_000 },
+    { rank: 3, nickname: 'Cường', total_value: 0, budget: 800_000 },
+    { rank: 4, nickname: 'Hạnh', total_value: 0, budget: 700_000 },
+  ]
+
+  it('decodes the podium prefix and the complete standings in server order', () => {
+    const payload = readFinale({ podium: STANDINGS.slice(0, 3), standings: STANDINGS })
+    expect(payload?.podium).toEqual(STANDINGS.slice(0, 3))
+    expect(payload?.standings).toEqual(STANDINGS)
+  })
+
+  it('reads a zero-player finale as two empty lists, never null', () => {
+    expect(readFinale({ podium: [], standings: [] })).toEqual({ podium: [], standings: [] })
+  })
+
+  it('rejects an incomplete payload rather than inventing half a ceremony', () => {
+    expect(readFinale({ podium: [], standings: undefined })).toBeNull()
+    expect(readFinale({ podium: 'first' })).toBeNull()
+    expect(readFinale(null)).toBeNull()
   })
 })

@@ -26,6 +26,7 @@ import type {
   AdminItem,
   AdminSnapshot,
   BidAccepted,
+  FinaleReveal,
   LeaderEntry,
   LobbyEntry,
   Phase,
@@ -34,6 +35,9 @@ import type {
   PlayerSnapshot,
   PriceTick,
   PublicItem,
+  RecentBid,
+  ScreenSnapshot,
+  SealedProgress,
 } from './protocol'
 import { isPhase } from './protocol'
 
@@ -51,14 +55,24 @@ export type LiveOverlay = {
 /** Everything one route renders, reduced from snapshots and events. */
 export type ViewState = {
   phase: Phase
-  /** the player's own row; null for the admin role (D-25) */
+  /** the player's own row; null for the admin and screen roles (D-25) */
   me: PlayerMe | null
   lobby: LobbyEntry[]
   leaderboard: LeaderEntry[]
   item: PublicItem | null
-  /** the admin catalog; empty for the player role, which never receives one */
+  /** the admin catalog; empty for the player and screen roles */
   items: AdminItem[]
   live: LiveOverlay | null
+  /**
+   * The URL the QR is built from (D-84/D-85): the screen's `join_url`, or the
+   * admin's `selected_join_url`. Empty for the player role, which never
+   * receives one.
+   */
+  joinUrl: string
+  /** D-88's public feed; empty for every role that is not the screen. */
+  recentBids: RecentBid[]
+  /** D-88's count-only sealed indicator; null = not a sealed item / not the screen. */
+  sealedProgress: SealedProgress | null
 }
 
 /** The item events that carry the current item. */
@@ -68,18 +82,31 @@ export type ItemEventType = 'item.intro' | 'item.live' | 'item.settled'
 export type ViewFrame =
   | { kind: 'player-snapshot'; snapshot: PlayerSnapshot }
   | { kind: 'admin-snapshot'; snapshot: AdminSnapshot }
+  | { kind: 'screen-snapshot'; snapshot: ScreenSnapshot }
   | { kind: 'phase.changed'; payload: PhaseChanged; ts: number }
   | { kind: 'item'; type: ItemEventType; item: PublicItem; ts: number }
   | { kind: 'price.tick'; tick: PriceTick; ts: number }
   | { kind: 'bid.accepted'; bid: BidAccepted; ts: number }
   | { kind: 'leaderboard'; entries: LeaderEntry[]; ts: number }
+  | { kind: 'finale'; payload: FinaleReveal; ts: number }
 
 /**
  * The view before a single snapshot has arrived. Nothing is invented here: a
  * player who has not joined renders the join form from this state, not a body.
  */
 export function initialViewState(): ViewState {
-  return { phase: 'LOBBY', me: null, lobby: [], leaderboard: [], item: null, items: [], live: null }
+  return {
+    phase: 'LOBBY',
+    me: null,
+    lobby: [],
+    leaderboard: [],
+    item: null,
+    items: [],
+    live: null,
+    joinUrl: '',
+    recentBids: [],
+    sealedProgress: null,
+  }
 }
 
 /**
@@ -138,13 +165,17 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
   switch (frame.kind) {
     case 'player-snapshot': {
       const snapshot = frame.snapshot
+      // Every role-specific extra resets to its empty value: a snapshot that
+      // does not carry a field (a player snapshot has no join_url, no feed and
+      // no sealed counter) means "this role does not have one", never "keep the
+      // previous role's".
       return {
+        ...initialViewState(),
         phase: snapshot.phase,
         me: snapshot.me,
         lobby: snapshot.lobby,
         leaderboard: snapshot.leaderboard,
         item: snapshot.item,
-        items: [],
         live: overlayFrom(snapshot.item, snapshot.serverTs),
       }
     }
@@ -159,6 +190,9 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         item: snapshot.item,
         items: snapshot.items,
         live: overlayFrom(snapshot.item, snapshot.serverTs),
+        joinUrl: '',
+        recentBids: [],
+        sealedProgress: null,
       }
     }
 
@@ -233,5 +267,10 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
 
     case 'leaderboard':
       return { ...state, leaderboard: frame.entries }
+
+    case 'screen-snapshot':
+    case 'finale':
+      // RED stub: the projector's snapshot and the finale patch land in GREEN.
+      return null
   }
 }

@@ -20,11 +20,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { initialGateState } from './gate'
 import { openPlayerSocket, readStoredToken, resetStream } from './client'
 import { openAdminSocket, type AdminConnection } from './admin'
+import { openScreenSocket, type ScreenConnection } from './screen'
 import {
   readAdminSnapshot,
   readBidAccepted,
+  readFinale,
   readPlayerSnapshot,
   readPriceTick,
+  readScreenSnapshot,
   type BidRejected,
   type PlayerSnapshot,
 } from './protocol'
@@ -110,6 +113,21 @@ function reduceOrThrow(state: ViewState, frame: ViewFrame): ViewState {
   expect(next).not.toBeNull()
   if (next === null) throw new Error('frame did not apply')
   return next
+}
+
+/** The screen projection the hub sends a role=screen connection (D-87/D-88). */
+function screenSnapshotData(): Record<string, unknown> {
+  return {
+    phase: 'LOBBY',
+    revision: 1,
+    server_ts: WS_TS,
+    join_url: 'http://192.168.1.10:8080',
+    lobby: [{ nickname: 'Milo', connected: true }],
+    leaderboard: [{ rank: 1, nickname: 'Milo', total_value: 0, budget: 1_000_000 }],
+    item: null,
+    recent_bids: [],
+    sealed_progress: null,
+  }
 }
 
 type Listener = () => void
@@ -546,5 +564,88 @@ describe('the admin connection (D-64/H17)', () => {
     env.fireVisibility('visible')
     env.firePageshow()
     expect(env.sockets).toHaveLength(1)
+  })
+})
+
+describe('the screen connection (D-87)', () => {
+  let screen: ScreenConnection | null = null
+
+  afterEach(() => {
+    screen?.close()
+    screen = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('joins as screen, reduces its public snapshot and exposes no send', () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    const views: ViewState[] = []
+
+    screen = openScreenSocket({
+      onStatus: (status) => statuses.push(status),
+      onView: (view) => views.push(view),
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    expect(socket.url).toBe('ws://localhost:5173/ws')
+    expect(statuses.at(-1)).toBe('connecting')
+
+    socket.accept()
+    expect(statuses.at(-1)).toBe('open')
+    expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'join', role: 'screen' })
+    // Read-only BY TYPE: `close` is the whole handle, so no screen control can
+    // ever reach for a `send` that exists (D-87).
+    expect(Object.keys(screen)).toEqual(['close'])
+
+    socket.deliver(envelope('hello', 1, { role: 'screen', rev: 0 }))
+    const payload = screenSnapshotData()
+    socket.deliver(envelope('state.snapshot', 2, payload, 1))
+    const snapshot = readScreenSnapshot(payload)
+    expect(snapshot).not.toBeNull()
+    if (snapshot === null) return
+    expect(views.at(-1)).toEqual(
+      reduceOrThrow(initialViewState(), { kind: 'screen-snapshot', snapshot }),
+    )
+    expect(views.at(-1)?.joinUrl).toBe('http://192.168.1.10:8080')
+
+    // No identity, so nothing is persisted and a drop is never resumed by
+    // visibility/pageshow — the admin's rule, not the player's (D-87).
+    expect(env.storage.size).toBe(0)
+    socket.drop(1006)
+    expect(statuses.at(-1)).toBe('lost')
+    env.fireVisibility('visible')
+    env.firePageshow()
+    expect(env.sockets).toHaveLength(1)
+  })
+
+  it('applies the reserved finale frame to the same reduced view', () => {
+    const env = installSocketEnvironment()
+    const views: ViewState[] = []
+
+    screen = openScreenSocket({ onStatus: () => {}, onView: (view) => views.push(view) })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    socket.accept()
+
+    const standings = [
+      { rank: 1, nickname: 'Bình', total_value: 200_000, budget: 900_000 },
+      { rank: 2, nickname: 'An', total_value: 0, budget: 1_000_000 },
+    ]
+    socket.deliver(envelope('finale', 1, { podium: standings, standings }, 12))
+    const payload = readFinale({ podium: standings, standings })
+    expect(payload).not.toBeNull()
+    if (payload === null) return
+    expect(views.at(-1)).toEqual(
+      reduceOrThrow(initialViewState(), { kind: 'finale', payload, ts: WS_TS }),
+    )
+    expect(views.at(-1)?.leaderboard).toEqual([
+      { rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 },
+      { rank: 2, nickname: 'An', totalValue: 0, budget: 1_000_000 },
+    ])
   })
 })
