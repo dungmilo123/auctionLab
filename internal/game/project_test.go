@@ -418,6 +418,70 @@ func TestPlayerAndScreenPayloadsLeakNothing(t *testing.T) {
 	}
 }
 
+// TestHintBoundsProjectIndependently is WR-02's regression: the item validator
+// bounds `hint_min` and `hint_max` separately (only `hint_min > hint_max` with
+// BOTH present is refused), so a row carrying one bound on its own is legal.
+// Both projections used to gate the whole pair on hint_max, which made a
+// configured hint_min invisible on every surface — and, because the admin editor
+// round-trips exactly the projection it is shown, erased the value on the next
+// unrelated save.
+func TestHintBoundsProjectIndependently(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+	for _, tc := range []struct {
+		name    string
+		hintMin int64
+		hintMax int64
+	}{
+		{name: "min only", hintMin: 200_000},
+		{name: "max only", hintMax: 500_000},
+		{name: "both bounds", hintMin: 200_000, hintMax: 500_000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := populatedState()
+			s.items["it-1"].hintMin = tc.hintMin
+			s.items["it-1"].hintMax = tc.hintMax
+			env.installState(s)
+
+			// One bound at a time: a set bound MUST be on the wire (the player and
+			// the projector render from it) and an unset one must be ABSENT rather
+			// than a zero (the wire's null, which the clients render as "no hint").
+			checkBound := func(t *testing.T, what string, obj map[string]any, key string, want int64) {
+				t.Helper()
+
+				got, present := obj[key]
+				if want > 0 {
+					if !present || got != float64(want) {
+						t.Errorf("%s.%s = %#v (present %t), want %d", what, key, got, present, want)
+					}
+					return
+				}
+				if present {
+					t.Errorf("%s.%s = %#v, want the key absent: an unset bound is NULL, never 0", what, key, got)
+				}
+			}
+
+			// The public projection: the player route and /screen share it.
+			public := decodeObject(t, env.engine.Snapshot(RolePlayer, "p-an"))
+			publicItem := asObject(t, public["item"], "item")
+			checkBound(t, "public item", publicItem, "hint_min", tc.hintMin)
+			checkBound(t, "public item", publicItem, "hint_max", tc.hintMax)
+
+			// The admin projection: `draftFromItem` loads the editor from exactly
+			// this object, so a bound missing here is a bound the next save sends
+			// as null — the silent-erasure half of the defect.
+			admin := decodeObject(t, env.engine.Snapshot(RoleAdmin, ""))
+			rows := asArray(t, admin["items"], "items")
+			if len(rows) != 1 {
+				t.Fatalf("the admin projection carries %d item(s), want the one fixture item", len(rows))
+			}
+			adminRow := asObject(t, rows[0], "items[0]")
+			checkBound(t, "admin item", adminRow, "hint_min", tc.hintMin)
+			checkBound(t, "admin item", adminRow, "hint_max", tc.hintMax)
+		})
+	}
+}
+
 // assertKeySet fails when a decoded JSON object's keys are not exactly want:
 // both a missing key (the body cannot render) and an unexpected one (a field
 // nobody decided to ship) are failures.

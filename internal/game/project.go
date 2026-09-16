@@ -602,9 +602,18 @@ func (s *state) currentPublicItem() *PublicItem {
 		StartPrice:  it.startPrice,
 		Status:      it.status,
 	}
+	// D-66: each bound is projected on its own so a min-only (or max-only) hint
+	// survives the editor round trip. The validator bounds the two fields
+	// independently, so gating the pair on hint_max would make a configured
+	// hint_min invisible on every surface AND destroy it on the next save (the
+	// editor reads the projection it was shown).
+	if it.hintMin > 0 {
+		min := it.hintMin
+		view.HintMin = &min
+	}
 	if it.hintMax > 0 {
-		min, max := it.hintMin, it.hintMax
-		view.HintMin, view.HintMax = &min, &max
+		max := it.hintMax
+		view.HintMax = &max
 	}
 	s.addLiveFields(view, it)
 	return view
@@ -695,9 +704,17 @@ func adminItem(it *item) AdminItem {
 		StartPrice:  it.startPrice,
 		Status:      it.status,
 	}
+	// The admin editor round-trips exactly what it is shown (D-66), so the two
+	// bounds are projected independently here too: a min-only hint that the row
+	// really holds must reach the editor, or the next save would send
+	// hint_min: null and erase the configured value.
+	if it.hintMin > 0 {
+		min := it.hintMin
+		view.HintMin = &min
+	}
 	if it.hintMax > 0 {
-		min, max := it.hintMin, it.hintMax
-		view.HintMin, view.HintMax = &min, &max
+		max := it.hintMax
+		view.HintMax = &max
 	}
 	if it.minIncrement > 0 {
 		v := it.minIncrement
