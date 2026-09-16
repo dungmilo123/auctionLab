@@ -200,9 +200,11 @@ describe('readPlayerSnapshot', () => {
         totalValue: 0,
         connected: true,
         // Phase 3's additive keys default to "never bid" when a Phase-2-shaped
-        // me row arrives without them (D-67).
+        // me row arrives without them (D-67), and Phase 4's `rank` defaults to
+        // 0 = "no standing" for the same reason (D-89).
         lastBid: null,
         isTopBidder: false,
+        rank: 0,
       },
       lobby: [
         { nickname: 'An', connected: true },
@@ -344,6 +346,47 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
     const snapshot = readPlayerSnapshot(CANONICAL_SNAPSHOT)
     expect(snapshot?.me.lastBid).toBeNull()
     expect(snapshot?.me.isTopBidder).toBe(false)
+    // D-89's rank is the same shape of additive key: absent means 0, not a
+    // rejection.
+    expect(snapshot?.me.rank).toBe(0)
+  })
+
+  it('decodes the server-computed rank when the row carries one (D-89/ECON-05)', () => {
+    const snapshot = readPlayerSnapshot({
+      ...liveSnapshot(),
+      me: {
+        id: 'p1',
+        nickname: 'An',
+        budget: 1_000_000,
+        total_value: 0,
+        connected: true,
+        rank: 2,
+      },
+    })
+    expect(snapshot?.me.rank).toBe(2)
+  })
+
+  const malformedRanks: Array<[label: string, rank: unknown]> = [
+    ['a string rank', 'two'],
+    ['a negative rank', -1],
+    ['a fractional rank', 1.5],
+    ['a null rank', null],
+    ['a non-finite rank', Number.POSITIVE_INFINITY],
+  ]
+
+  it.each(malformedRanks)('rejects a me row whose rank is %s', (_label, rank) => {
+    const payload = {
+      ...liveSnapshot(),
+      me: {
+        id: 'p1',
+        nickname: 'An',
+        budget: 1_000_000,
+        total_value: 0,
+        connected: true,
+        rank,
+      },
+    }
+    expect(readPlayerSnapshot(payload)).toBeNull()
   })
 
   it('decodes the SETTLED reveal, winner and all (D-67/D-68)', () => {
@@ -580,19 +623,41 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
     status: 'pending',
   }
 
-  it('decodes the catalog row the editor round-trips, truth_value included', () => {
-    const snapshot = readAdminSnapshot({
+  // D-80's full row, hand-copied from internal/game/project.go — token included
+  // on the wire, deliberately NOT decoded (T-04-04).
+  const ADMIN_PLAYER = {
+    id: 'p1',
+    nickname: 'An',
+    nickname_key: 'an',
+    token: 'ab'.repeat(32),
+    budget: 1_000_000,
+    total_value: 0,
+    joined_at: SERVER_TS - 60_000,
+    last_seen_at: SERVER_TS,
+    connected: true,
+  }
+
+  /** The admin projection as the hub sends it. */
+  function adminSnapshotPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
       phase: 'LOBBY',
       revision: 2,
       server_ts: SERVER_TS,
       config: { starting_budget: 1_000_000, currency: 'VND' },
-      players: [],
+      players: [ADMIN_PLAYER],
       sealed_bids: [],
       lobby: [{ nickname: 'An', connected: true }],
       leaderboard: [],
       item: null,
       items: [ADMIN_ITEM],
-    })
+      join_urls: ['http://192.168.1.10:8080', 'http://10.0.0.5:8080'],
+      selected_join_url: 'http://192.168.1.10:8080',
+      ...overrides,
+    }
+  }
+
+  it('decodes the catalog row the editor round-trips, truth_value included', () => {
+    const snapshot = readAdminSnapshot(adminSnapshotPayload())
     expect(snapshot?.items).toEqual([
       {
         id: 'i1',
@@ -619,23 +684,59 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
     expect(snapshot?.serverTs).toBe(SERVER_TS)
   })
 
+  it('decodes the presenter rows, the config and both halves of the URL panel', () => {
+    const snapshot = readAdminSnapshot(adminSnapshotPayload())
+    expect(snapshot?.config).toEqual({ startingBudget: 1_000_000, currency: 'VND' })
+    expect(snapshot?.players).toEqual([
+      {
+        id: 'p1',
+        nickname: 'An',
+        budget: 1_000_000,
+        totalValue: 0,
+        joinedAt: SERVER_TS - 60_000,
+        lastSeenAt: SERVER_TS,
+        connected: true,
+      },
+    ])
+    // T-04-04: the narrow row cannot express a token, so the panel can never
+    // render (or spread) one.
+    expect(Object.keys(snapshot?.players[0] ?? {}).sort()).toEqual([
+      'budget',
+      'connected',
+      'id',
+      'joinedAt',
+      'lastSeenAt',
+      'nickname',
+      'totalValue',
+    ])
+    expect(snapshot?.joinUrls).toEqual(['http://192.168.1.10:8080', 'http://10.0.0.5:8080'])
+    expect(snapshot?.selectedJoinUrl).toBe('http://192.168.1.10:8080')
+  })
+
   it('applies the same phase↔item invariant to the admin projection', () => {
-    const payload = {
+    const payload = adminSnapshotPayload({
       phase: 'LIVE',
-      revision: 2,
-      server_ts: SERVER_TS,
-      lobby: [],
-      leaderboard: [],
-      items: [ADMIN_ITEM],
       item: { ...LIVE_ITEM, deadline_at: undefined },
-    }
+    })
     expect(readAdminSnapshot(payload)).toBeNull()
   })
 
-  it('rejects a payload with no items array', () => {
-    expect(
-      readAdminSnapshot({ phase: 'LOBBY', revision: 1, server_ts: SERVER_TS, lobby: [], leaderboard: [] }),
-    ).toBeNull()
+  const malformed: Array<[label: string, input: unknown]> = [
+    ['a payload with no items array', adminSnapshotPayload({ items: undefined })],
+    ['a payload with no config', adminSnapshotPayload({ config: undefined })],
+    ['a config without a currency', adminSnapshotPayload({ config: { starting_budget: 1 } })],
+    ['a payload with no players array', adminSnapshotPayload({ players: undefined })],
+    [
+      'a player row without a budget',
+      adminSnapshotPayload({ players: [{ id: 'p1', nickname: 'An' }] }),
+    ],
+    ['a payload with no join URLs', adminSnapshotPayload({ join_urls: undefined })],
+    ['a join URL that is not a string', adminSnapshotPayload({ join_urls: [1] })],
+    ['a selected join URL that is not a string', adminSnapshotPayload({ selected_join_url: 7 })],
+  ]
+
+  it.each(malformed)('rejects %s', (_label, input) => {
+    expect(readAdminSnapshot(input)).toBeNull()
   })
 })
 

@@ -133,6 +133,13 @@ export type PlayerMe = {
   lastBid: number | null
   /** server-computed so the outbid banner never has to be (D-72) */
   isTopBidder: boolean
+  /**
+   * D-89/ECON-05: the player's 1-based place in the ONE server standing, or 0
+   * for "no standing" — the finale body omits the block rather than printing
+   * "rank 0". Server-computed for the same reason `isTopBidder` is: a public
+   * LeaderEntry carries no id to match a nickname against (research Pitfall 1).
+   */
+  rank: number
 }
 
 /** One lobby row: a nickname and its live presence. No budgets — public (D-25). */
@@ -304,7 +311,8 @@ function readPlayerMe(value: unknown): PlayerMe | null {
     return null
   }
   // `last_bid`/`is_top_bidder` are Phase 3's additive keys (D-67): a row that
-  // predates them reads as "never bid", never as a rejection.
+  // predates them reads as "never bid", never as a rejection. `rank` (D-89) is
+  // the same shape — its decode lands in the GREEN commit.
   return {
     id,
     nickname,
@@ -313,6 +321,7 @@ function readPlayerMe(value: unknown): PlayerMe | null {
     connected,
     lastBid: readInt(value.last_bid),
     isTopBidder: value.is_top_bidder === true,
+    rank: 0,
   }
 }
 
@@ -521,15 +530,45 @@ export type AdminItem = {
   status: string
 }
 
+/** The persisted configuration the presenter's Setup tab edits (D-81). */
+export type AdminConfig = {
+  startingBudget: number
+  currency: string
+}
+
+/**
+ * One admin player row — the Players tab's row (D-80). The token is
+ * deliberately NOT a field: the server sends one, and a typed model that cannot
+ * express a token cannot leak one (T-04-04). `nickname_key` is left out for the
+ * same reason — the panel renders neither.
+ */
+export type AdminPlayer = {
+  id: string
+  nickname: string
+  budget: number
+  totalValue: number
+  joinedAt: number
+  lastSeenAt: number
+  connected: boolean
+}
+
 /** The admin projection the `/admin` page renders. */
 export type AdminSnapshot = {
   phase: Phase
   revision: number
   serverTs: number
+  /** D-81: the persisted config the Setup tab edits */
+  config: AdminConfig
+  /** D-80: the named, token-free player rows */
+  players: AdminPlayer[]
   items: AdminItem[]
   item: PublicItem | null
   lobby: LobbyEntry[]
   leaderboard: LeaderEntry[]
+  /** D-83: the boot-time join-URL candidates, in rank order — never an absence */
+  joinUrls: string[]
+  /** D-84: the URL every QR is built from */
+  selectedJoinUrl: string
 }
 
 /**
@@ -635,6 +674,12 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     item,
     lobby,
     leaderboard: readLeaderboard(data.leaderboard),
+    // RED sentinels: the presenter rows and the two URL halves are declared,
+    // their decode lands in the GREEN commit.
+    config: { startingBudget: 0, currency: '' },
+    players: [],
+    joinUrls: [],
+    selectedJoinUrl: '',
   }
 }
 

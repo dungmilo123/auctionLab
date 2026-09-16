@@ -46,6 +46,7 @@ function me(overrides: Partial<PlayerMe> = {}): PlayerMe {
     connected: true,
     lastBid: 120_000,
     isTopBidder: true,
+    rank: 0,
     ...overrides,
   }
 }
@@ -131,6 +132,9 @@ describe('initialViewState', () => {
       joinUrl: '',
       recentBids: [],
       sealedProgress: null,
+      config: null,
+      players: [],
+      joinUrls: [],
     })
   })
 })
@@ -210,6 +214,18 @@ describe('the snapshot rule (RESEARCH Q3/Q4)', () => {
       phase: 'LOBBY',
       revision: 2,
       serverTs: TS,
+      config: { startingBudget: 1_000_000, currency: 'VND' },
+      players: [
+        {
+          id: 'p1',
+          nickname: 'An',
+          budget: 1_000_000,
+          totalValue: 0,
+          joinedAt: TS - 60_000,
+          lastSeenAt: TS,
+          connected: true,
+        },
+      ],
       items: [
         {
           id: 'i1',
@@ -236,6 +252,8 @@ describe('the snapshot rule (RESEARCH Q3/Q4)', () => {
       item: null,
       lobby: [{ nickname: 'An', connected: true }],
       leaderboard: [],
+      joinUrls: ['http://192.168.1.10:8080'],
+      selectedJoinUrl: 'http://192.168.1.10:8080',
     }
     const state = applied(initialViewState(), { kind: 'admin-snapshot', snapshot: admin })
     expect(state.me).toBeNull()
@@ -463,5 +481,67 @@ describe('the projector view (D-87/D-88/D-89)', () => {
     expect(replaced.leaderboard).toEqual([
       { rank: 1, nickname: 'An', totalValue: 0, budget: 1_000_000 },
     ])
+  })
+})
+
+describe('the presenter view (D-80/D-81/D-83)', () => {
+  function presenterSnapshot(overrides: Partial<AdminSnapshot> = {}): AdminSnapshot {
+    return {
+      phase: 'LOBBY',
+      revision: 3,
+      serverTs: TS,
+      config: { startingBudget: 2_000_000, currency: 'VND' },
+      players: [
+        {
+          id: 'p1',
+          nickname: 'An',
+          budget: 1_000_000,
+          totalValue: 0,
+          joinedAt: TS - 60_000,
+          lastSeenAt: TS,
+          connected: true,
+        },
+      ],
+      items: [],
+      item: null,
+      lobby: [{ nickname: 'An', connected: true }],
+      leaderboard: [],
+      joinUrls: ['http://192.168.1.10:8080', 'http://10.0.0.5:8080'],
+      selectedJoinUrl: 'http://10.0.0.5:8080',
+      ...overrides,
+    }
+  }
+
+  it('carries the config, the player rows and both halves of the URL panel', () => {
+    const state = applied(initialViewState(), {
+      kind: 'admin-snapshot',
+      snapshot: presenterSnapshot(),
+    })
+    expect(state.config).toEqual({ startingBudget: 2_000_000, currency: 'VND' })
+    expect(state.players.map((player) => player.nickname)).toEqual(['An'])
+    expect(state.joinUrls).toEqual(['http://192.168.1.10:8080', 'http://10.0.0.5:8080'])
+    // `joinUrl` is the SELECTED URL, whichever role supplied it: the QR takes
+    // the admin's `selected_join_url` and the screen's `join_url`.
+    expect(state.joinUrl).toBe('http://10.0.0.5:8080')
+  })
+
+  it('resets the presenter rows when another role’s snapshot arrives', () => {
+    const adminView = applied(initialViewState(), {
+      kind: 'admin-snapshot',
+      snapshot: presenterSnapshot(),
+    })
+    const player = applied(adminView, { kind: 'player-snapshot', snapshot: playerSnapshot() })
+    expect(player.config).toBeNull()
+    expect(player.players).toEqual([])
+    expect(player.joinUrls).toEqual([])
+    expect(player.joinUrl).toBe('')
+  })
+
+  it('carries the server-computed rank through a player snapshot (D-89)', () => {
+    const state = applied(initialViewState(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({ me: me({ rank: 3 }) }),
+    })
+    expect(state.me?.rank).toBe(3)
   })
 })

@@ -23,7 +23,9 @@
  */
 
 import type {
+  AdminConfig,
   AdminItem,
+  AdminPlayer,
   AdminSnapshot,
   BidAccepted,
   FinaleReveal,
@@ -73,6 +75,12 @@ export type ViewState = {
   recentBids: RecentBid[]
   /** D-88's count-only sealed indicator; null = not a sealed item / not the screen. */
   sealedProgress: SealedProgress | null
+  /** the presenter's persisted config (D-81); null for every other role */
+  config: AdminConfig | null
+  /** the presenter's token-free player rows (D-80); empty for every other role */
+  players: AdminPlayer[]
+  /** the presenter's join-URL candidates (D-83); empty for every other role */
+  joinUrls: string[]
 }
 
 /** The item events that carry the current item. */
@@ -106,6 +114,9 @@ export function initialViewState(): ViewState {
     joinUrl: '',
     recentBids: [],
     sealedProgress: null,
+    config: null,
+    players: [],
+    joinUrls: [],
   }
 }
 
@@ -193,6 +204,10 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         joinUrl: '',
         recentBids: [],
         sealedProgress: null,
+        // RED sentinels: the presenter rows land in the GREEN commit.
+        config: null,
+        players: [],
+        joinUrls: [],
       }
     }
 

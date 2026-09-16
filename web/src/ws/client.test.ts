@@ -88,6 +88,8 @@ function adminSnapshotData(): Record<string, unknown> {
     lobby: [],
     leaderboard: [],
     item: null,
+    join_urls: ['http://192.168.1.10:8080'],
+    selected_join_url: 'http://192.168.1.10:8080',
     items: [
       {
         id: 'i1',
