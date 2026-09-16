@@ -500,6 +500,43 @@ type lobbyEntry struct {
 	Connected bool   `json:"connected"`
 }
 
+// adminPlayerRow is one row of the admin view's player list, as the reset and
+// release cases read it: the Players tab's fields those mutations have to move.
+type adminPlayerRow struct {
+	Nickname  string `json:"nickname"`
+	Budget    int64  `json:"budget"`
+	Connected bool   `json:"connected"`
+}
+
+// playersOf decodes an admin snapshot's player list.
+func playersOf(t *testing.T, snapshot frame) []adminPlayerRow {
+	t.Helper()
+
+	var rows []adminPlayerRow
+	if err := json.Unmarshal(dataField(t, snapshot, "players"), &rows); err != nil {
+		t.Fatalf("the admin snapshot's players are not a list of player rows: %v", err)
+	}
+	return rows
+}
+
+// itemRow is one row of the admin view's item list: the reset case needs the
+// item CONFIG (what a reset must keep) beside its status (what it rewrites).
+type itemRow struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+}
+
+// itemsOf decodes an admin snapshot's item list.
+func itemsOf(t *testing.T, snapshot frame) []itemRow {
+	t.Helper()
+
+	var rows []itemRow
+	if err := json.Unmarshal(dataField(t, snapshot, "items"), &rows); err != nil {
+		t.Fatalf("the admin snapshot's items are not a list of item rows: %v", err)
+	}
+	return rows
+}
+
 // lobbyOf decodes a snapshot's lobby list.
 func lobbyOf(t *testing.T, snapshot frame) []lobbyEntry {
 	t.Helper()

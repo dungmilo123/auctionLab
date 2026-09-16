@@ -431,6 +431,201 @@ func TestAdminJoinAuthorization(t *testing.T) {
 	})
 }
 
+// TestAdminReset pins D-78/ADMN-03 at the transport edge: `admin.game.reset` is
+// routed for an authorized admin only, `keep_players` returns a played room to
+// LOBBY through one revision without touching a socket, and `clear_players`
+// deletes the room and then closes every player connection with the dedicated
+// session-ended code — after the commit, never before it, and never with the
+// supersede code a phone would read as "another device took over".
+func TestAdminReset(t *testing.T) {
+	t.Run("keep_players returns the room to LOBBY and keeps every socket", func(t *testing.T) {
+		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+		admin := joinRole(t, h, RoleAdmin)
+		itemID := createItem(t, admin)
+
+		player, _ := joinPlayer(t, h, "An")
+		expectAll(t, []*websocket.Conn{admin}, TypeStateSnapshot)
+
+		startItem(t, admin, itemID)
+		expectAll(t, []*websocket.Conn{admin, player}, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)
+		startItem(t, admin, itemID)
+		expectAll(t, []*websocket.Conn{admin, player}, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+		placeBid(t, player, 100_000)
+		expectAll(t, []*websocket.Conn{admin, player}, TypeBidAccepted, TypePriceTick)
+
+		rev := engine.Rev()
+
+		writeFrame(t, admin, `{"type":"admin.game.reset","mode":"keep_players"}`)
+		reset := expectAll(t, []*websocket.Conn{admin, player}, TypePhaseChanged, TypeStateSnapshot)
+
+		// One mutation, one revision, both frames on it (D-57).
+		if got := reset[0][0].Rev; got != rev+1 {
+			t.Errorf("the reset's revision = %d, want exactly one past the accepted bid's %d", got, rev)
+		}
+		if got := frameString(t, frameData(t, reset[0][0]), "phase"); got != "LOBBY" {
+			t.Errorf("phase.changed phase = %q, want LOBBY (D-78)", got)
+		}
+		if got := frameString(t, frameData(t, reset[0][1]), "phase"); got != "LOBBY" {
+			t.Errorf("the reset snapshot's phase = %q, want LOBBY (the snapshot is self-sufficient)", got)
+		}
+		if raw := dataField(t, reset[0][1], "item"); string(raw) != "null" {
+			t.Errorf("the reset snapshot's item = %s, want an explicit null (current_item is cleared)", raw)
+		}
+
+		// The item CONFIGURATION survives: the rows are the presenter's setup.
+		items := itemsOf(t, reset[0][1])
+		if len(items) != 1 || items[0].ID != itemID {
+			t.Fatalf("items after a keep_players reset = %+v, want the one configured item", items)
+		}
+		if items[0].Status != "pending" {
+			t.Errorf("item status = %q after the reset, want pending (the round must be playable again)", items[0].Status)
+		}
+
+		// Budgets are restored for every identity, and the trail is gone.
+		players := playersOf(t, reset[0][1])
+		if len(players) != 1 || players[0].Nickname != "An" {
+			t.Fatalf("players after a keep_players reset = %+v, want An kept", players)
+		}
+		if players[0].Budget != 1_000_000 {
+			t.Errorf("the kept player's budget = %d, want the starting budget 1000000 (D-78)", players[0].Budget)
+		}
+
+		// keep_players closes NOTHING: the same socket answers a resync with a
+		// fresh snapshot (a closed socket would fail the read).
+		writeFrame(t, player, `{"type":"resync"}`)
+		me := meOf(t, readType(t, player, TypeStateSnapshot))
+		if me.Budget != 1_000_000 {
+			t.Errorf("the kept player's own budget = %d after the reset, want 1000000", me.Budget)
+		}
+	})
+
+	t.Run("clear_players closes every player socket after the commit", func(t *testing.T) {
+		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+		admin := joinRole(t, h, RoleAdmin)
+
+		an, _ := joinPlayer(t, h, "An")
+		binh, _ := joinPlayer(t, h, "Binh")
+		expectAll(t, []*websocket.Conn{admin}, TypeStateSnapshot, TypeStateSnapshot)
+
+		writeFrame(t, admin, `{"type":"admin.game.reset","mode":"clear_players"}`)
+		expectAll(t, []*websocket.Conn{admin}, TypePhaseChanged, TypeStateSnapshot)
+
+		// The room is gone from the authoritative state, and both devices were
+		// told why with the dedicated code — never 4001, which a player reads as
+		// "another device took my identity".
+		if got := engine.PlayerCount(); got != 0 {
+			t.Errorf("player count = %d after clear_players, want 0", got)
+		}
+		if code := readCloseCode(t, an); code != 4002 {
+			t.Errorf("the cleared player observed close code %d, want 4002 (D-78's deliberate cleanup)", code)
+		}
+		if code := readCloseCode(t, binh); code != 4002 {
+			t.Errorf("the second cleared player observed close code %d, want 4002", code)
+		}
+	})
+
+	t.Run("an unknown mode is refused without moving the revision", func(t *testing.T) {
+		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+		admin := joinRole(t, h, RoleAdmin)
+		joinPlayer(t, h, "An")
+		expectAll(t, []*websocket.Conn{admin}, TypeStateSnapshot)
+
+		rev := engine.Rev()
+
+		writeFrame(t, admin, `{"type":"admin.game.reset","mode":"wipe_everything"}`)
+		assertErrorCode(t, readFrame(t, admin), CodeBadMessage)
+
+		if got := engine.Rev(); got != rev {
+			t.Errorf("revision = %d after a refused mode, want the unchanged %d (a refusal is not a mutation)", got, rev)
+		}
+		if got := engine.PlayerCount(); got != 1 {
+			t.Errorf("player count = %d after a refused mode, want the untouched 1", got)
+		}
+	})
+
+	t.Run("the reset is refused for every other role", func(t *testing.T) {
+		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+		screen := joinRole(t, h, RoleScreen)
+		rev := engine.Rev()
+
+		writeFrame(t, screen, `{"type":"admin.game.reset","mode":"clear_players"}`)
+		assertErrorCode(t, readFrame(t, screen), CodeNotAuthorized)
+
+		if got := engine.Rev(); got != rev {
+			t.Errorf("revision = %d after a role-refused reset, want the unchanged %d", got, rev)
+		}
+	})
+}
+
+// TestAdminRelease pins D-80 at the transport edge: `admin.player.release`
+// names one identity, writes it released, fans the admin's snapshot out on the
+// ordinary path, and closes THAT player's socket — with the session-ended code,
+// leaving every other connection alone. The released token is dead afterwards,
+// which is the whole point of the presenter's insurance (D-30 (1) is gone for
+// that row).
+func TestAdminRelease(t *testing.T) {
+	h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+	admin := joinRole(t, h, RoleAdmin)
+
+	an := dialWS(t, h)
+	anHello, _ := join(t, an, `{"type":"join","role":"player","nickname":"An"}`)
+	anID := frameString(t, frameData(t, anHello), "player")
+	anToken := frameString(t, frameData(t, anHello), "token")
+
+	binh := dialWS(t, h)
+	join(t, binh, `{"type":"join","role":"player","nickname":"Binh"}`)
+
+	expectAll(t, []*websocket.Conn{admin}, TypeStateSnapshot, TypeStateSnapshot)
+
+	writeFrame(t, admin, fmt.Sprintf(`{"type":"admin.player.release","id":%q}`, anID))
+	released := expectFrames(t, admin, TypeStateSnapshot)
+
+	// The row survives — a release is not a delete — and the admin's own
+	// projection reports it disconnected from the same fan-out as everything
+	// else (D-80).
+	if got := engine.PlayerCount(); got != 2 {
+		t.Errorf("player count = %d after a release, want 2 (the row is kept, only its token is dead)", got)
+	}
+	rows := playersOf(t, released[0])
+	if len(rows) != 2 {
+		t.Fatalf("the released snapshot carries %d players, want 2", len(rows))
+	}
+	for _, row := range rows {
+		if row.Nickname == "An" && row.Connected {
+			t.Error("the released player still reads connected in the admin view (D-80)")
+		}
+		if row.Nickname == "An" && row.Budget != 1_000_000 {
+			t.Errorf("the released row's budget = %d, want the row kept at 1000000 (a claim preserves it)", row.Budget)
+		}
+	}
+
+	// The released identity's socket ends with the dedicated code...
+	if code := readCloseCode(t, an); code != 4002 {
+		t.Errorf("the released player observed close code %d, want 4002 (not the supersede code 4001)", code)
+	}
+
+	// ...and the other player's socket is untouched.
+	writeFrame(t, binh, `{"type":"resync"}`)
+	if got := readType(t, binh, TypeStateSnapshot).Type; got != TypeStateSnapshot {
+		t.Errorf("the untouched player received %q, want its own snapshot", got)
+	}
+
+	// The stale token can never resume: token lookups skip released rows, so the
+	// device that holds it is a stranger (D-30 (1) is gone for this row).
+	stranger := dialWS(t, h)
+	writeFrame(t, stranger, fmt.Sprintf(`{"type":"join","role":"player","token":%q}`, anToken))
+	assertErrorCode(t, readFrame(t, stranger), CodeTokenInvalid)
+
+	// An empty id is a frame-shape failure, and a refusal changes nothing.
+	writeFrame(t, admin, `{"type":"admin.player.release"}`)
+	assertErrorCode(t, readFrame(t, admin), CodeBadMessage)
+}
+
 // TestOriginRejectionIsLoggedOncePerInterval pins the abuse guard (IN-07): a
 // cross-origin handshake is rejected with 403 and its log line is collapsed to
 // one per interval — /ws is unauthenticated, so a scanner must not be able to

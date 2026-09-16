@@ -124,9 +124,13 @@ func TestProtocol(t *testing.T) {
 		// this list: they are routed now, and their own answers are pinned by
 		// auction_test.go (a role gate for the wrong role, a mutation or a
 		// typed bad_message for the right one).
+		//
+		// Phase 4's 04-03 removes `admin.game.reset` and `admin.config.update`
+		// for the same reason: they route to the engine now, and their
+		// transport contracts are pinned by TestAdminReset/TestAdminRelease and
+		// by the config cases in internal/game.
 		future := []string{
 			TypeDutchAccept, TypeSealedSubmit,
-			TypeAdminGameReset, TypeAdminConfigUpdate,
 		}
 
 		h, _ := newTestHub(t)
@@ -194,6 +198,10 @@ func TestProtocolFreeze(t *testing.T) {
 		"admin.item.next",
 		"admin.game.reset",
 		"admin.config.update",
+		// Phase 4 (D-80): the one deliberate additive client→server type — the
+		// console's per-player session release. It stays inside the client→server
+		// group, so the two pinned inventories and frozenCatalog agree exactly.
+		"admin.player.release",
 		// server → client
 		"hello",
 		"state.snapshot",
