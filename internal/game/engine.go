@@ -315,6 +315,9 @@ func New(cfg Config) (*Engine, error) {
 		order:         make([]string, 0, len(rows)),
 		connected:     make(map[string]bool, len(rows)),
 		items:         make(map[string]*item),
+		// D-83: the boot-time candidate list. A defensive copy, so a caller that
+		// reuses its slice cannot mutate the engine's proposals afterwards.
+		joinURLCandidates: append([]string(nil), cfg.JoinURLCandidates...),
 	}
 	for _, row := range rows {
 		s.players[row.ID] = &player{
@@ -410,6 +413,14 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 	// diff at all, and a nil Runtime means "unchanged" rather than "removed" — so
 	// the removals travel as the explicit write set the store needs, read from
 	// the intent Reset recorded rather than inferred from a difference.
+	// Phase 4 (D-81/D-84): the config half of the write set, derived by the same
+	// scratch-vs-committed diff the item rows use, so a mutation cannot forget to
+	// persist what it changed. A nil result leaves game.config_json untouched.
+	configJSON, err := next.configJSON(e.state)
+	if err != nil {
+		return err // nothing persisted, nothing published
+	}
+
 	isReset := next.reset != ""
 
 	if err := e.store.Commit(store.Mutation{
@@ -417,6 +428,7 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		CurrentItemID: next.currentItemID,
 		Revision:      next.revision,
 		UpdatedAt:     e.now().UnixMilli(),
+		ConfigJSON:    configJSON,
 		Players:       next.playerRows(),
 		// Phase 3 (H3): the auction write set is derived by diffing the scratch
 		// state against the committed one, so a mutation cannot forget to
@@ -760,6 +772,10 @@ func (s *state) clone() *state {
 		itemOrder:     append([]string(nil), s.itemOrder...),
 		sealedBids:    append([]sealedBid(nil), s.sealedBids...),
 		bids:          append([]bid(nil), s.bids...),
+		// D-83: the candidate list is immutable boot data, so the slice header is
+		// copied and the strings are shared — unlike `bids`/`sealedBids`, nothing
+		// ever appends to it.
+		joinURLCandidates: s.joinURLCandidates,
 	}
 	if s.currentAuction != nil {
 		run := *s.currentAuction
@@ -857,6 +873,27 @@ func (s *state) changedItems(prev *state) []store.ItemRow {
 		rows = append(rows, itemRow(it))
 	}
 	return rows
+}
+
+// configJSON is D-81/D-84's config write set: the serialized configuration when
+// the scratch state's copy differs from the committed one, and nil when it did
+// not move (the store then leaves game.config_json exactly as it was).
+//
+// A diff rather than a recorded intent, for the same reason changedItems is one:
+// `engineConfig` is a flat comparable struct, so the comparison cannot be
+// forgotten, and a reset that leaves the configuration alone can never resurrect
+// a stale copy. The marshal can only fail on a programming error, and it fails
+// BEFORE anything is written, so a bad write set is never committed.
+func (s *state) configJSON(prev *state) (*string, error) {
+	if s.config == prev.config {
+		return nil, nil
+	}
+	raw, err := json.Marshal(s.config)
+	if err != nil {
+		return nil, fmt.Errorf("game: marshalling the config write set %+v: %w", s.config, err)
+	}
+	encoded := string(raw)
+	return &encoded, nil
 }
 
 // deletedItems names the ids the committed state held and the scratch copy does

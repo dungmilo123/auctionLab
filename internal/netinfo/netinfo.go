@@ -8,8 +8,10 @@
 package netinfo
 
 import (
-	"errors"
+	"fmt"
 	"net"
+	"net/netip"
+	"sort"
 )
 
 // Interface is ONE system interface plus the addresses configured on it.
@@ -39,9 +41,98 @@ type Interface struct {
 // table").
 type InterfaceSource func() ([]Interface, error)
 
+// System is the production source: the machine's own interfaces, each with the
+// addresses the kernel reports. An interface whose address list cannot be read
+// is skipped rather than fatal — enumeration is best-effort and must never stop
+// the boot (T-04-11; a machine with no private address simply offers no
+// candidate, and the admin's "this page's URL" fallback still works, D-86).
+func System() ([]Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("netinfo: listing the system interfaces: %w", err)
+	}
+
+	out := make([]Interface, 0, len(ifaces))
+	for _, ifi := range ifaces {
+		addrs, err := ifi.Addrs()
+		if err != nil {
+			continue
+		}
+		out = append(out, Interface{Name: ifi.Name, Flags: ifi.Flags, Addrs: addrs})
+	}
+	return out, nil
+}
+
 // Enumerate answers D-83's candidate list: one `http://<ip>:<port>/` URL per
 // private IPv4 address on an UP, non-loopback interface, ranked 192.168/16,
 // then 10/8, then 172.16/12, and ordered by address inside one class.
+//
+// The secondary sort key is not decoration: the OS decides the order
+// net.Interfaces() reports, D-84's default selection is "the first candidate",
+// and without a total order that default would flicker between boots. Docker
+// bridges are deliberately retained — D-83's locked filter is the address rule,
+// and a bridge address is a real address the machine answers on.
 func Enumerate(src InterfaceSource, port int) ([]string, error) {
-	return nil, errors.New("netinfo: Enumerate is not implemented yet")
+	ifaces, err := src()
+	if err != nil {
+		return nil, fmt.Errorf("netinfo: enumerating interfaces: %w", err)
+	}
+
+	candidates := make([]netip.Addr, 0, len(ifaces))
+	for _, ifi := range ifaces {
+		if ifi.Flags&net.FlagUp == 0 || ifi.Flags&net.FlagLoopback != 0 {
+			continue // D-83: down and loopback interfaces are never offered
+		}
+		for _, a := range ifi.Addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			addr, ok := netip.AddrFromSlice(ipnet.IP)
+			if !ok {
+				continue
+			}
+			// Unmap before classifying: an IPv4-mapped IPv6 address
+			// (::ffff:10.0.0.7) is not Is4, and would otherwise slip past the
+			// private-IPv4 rule entirely.
+			addr = addr.Unmap()
+			if !addr.Is4() || !addr.IsPrivate() || addr.IsLoopback() {
+				continue
+			}
+			candidates = append(candidates, addr)
+		}
+	}
+
+	sort.SliceStable(candidates, func(i, j int) bool {
+		ri, rj := rank(candidates[i]), rank(candidates[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return candidates[i].Less(candidates[j])
+	})
+
+	urls := make([]string, 0, len(candidates))
+	for _, addr := range candidates {
+		urls = append(urls, fmt.Sprintf("http://%s:%d/", addr, port))
+	}
+	return urls, nil
+}
+
+// rank is D-83's preference: a 192.168/16 address is offered first, then 10/8,
+// then the rest of 172.16/12. Enumerate only ever passes an IPv4 address, so
+// the byte access below is safe by construction — the guard keeps a future
+// caller from panicking instead.
+func rank(addr netip.Addr) int {
+	if !addr.Is4() {
+		return 3
+	}
+	b := addr.As4()
+	switch {
+	case b[0] == 192 && b[1] == 168:
+		return 0
+	case b[0] == 10:
+		return 1
+	default:
+		return 2
+	}
 }

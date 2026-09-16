@@ -45,6 +45,13 @@ type Mutation struct {
 	UpdatedAt     int64
 	Players       []PlayerRow
 
+	// Phase 4 (D-81/D-84): the persisted configuration, or nil when this
+	// mutation did not edit it — exactly like Runtime, because "unchanged" is
+	// not "erase" and a reset that leaves the config alone must not clear the
+	// selected join URL. Commit writes it into the same game-row UPDATE, in the
+	// same transaction as the revision.
+	ConfigJSON *string
+
 	// Phase 3 (D-49): the auction write set. Items carries only the rows that
 	// changed (the engine diffs), DeletedItems names removed ids, Runtime is nil
 	// unless the timing row moved, and Bids is append-only.
@@ -198,8 +205,9 @@ ON CONFLICT(id) DO UPDATE SET
 	}
 
 	const updateGame = `
-UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ? WHERE id = 1`
-	res, err := tx.Exec(updateGame, m.Phase, nullableItemID(m.CurrentItemID), m.Revision, m.UpdatedAt)
+UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ?,
+                config_json = COALESCE(?, config_json) WHERE id = 1`
+	res, err := tx.Exec(updateGame, m.Phase, nullableItemID(m.CurrentItemID), m.Revision, m.UpdatedAt, nullableConfigJSON(m.ConfigJSON))
 	if err != nil {
 		return fmt.Errorf("store: updating the game row: %w", err)
 	}
@@ -301,4 +309,14 @@ func nullableItemID(id string) any {
 		return nil
 	}
 	return id
+}
+
+// nullableConfigJSON turns the absent pointer into SQL NULL so the UPDATE's
+// COALESCE keeps the committed value: a nil ConfigJSON means "this mutation did
+// not edit the configuration", never "erase it".
+func nullableConfigJSON(raw *string) any {
+	if raw == nil {
+		return nil
+	}
+	return *raw
 }
