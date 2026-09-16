@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -921,5 +922,248 @@ func TestAcceptIsNotALadderBid(t *testing.T) {
 	item := asObject(t, doc["item"], "item")
 	if _, ok := item["top_bidder"]; ok {
 		t.Error("a Dutch item advertised a top bidder: an acceptance is not a bid (D-98)")
+	}
+}
+
+// TestDutchResumeRedrivesFromWallClock is D-101/DTCH-03's restart drill, run on
+// the SAME SQLite file at a SHIFTED instant (research Pitfall 14: a restart that
+// reuses the engine or the clock has not exercised the load path at all). Before
+// floor time the derivation matches the formula; past floor time the run is
+// still LIVE, pinned at the floor and still acceptable — because a Dutch run's
+// clock is its started_at, never a deadline, and no boot settles one.
+func TestDutchResumeRedrivesFromWallClock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	base := testStart
+
+	// --- process 1: a LIVE Dutch run with one registered player ---------------
+	first := newTestEnvAt(t, path, &testClock{t: base})
+	an := mustJoin(t, first, "An")
+	it := dutchFixture()
+	mustOpenDutchRun(t, first, it)
+	startedAt := first.runOf(t).startedAt
+	revBefore := first.engine.Rev()
+	budgetBefore := first.player(t, an.PlayerID).budget
+	// A kill -9 drops the handle: there is no graceful shutdown path to call.
+	if err := first.store.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+
+	// --- process 2: reopen at T+X, three intervals in (above the floor) -------
+	second := newTestEnvAt(t, path, &testClock{t: base.Add(3 * time.Second)})
+	if got := second.engine.Phase(); got != PhaseLive {
+		t.Fatalf("phase after a mid-Dutch restart = %s, want LIVE: a boot never settles a Dutch run (D-99/D-101)", got)
+	}
+	run := second.runOf(t)
+	if run.itemID != it.id {
+		t.Errorf("resumed item = %q, want the persisted %q", run.itemID, it.id)
+	}
+	if run.startedAt != startedAt {
+		t.Errorf("resumed started_at = %d, want the persisted %d: it IS the price clock (D-101)", run.startedAt, startedAt)
+	}
+	if run.deadlineAt != 0 {
+		t.Errorf("a resumed Dutch run invented a deadline %d: a Dutch run has none (D-93)", run.deadlineAt)
+	}
+	doc := decodeObject(t, second.engine.Snapshot(RolePlayer, an.PlayerID))
+	item := asObject(t, doc["item"], "item")
+	if got, ok := numberField(t, item, "current_price"); !ok || got != 70_000 {
+		t.Errorf("resumed current_price = %#v/%t, want the derivation at T+3s (70000)", item["current_price"], ok)
+	}
+	if got, ok := numberField(t, item, "started_at"); !ok || got != startedAt {
+		t.Errorf("resumed started_at field = %#v/%t, want %d", item["started_at"], ok, startedAt)
+	}
+	if got := second.engine.Rev(); got != revBefore {
+		t.Errorf("a restart moved the revision: %d, want the unchanged %d", got, revBefore)
+	}
+	if got := second.player(t, an.PlayerID).budget; got != budgetBefore {
+		t.Errorf("a restart moved a budget: %d, want the unchanged %d (a boot settles nothing)", got, budgetBefore)
+	}
+	if err := second.store.Close(); err != nil {
+		t.Fatalf("closing the second store: %v", err)
+	}
+
+	// --- process 3: reopen at T+Y, long past floor time -----------------------
+	third := newTestEnvAt(t, path, &testClock{t: base.Add(20 * time.Second)})
+	if got := third.engine.Phase(); got != PhaseLive {
+		t.Fatalf("phase after a past-floor restart = %s, want LIVE: reaching the floor is not an outcome (D-99)", got)
+	}
+	doc = decodeObject(t, third.engine.Snapshot(RoleScreen, ""))
+	item = asObject(t, doc["item"], "item")
+	if got, ok := numberField(t, item, "current_price"); !ok || got != it.floorPrice {
+		t.Errorf("resumed current_price past the floor = %#v/%t, want it pinned at %d (D-91)", item["current_price"], ok, it.floorPrice)
+	}
+	if got := third.engine.Rev(); got != revBefore {
+		t.Errorf("the second restart moved the revision: %d, want the unchanged %d", got, revBefore)
+	}
+
+	// The presenter can still end it through the run's own two triggers: an
+	// accept wins at the pinned floor, once, through the ONE settle path.
+	rejection, refused, err := third.acceptDutch(an.PlayerID)
+	if err != nil || refused {
+		t.Fatalf("an accept on a resumed past-floor Dutch run was refused: err = %v, refusal = %+v", err, rejection)
+	}
+	if got := third.engine.Rev(); got != revBefore+1 {
+		t.Errorf("revision after the resumed accept = %d, want exactly one bump to %d (D-54)", got, revBefore+1)
+	}
+	settled := third.runOf(t)
+	if settled.settle == nil || settled.settle.Outcome != "sold" || settled.settle.Price != it.floorPrice {
+		t.Errorf("the resumed accept settled as %+v, want sold at the pinned floor %d", settled.settle, it.floorPrice)
+	}
+}
+
+// TestDutchRevealSurvivesRestart is D-98/DTCH-03's reconstruction drill: after a
+// reopen, a settled Dutch run's winner and price come from the durable
+// kind=accept row. The reopen lands FAR past floor time on purpose — a
+// derivation-only implementation would render the floor price and lose the
+// winner — so the acceptance row is the only thing that can answer 70_000.
+func TestDutchRevealSurvivesRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	base := testStart
+
+	first := newTestEnvAt(t, path, &testClock{t: base})
+	an := mustJoin(t, first, "An")
+	it := dutchFixture()
+	mustOpenDutchRun(t, first, it)
+	first.clock.t = base.Add(3 * time.Second)
+	if _, refused, err := first.acceptDutch(an.PlayerID); err != nil || refused {
+		t.Fatalf("the Dutch accept was refused: err = %v, refusal = %+v", err, refused)
+	}
+	original := first.runOf(t).settle
+	if original == nil || original.Outcome != "sold" || original.Price != 70_000 {
+		t.Fatalf("the settle did not produce the sold reveal: %+v", original)
+	}
+	revBefore := first.engine.Rev()
+	budgetAfter := first.player(t, an.PlayerID).budget
+	if err := first.store.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+
+	second := newTestEnvAt(t, path, &testClock{t: base.Add(600 * time.Second)})
+	if got := second.engine.Phase(); got != PhaseSettled {
+		t.Fatalf("phase after a settled Dutch restart = %s, want SETTLED", got)
+	}
+	if got := second.engine.Rev(); got != revBefore {
+		t.Errorf("the restart moved the revision: %d, want the unchanged %d", got, revBefore)
+	}
+
+	for _, role := range []struct {
+		name     string
+		role     Role
+		playerID string
+	}{
+		{name: "player", role: RolePlayer, playerID: an.PlayerID},
+		{name: "screen", role: RoleScreen},
+	} {
+		t.Run(role.name, func(t *testing.T) {
+			doc := decodeObject(t, second.engine.Snapshot(role.role, role.playerID))
+			assertNoSecrets(t, role.name, doc)
+
+			item := asObject(t, doc["item"], "item")
+			reveal := asObject(t, item["settle"], "item.settle")
+			if reveal["outcome"] != "sold" {
+				t.Errorf("rebuilt outcome = %#v, want sold: the accept row proves the sale (D-98)", reveal["outcome"])
+			}
+			if reveal["price"] != float64(70_000) {
+				t.Errorf("rebuilt price = %#v, want the accepted 70000 — never the floor %d the clock has passed", reveal["price"], it.floorPrice)
+			}
+			if reveal["truth_value"] != float64(it.truthValue) {
+				t.Errorf("rebuilt truth_value = %#v, want %d", reveal["truth_value"], it.truthValue)
+			}
+			if want := float64(it.truthValue - 70_000); reveal["budget_delta"] != want {
+				t.Errorf("rebuilt budget_delta = %#v, want %v", reveal["budget_delta"], want)
+			}
+			winner := asObject(t, reveal["winner"], "settle.winner")
+			if winner["nickname"] != "An" {
+				t.Errorf("rebuilt winner = %#v, want An (the accept row's player)", winner)
+			}
+			if item["current_price"] != reveal["price"] {
+				t.Errorf("rebuilt current_price = %#v, want the charged %#v", item["current_price"], reveal["price"])
+			}
+			if _, ok := item["min_next_bid"]; ok {
+				t.Error("a settled Dutch item advertises min_next_bid: it has no ladder (D-98)")
+			}
+		})
+	}
+
+	if got := second.player(t, an.PlayerID).budget; got != budgetAfter {
+		t.Errorf("the restart replayed the charge: budget = %d, want the unchanged %d (ECON-02)", got, budgetAfter)
+	}
+	rows, err := second.store.LoadBids()
+	if err != nil {
+		t.Fatalf("loading the bid audit: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Kind != trailAccept {
+		t.Fatalf("the audit trail holds %+v, want the one kind=accept row the reveal was rebuilt from", rows)
+	}
+}
+
+// TestResumeDutchFailsHard is D-101/T-05-04's fail-hard matrix: a persisted LIVE
+// Dutch run whose clock cannot be trusted — started_at gone, or a deadline a
+// Dutch run must never carry — refuses to construct. The boot repairs nothing
+// and invents nothing: repairing would mean guessing at a price the room already
+// saw (D-34 spirit).
+func TestResumeDutchFailsHard(t *testing.T) {
+	// persistedLiveDutch drives one LIVE Dutch run on a fresh file and drops the
+	// handle the way a kill -9 does, returning the file and the item id.
+	persistedLiveDutch := func(t *testing.T) (path, itemID string) {
+		t.Helper()
+
+		path = filepath.Join(t.TempDir(), "auction.db")
+		env := newTestEnvAt(t, path, &testClock{t: testStart})
+		it := dutchFixture()
+		mustJoin(t, env, "An")
+		mustOpenDutchRun(t, env, it)
+		if err := env.store.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+		return path, it.id
+	}
+
+	// corrupt applies one hand-edit to the persisted file, the shape a
+	// half-written row or a future phase's mistake would take.
+	corrupt := func(t *testing.T, path, stmt string) {
+		t.Helper()
+
+		st := openTestStore(t, path)
+		if _, err := st.DB.Exec(stmt); err != nil {
+			t.Fatalf("corrupting the file with %q: %v", stmt, err)
+		}
+		if err := st.Close(); err != nil {
+			t.Fatalf("closing the corrupted file: %v", err)
+		}
+	}
+
+	cases := []struct {
+		name         string
+		corrupt      func(t *testing.T, path string)
+		wantContains string // empty means "the offending item id"
+	}{
+		{
+			name:    "a LIVE Dutch run whose started_at is zero",
+			corrupt: func(t *testing.T, path string) { corrupt(t, path, `UPDATE auction_runtime SET started_at = 0`) },
+		},
+		{
+			name: "a LIVE Dutch run carrying a persisted deadline",
+			corrupt: func(t *testing.T, path string) {
+				corrupt(t, path, `UPDATE auction_runtime SET deadline_at = started_at + 60000`)
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path, itemID := persistedLiveDutch(t)
+			tc.corrupt(t, path)
+
+			_, err := openEngineAt(t, path, testStart.Add(30*time.Second))
+			if err == nil {
+				t.Fatal("New accepted a malformed Dutch LIVE run; the boot must fail hard rather than repair or invent a clock (D-101/T-05-04)")
+			}
+			want := tc.wantContains
+			if want == "" {
+				want = itemID
+			}
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("boot error %q does not name %q, so the operator cannot tell what is wrong", err, want)
+			}
+		})
 	}
 }
