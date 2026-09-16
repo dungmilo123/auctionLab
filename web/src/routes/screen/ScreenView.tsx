@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
 import { formatVND } from '@/lib/format'
@@ -8,9 +8,10 @@ import {
   isEnglishAuction,
   isSealedAuction,
   joinUrlInvitable,
+  podiumEntries,
 } from '@/lib/screen'
 import type { ConnectionStatus } from '@/ws/client'
-import type { PublicItem, RecentBid, SealedProgress } from '@/ws/protocol'
+import type { LeaderEntry, PublicItem, RecentBid, SealedProgress } from '@/ws/protocol'
 import { openScreenSocket } from '@/ws/screen'
 import type { LiveOverlay, ViewState } from '@/ws/view'
 
@@ -126,6 +127,48 @@ function hintRange(item: PublicItem): string | null {
   if (hintMin !== null) return formatVND(hintMin)
   if (hintMax !== null) return formatVND(hintMax)
   return null
+}
+
+/** One label/value row on the projector: label 14/700, value 16/400. */
+function RevealRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <p className="text-sm leading-[1.5] font-bold">{label}</p>
+      <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">{children}</p>
+    </div>
+  )
+}
+
+/**
+ * The standings block, shared by SETTLED and FINALE — one component, one rule:
+ * every entry renders, in the server's own order, and the block is the second of
+ * the route's two declared scroll regions (20 players fill three columns at
+ * 1920×1080 and need no scroll). The podium above it is a *prefix* of the same
+ * list, never a second ranking.
+ */
+function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
+  const { t } = useLanguage()
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <h2 className="shrink-0 text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('screen.standingsHeading')}
+      </h2>
+      <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto xl:grid-cols-3">
+        {entries.map((entry) => (
+          <div
+            key={entry.nickname}
+            className="flex min-h-11 items-center gap-2 border-2 border-border bg-card px-2 py-1"
+          >
+            <p className="text-sm leading-[1.5] font-bold">{entry.rank}</p>
+            <p className="min-w-0 flex-1 break-words text-base leading-[1.5]">{entry.nickname}</p>
+            <p className="whitespace-nowrap text-base leading-[1.5]">{formatVND(entry.budget)}</p>
+            <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Body 1 — LOBBY (SCRN-01): the QR plate is the focal point, the grid stays quiet. */
@@ -343,6 +386,158 @@ function ItemBody({
   )
 }
 
+/**
+ * Body 3 — SETTLED (SCRN-03): the public reveal, with the True value block as
+ * the state's one accent fill. The reveal rows share the player route's shape;
+ * the standings underneath are the same component FINALE uses.
+ */
+function SettledBody({
+  item,
+  standings,
+}: {
+  item: PublicItem
+  standings: readonly LeaderEntry[]
+}) {
+  const { t } = useLanguage()
+  const settle = item.settle
+
+  // Unreachable by construction: the decoder's totality table refuses a SETTLED
+  // payload without its reveal, and an unapplied snapshot leaves the previous
+  // body on screen. No "missing data" copy exists because the state does not.
+  if (settle === null) return null
+
+  const sold = settle.outcome === 'sold'
+
+  return (
+    <>
+      <div className="flex shrink-0 flex-col gap-1">
+        <h2 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">
+          {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
+        </h2>
+        <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
+      </div>
+
+      <div className="flex shrink-0 flex-col gap-2">
+        {/* Omitted entirely when there is no winner — which is exactly the
+            unsold case: a blank winner slot would read as a missing value
+            rather than as "nobody won" (ECON-03). */}
+        {settle.winner !== null && (
+          <RevealRow label={t('settle.winnerLabel')}>
+            <span className="min-w-0 break-words">{settle.winner}</span>
+          </RevealRow>
+        )}
+
+        <RevealRow label={t('settle.priceLabel')}>
+          <span>{formatVND(settle.price)}</span>
+          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
+        </RevealRow>
+
+        {/* The one accent fill of this state: the teaching moment of the whole
+            app (§Color item 8). */}
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-2 text-primary-foreground">
+          <p className="text-sm leading-[1.5] font-bold">{t('settle.truthLabel')}</p>
+          <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">
+            <span>{formatVND(settle.truthValue)}</span>
+            <span className="text-sm leading-[1.5]">{t('amount.caption')}</span>
+          </p>
+        </div>
+
+        {/* `budget_delta` is the winner's net and is item-scoped, so it belongs
+            to the reveal rather than to any one viewer; only an unsold item
+            omits it. The plus is presentation — `formatVND` already carries a
+            minus sign when the value has one. */}
+        {sold && (
+          <RevealRow label={t('settle.deltaLabel')}>
+            <span>
+              {settle.budgetDelta > 0 ? '+' : ''}
+              {formatVND(settle.budgetDelta)}
+            </span>
+            <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
+          </RevealRow>
+        )}
+      </div>
+
+      {!sold && <p className="shrink-0 text-base leading-[1.5]">{t('settle.unsoldBody')}</p>}
+
+      <Standings entries={standings} />
+    </>
+  )
+}
+
+/**
+ * The podium (SCRN-03/D-89): one to three blocks in rank order, the winner in
+ * the accent fill and the tallest footprint. The blocks come from the standings'
+ * own prefix, so a reload at FINALE — the trailing snapshot path — paints the
+ * identical ceremony with no event history, and a zero-player list paints
+ * nothing rather than a "3rd place: nobody" frame.
+ */
+function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
+  const { t } = useLanguage()
+
+  return (
+    <div className="flex shrink-0 flex-wrap items-stretch gap-4">
+      {entries.map((entry, index) => {
+        const first = index === 0
+        return (
+          <div
+            key={entry.nickname}
+            // `basis-0` + a `min-w-40` floor: the three blocks share one line
+            // while they fit and stack below when they do not, always in rank
+            // order in the DOM.
+            className={`flex min-w-40 flex-1 basis-0 flex-col gap-1 border-2 border-border ${
+              first ? 'bg-primary px-6 py-6 text-primary-foreground' : 'bg-card px-4 py-3'
+            }`}
+          >
+            <p className={first ? 'text-xl leading-[1.2] font-bold' : 'text-sm leading-[1.5] font-bold'}>
+              {entry.rank}
+            </p>
+            <p
+              className={`min-w-0 break-words font-bold ${
+                first
+                  ? 'text-display leading-[1.2]'
+                  : 'text-xl leading-[1.2] tracking-[-0.01em]'
+              }`}
+            >
+              {entry.nickname}
+            </p>
+            <p
+              className={`whitespace-nowrap ${
+                first ? 'text-xl leading-[1.2] font-bold' : 'text-base leading-[1.5]'
+              }`}
+            >
+              {formatVND(entry.budget)}
+            </p>
+            <p
+              className={`text-sm leading-[1.5] ${first ? '' : 'text-muted-foreground'}`}
+            >
+              {t('amount.caption')}
+            </p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Body 4 — FINALE (SCRN-03/ECON-05/D-89): the podium, then the full record. */
+function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
+  const { t } = useLanguage()
+
+  return (
+    <>
+      <h2 className="shrink-0 text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('finale.heading')}
+      </h2>
+
+      <Podium entries={podiumEntries(standings)} />
+
+      {/* The podium is the celebration and this is the result: everyone renders,
+          in the server's order, in the route's second scroll region. */}
+      <Standings entries={standings} />
+    </>
+  )
+}
+
 function ScreenView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
@@ -387,10 +582,17 @@ function ScreenView() {
             feed={current.recentBids}
           />
         )
-      default:
-        // SETTLED and FINALE land in the next task of this plan.
-        return null
+      case 'SETTLED':
+        if (current.item === null) return null
+        return <SettledBody item={current.item} standings={current.leaderboard} />
+      case 'FINALE':
+        return <FinaleBody standings={current.leaderboard} />
     }
+
+    // Unreachable: the switch above is total over the five frozen phases (the
+    // decoder refuses any other name), and this line exists only so the function
+    // returns a value on every path.
+    return null
   }
 
   return (

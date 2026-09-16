@@ -19,6 +19,9 @@
 
 import type { LeaderEntry, PlayerMe } from '@/ws/protocol'
 
+/** D-89's celebration is a top three; the cap is a constant, not a call-site number. */
+const PODIUM_SIZE = 3
+
 /**
  * The class `ScreenView` puts on `document.documentElement` for the route's
  * lifetime (D-90). The stylesheet's two projector rules are scoped to
@@ -70,9 +73,7 @@ export function isEnglishAuction(auctionType: string): boolean {
  * placements, and the list is copied so a caller cannot reorder the view.
  */
 export function podiumEntries(standings: readonly LeaderEntry[]): LeaderEntry[] {
-  // RED sentinel: the declaration `screen.test.ts` compiles against.
-  void standings
-  return []
+  return standings.slice(0, PODIUM_SIZE)
 }
 
 /**
@@ -89,8 +90,8 @@ export function playerRank(
   me: PlayerMe | null,
   standings: readonly LeaderEntry[],
 ): { rank: number; total: number } | null {
-  // RED sentinel: the declaration `screen.test.ts` compiles against.
-  void me
-  void standings
-  return null
+  // 0 is the wire's "no standing" (04-06's `readRank`), and a null `me` is the
+  // screen role's shape — both omit the block rather than print a place.
+  if (me === null || me.rank <= 0) return null
+  return { rank: me.rank, total: standings.length }
 }

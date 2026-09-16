@@ -10,7 +10,7 @@ import {
 } from '@/ws/client'
 import type { BidRejected, ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
-import FinalePlaceholder from './FinalePlaceholder'
+import Finale from './Finale'
 import ItemIntro from './ItemIntro'
 import JoinForm from './JoinForm'
 import LiveEnglish from './LiveEnglish'
@@ -169,7 +169,7 @@ function PlayerView() {
       case 'SETTLED':
         return <SettledReveal item={view.item} me={view.me} />
       case 'FINALE':
-        return <FinalePlaceholder />
+        return <Finale view={view} />
       case 'ITEM_INTRO':
         if (view.item !== null) return <ItemIntro item={view.item} budget={view.me.budget} />
         break
