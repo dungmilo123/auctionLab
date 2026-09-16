@@ -16,3 +16,14 @@ export function formatVND(amount: number): string {
   const digits = Math.abs(rounded).toString()
   return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
+
+/**
+ * The Players list's time-of-day value (D-80) — RED DECLARATION.
+ *
+ * A relative age would need a ticking clock and an absolute date is noise for a
+ * one-hour show; the presenter needs "did they join before or after the break"
+ * precision, not more.
+ */
+export function formatTimeOfDay(_ms: number): string {
+  return ''
+}

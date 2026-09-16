@@ -17,9 +17,9 @@
  *     in-flight flag derived from the snapshot it was sent against.
  */
 
-import type { AdminCommand, AdminConfigInput } from '@/ws/admin'
+import type { AdminCommand, AdminConfigInput, ResetMode } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
-import type { AdminItem } from '@/ws/protocol'
+import type { AdminItem, AdminPlayer, Phase, PublicItem } from '@/ws/protocol'
 import { parseBidAmount } from './bid'
 import type { CopyKey } from './i18n'
 
@@ -308,4 +308,45 @@ export function urlCandidates(joinUrls: readonly string[], pageOrigin: string): 
 /** The one Setup command both the budget field and the URL rows send (D-81/D-84). */
 export function configFrame(config: AdminConfigInput): AdminCommand {
   return { type: 'admin.config.update', config }
+}
+
+/** D-79's per-mode confirm sentence — RED DECLARATION. */
+export function resetConfirmKey(_mode: ResetMode): CopyKey {
+  return 'admin.resetKeepConfirm'
+}
+
+/** The reset frame, carrying exactly the armed mode — RED DECLARATION. */
+export function resetFrame(_mode: ResetMode): AdminCommand {
+  return { type: 'admin.game.reset', mode: 'keep_players' }
+}
+
+/** D-80's release command — RED DECLARATION. */
+export function releaseFrame(_id: string): AdminCommand {
+  return { type: 'admin.player.release', id: '' }
+}
+
+/** D-80's row order — RED DECLARATION. */
+export function sortPlayersByJoinedAt(players: readonly AdminPlayer[]): AdminPlayer[] {
+  return [...players]
+}
+
+/** D-81's presenter read-out — RED DECLARATION. */
+export type PresenterSettle = {
+  outcome: 'sold' | 'unsold'
+  headingKey: CopyKey
+  winner: string | null
+  price: number
+  truthValue: number
+  budgetDelta: number
+  deltaText: string
+  winnerBudget: number | null
+}
+
+/** D-81/ADMN-07's presenter read-out — RED DECLARATION. */
+export function presenterSettle(
+  _phase: Phase,
+  _item: PublicItem | null,
+  _players: readonly AdminPlayer[],
+): PresenterSettle | null {
+  return null
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AdminItem } from '@/ws/protocol'
+import type { AdminItem, AdminPlayer, PublicItem } from '@/ws/protocol'
 import {
   blankDraft,
   configFrame,
@@ -7,6 +7,11 @@ import {
   draftPayload,
   draftValid,
   mutationsEnabled,
+  presenterSettle,
+  releaseFrame,
+  resetConfirmKey,
+  resetFrame,
+  sortPlayersByJoinedAt,
   urlCandidates,
   validateDraft,
   validateStartingBudget,
@@ -187,6 +192,123 @@ describe('the typed admin commands (D-81/D-84)', () => {
     expect(configFrame({ join_url: LAN })).toEqual({
       type: 'admin.config.update',
       config: { join_url: LAN },
+    })
+  })
+})
+
+/** A presenter row, in the shape the admin snapshot decodes. */
+function player(id: string, joinedAt: number, overrides: Partial<AdminPlayer> = {}): AdminPlayer {
+  return {
+    id,
+    nickname: id.toUpperCase(),
+    budget: 5_000_000,
+    totalValue: 0,
+    joinedAt,
+    lastSeenAt: joinedAt,
+    connected: true,
+    ...overrides,
+  }
+}
+
+/** The public item at SETTLED, with the reveal this tab is allowed to read. */
+function settledItem(overrides: Partial<PublicItem> = {}): PublicItem {
+  return {
+    id: 'i1',
+    name: 'Đèn bàn',
+    description: '',
+    auctionType: 'english',
+    hintMin: null,
+    hintMax: null,
+    startPrice: 100_000,
+    status: 'settled',
+    currentPrice: 300_000,
+    topBidder: 'An',
+    deadlineAt: null,
+    minNextBid: null,
+    extensionsUsed: 0,
+    settle: { outcome: 'sold', winner: 'An', price: 300_000, truthValue: 350_000, budgetDelta: 50_000 },
+    ...overrides,
+  }
+}
+
+describe('the reset modes (D-79)', () => {
+  it('arms each mode with its own consequence sentence', () => {
+    expect(resetConfirmKey('keep_players')).toBe('admin.resetKeepConfirm')
+    expect(resetConfirmKey('clear_players')).toBe('admin.resetClearConfirm')
+  })
+
+  it('sends exactly the armed mode on the second click', () => {
+    expect(resetFrame('keep_players')).toEqual({ type: 'admin.game.reset', mode: 'keep_players' })
+    expect(resetFrame('clear_players')).toEqual({ type: 'admin.game.reset', mode: 'clear_players' })
+  })
+})
+
+describe('the release command (D-80)', () => {
+  it('names the player the row belongs to and nothing else', () => {
+    expect(releaseFrame('p1')).toEqual({ type: 'admin.player.release', id: 'p1' })
+  })
+})
+
+describe('the Players rows (D-80)', () => {
+  it('orders the rows by joined_at, oldest first', () => {
+    const players = [player('c', 3000), player('a', 1000), player('b', 2000)]
+    expect(sortPlayersByJoinedAt(players).map((p) => p.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('keeps the server order for two players who joined in the same millisecond', () => {
+    const tied = [player('second', 1000), player('first', 1000)]
+    expect(sortPlayersByJoinedAt(tied).map((p) => p.id)).toEqual(['second', 'first'])
+  })
+
+  it('does not order the snapshot list in place', () => {
+    const players = [player('b', 2000), player('a', 1000)]
+    sortPlayersByJoinedAt(players)
+    expect(players.map((p) => p.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('the presenter settle card (D-81/ADMN-07)', () => {
+  it('is absent outside SETTLED, and when there is no reveal to read', () => {
+    const players = [player('an', 1000, { nickname: 'An' })]
+    expect(presenterSettle('LIVE', settledItem(), players)).toBeNull()
+    expect(presenterSettle('SETTLED', null, players)).toBeNull()
+    expect(presenterSettle('SETTLED', settledItem({ settle: null }), players)).toBeNull()
+  })
+
+  it('reads the winner, the price, the hidden truth value and the delta from the snapshot', () => {
+    const card = presenterSettle('SETTLED', settledItem(), [player('an', 1000, { nickname: 'An' })])
+    expect(card).not.toBeNull()
+    expect(card).toMatchObject({
+      outcome: 'sold',
+      headingKey: 'settle.soldHeading',
+      winner: 'An',
+      price: 300_000,
+      truthValue: 350_000,
+      budgetDelta: 50_000,
+      deltaText: '+50.000',
+    })
+  })
+
+  it("reads the winner's current budget from the presenter rows, matched by nickname", () => {
+    const card = presenterSettle('SETTLED', settledItem(), [
+      player('an', 1000, { nickname: 'An', budget: 4_700_000 }),
+      player('binh', 2000, { nickname: 'Bình', budget: 5_000_000 }),
+    ])
+    expect(card?.winnerBudget).toBe(4_700_000)
+  })
+
+  it('leaves the winner rows out of an unsold reveal instead of printing zeros', () => {
+    const unsold = settledItem({
+      settle: { outcome: 'unsold', winner: null, price: 0, truthValue: 350_000, budgetDelta: 0 },
+    })
+    const card = presenterSettle('SETTLED', unsold, [player('an', 1000, { nickname: 'An' })])
+    expect(card).toMatchObject({
+      outcome: 'unsold',
+      headingKey: 'settle.unsoldHeading',
+      winner: null,
+      truthValue: 350_000,
+      deltaText: '0',
+      winnerBudget: null,
     })
   })
 })

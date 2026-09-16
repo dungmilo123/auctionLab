@@ -1,5 +1,12 @@
+// The Players list renders LOCAL wall-clock time (D-80), so the only way the
+// literal expectations below are about THE FUNCTION rather than about this
+// machine is to pin the process timezone. It is pinned in this file — before
+// any Date call in the suite and with no Vitest config and no `Intl`, because
+// the venue may be fully offline (03-RESEARCH Pitfall 9).
+process.env.TZ = 'UTC'
+
 import { describe, expect, it } from 'vitest'
-import { formatVND } from './format'
+import { formatTimeOfDay, formatVND } from './format'
 
 // The wire and the database both carry integers; the screen shows VND with dots.
 const cases: Array<[amount: number, expected: string]> = [
@@ -20,5 +27,18 @@ describe('formatVND', () => {
 
   it('groups every three digits regardless of how many there are', () => {
     expect(formatVND(12_345_678)).toBe('12.345.678')
+  })
+})
+
+describe('formatTimeOfDay (D-80)', () => {
+  it('renders a zero-padded 24-hour local time', () => {
+    expect(formatTimeOfDay(Date.UTC(2026, 8, 16, 14, 32))).toBe('14:32')
+    expect(formatTimeOfDay(Date.UTC(2026, 0, 2, 9, 7))).toBe('09:07')
+    expect(formatTimeOfDay(Date.UTC(2026, 11, 31, 0, 5))).toBe('00:05')
+  })
+
+  it('drops the seconds and never renders a date', () => {
+    expect(formatTimeOfDay(Date.UTC(2026, 8, 16, 23, 59) + 59_000 + 999)).toBe('23:59')
+    expect(formatTimeOfDay(Date.UTC(2026, 8, 16, 14, 32))).not.toContain('2026')
   })
 })
