@@ -152,6 +152,16 @@ func (e *Engine) validateResumedAuction() error {
 			if rt.DeadlineAt != nil {
 				return fmt.Errorf("game: phase LIVE on dutch item %q with a persisted deadline %d — a Dutch run must carry none (D-93)", current.id, *rt.DeadlineAt)
 			}
+			// The item's mechanics are the OTHER half of the clock the price is
+			// derived from: a resumed row that lost them would serve a LIVE
+			// payload the browser decoder refuses (the same room-wide freeze
+			// CR-01 produced) and a price derived from the "no usable clock"
+			// fallback. The predicate is StartItem's own, so the admin edge and
+			// the boot cannot drift (WR-02), and it is not repaired either:
+			// guessing a step or a floor would change what the room can accept.
+			if err := dutchMechanicsError(current); err != nil {
+				return fmt.Errorf("game: phase LIVE on dutch item %q whose mechanics cannot derive a price: %w — refusing to invent one (D-92/D-101)", current.id, err)
+			}
 		}
 		s.currentAuction = run
 		return nil

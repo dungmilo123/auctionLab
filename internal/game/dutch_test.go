@@ -1207,10 +1207,10 @@ func TestDutchRevealSurvivesRestart(t *testing.T) {
 }
 
 // TestResumeDutchFailsHard is D-101/T-05-04's fail-hard matrix: a persisted LIVE
-// Dutch run whose clock cannot be trusted — started_at gone, or a deadline a
-// Dutch run must never carry — refuses to construct. The boot repairs nothing
-// and invents nothing: repairing would mean guessing at a price the room already
-// saw (D-34 spirit).
+// Dutch run whose clock cannot be trusted — started_at gone, a deadline a Dutch
+// run must never carry, or the mechanics its price re-derives from gone with it
+// (WR-02) — refuses to construct. The boot repairs nothing and invents nothing:
+// repairing would mean guessing at a price the room already saw (D-34 spirit).
 func TestResumeDutchFailsHard(t *testing.T) {
 	// persistedLiveDutch drives one LIVE Dutch run on a fresh file and drops the
 	// handle the way a kill -9 does, returning the file and the item id.
@@ -1256,6 +1256,25 @@ func TestResumeDutchFailsHard(t *testing.T) {
 			corrupt: func(t *testing.T, path string) {
 				corrupt(t, path, `UPDATE auction_runtime SET deadline_at = started_at + 60000`)
 			},
+		},
+		{
+			name: "a LIVE Dutch run whose floor price is gone",
+			corrupt: func(t *testing.T, path string) {
+				// The price CLOCK is intact (started_at survived) but the
+				// mechanics are not: the derivation would answer the start price
+				// forever, and the browser decoder refuses a Dutch LIVE payload
+				// without its mechanics — the room-wide freeze CR-01 produced.
+				// The boot must refuse to serve a run it cannot derive.
+				corrupt(t, path, `UPDATE items SET floor_price = NULL`)
+			},
+			wantContains: "floor_price",
+		},
+		{
+			name: "a LIVE Dutch run whose decrement step is gone",
+			corrupt: func(t *testing.T, path string) {
+				corrupt(t, path, `UPDATE items SET decrement_step = NULL`)
+			},
+			wantContains: "decrement_step",
 		},
 	}
 	for _, tc := range cases {
