@@ -512,8 +512,18 @@ func itemIDFromSnapshot(data json.RawMessage) (string, error) {
 	return view.Items[len(view.Items)-1].ID, nil
 }
 
+// adminKeyFlag is D-76's script/probe capability for the round's admin bot. It
+// is registered at package level so it exists before the shared flag set is
+// parsed (resolveTarget owns the parse), and it defaults to ADMIN_KEY because
+// that is the variable a server started with an operator-pinned key was given.
+// A server that minted and persisted its key (D-74) printed it once, in the
+// `/admin?k=…` boot line; a human passes that value here.
+var adminKeyFlag = flag.String("admin-key", os.Getenv("ADMIN_KEY"),
+	"admin capability for the round's admin bot (default: $ADMIN_KEY)")
+
 func main() {
 	target := resolveTarget()
+	adminKey := *adminKeyFlag
 	start := time.Now()
 
 	// One run, one namespace: the nicknames carry a per-run suffix, so a second
@@ -557,7 +567,7 @@ func main() {
 	// Phase 3: one bounded English round through the same protocol — an admin
 	// bot creates the item and drives the phase changes, two player bots bid
 	// (one accepted, one refused privately), and the round ends on the reveal.
-	round := runRound(target, run)
+	round := runRound(target, run, adminKey)
 	for _, line := range round.lines {
 		fmt.Printf("round: %s\n", line)
 	}
@@ -609,7 +619,16 @@ type roundBot struct {
 // dialRound connects one role and completes its handshake. A player's join is a
 // mutation, so its own fan-out snapshot follows the handshake pair (H2) — it is
 // consumed here so every bot starts the round with nothing queued.
-func dialRound(target, label, role, nickname string) (*roundBot, error) {
+//
+// The admin round is authorized (D-76/ADMN-04): this harness IS the script
+// channel the decision deliberately keeps, so the capability travels in the join
+// frame's `key` field. A missing capability fails here with an actionable
+// message instead of surfacing as a not_authorized frame from the server.
+func dialRound(target, label, role, nickname, adminKey string) (*roundBot, error) {
+	if role == "admin" && adminKey == "" {
+		return nil, fmt.Errorf("%s: no admin capability — set ADMIN_KEY (or pass --admin-key) to the key the server printed at boot", label)
+	}
+
 	conn, resp, err := websocket.DefaultDialer.Dial(target, nil)
 	if err != nil {
 		status := "no response"
@@ -625,6 +644,9 @@ func dialRound(target, label, role, nickname string) (*roundBot, error) {
 	join := map[string]string{"type": "join", "role": role}
 	if nickname != "" {
 		join["nickname"] = nickname
+	}
+	if role == "admin" {
+		join["key"] = adminKey
 	}
 	frame, err := json.Marshal(join)
 	if err != nil {
@@ -763,24 +785,26 @@ func (r *roundReport) passed() bool { return len(r.errs) == 0 }
 // two players bid (one accepted, one refused PRIVATELY), and the admin force-ends
 // it — so the round's whole path, from a real socket command to the committed
 // reveal, is what the exit code reflects (D-43's end-to-end gate).
-func runRound(target, run string) roundReport {
+//
+// adminKey is D-76's capability for the admin bot; the players need nothing.
+func runRound(target, run, adminKey string) roundReport {
 	var report roundReport
 
-	admin, err := dialRound(target, "admin", "admin", "")
+	admin, err := dialRound(target, "admin", "admin", "", adminKey)
 	if err != nil {
 		report.fail("%v", err)
 		return report
 	}
 	defer admin.close()
 
-	a, err := dialRound(target, "player A", "player", run+"-a")
+	a, err := dialRound(target, "player A", "player", run+"-a", "")
 	if err != nil {
 		report.fail("%v", err)
 		return report
 	}
 	defer a.close()
 
-	b, err := dialRound(target, "player B", "player", run+"-b")
+	b, err := dialRound(target, "player B", "player", run+"-b", "")
 	if err != nil {
 		report.fail("%v", err)
 		return report
@@ -998,13 +1022,15 @@ func runRound(target, run string) roundReport {
 func resolveTarget() string {
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
-		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url]\n\n")
+		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url] [--admin-key KEY]\n\n")
 		fmt.Fprintf(out, "Dials %d player bots against a live /ws, asserts the real protocol's\n", bots)
 		fmt.Fprintf(out, "seq/rev contract, then plays one bounded English round (an admin bot\n")
 		fmt.Fprintf(out, "creates and drives an item, two players bid, and the round ends on the\n")
 		fmt.Fprintf(out, "reveal). It exits non-zero when any bot cannot join, the round cannot\n")
 		fmt.Fprintf(out, "complete, or a frame breaks the stream contract. The URL may also come\n")
 		fmt.Fprintf(out, "from WS_URL.\n\n")
+		fmt.Fprintf(out, "The admin bot is authorized (ADMN-04): --admin-key, or ADMIN_KEY in the\n")
+		fmt.Fprintf(out, "environment, must carry the key the server printed at boot.\n\n")
 		fmt.Fprintf(out, "  default: %s\n", defaultTarget)
 	}
 	flag.Parse()

@@ -136,7 +136,7 @@ func newTestHubAt(t *testing.T, policy Policy, clock *testClock) (*Hub, *game.En
 		t.Fatalf("building the engine: %v", err)
 	}
 
-	h := newHub(engine, policy)
+	h := newHub(engine, policy, testAdminKey)
 	if clock != nil {
 		h.now = clock.now
 	}

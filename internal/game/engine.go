@@ -57,8 +57,10 @@ type JoinError struct {
 
 func (e *JoinError) Error() string { return e.Code + ": " + e.Message }
 
-// JoinRequest is one client's join attempt (D-23). Key is accepted and ignored
-// in Phase 2: the ADMIN_KEY check is Phase 4 (ADMN-04) and no secret exists yet.
+// JoinRequest is one client's join attempt (D-23). Key is D-76's script/probe
+// capability, and the ENGINE deliberately ignores it: the ADMIN_KEY check runs
+// in the hub before this call, because a capability that reached game state
+// would be one projection field away from a browser (D-74/ADMN-04).
 type JoinRequest struct {
 	Role     Role
 	Nickname string
@@ -477,7 +479,8 @@ func (e *Engine) Join(req JoinRequest, emit func(Hello, any)) (JoinResult, error
 		// Screen and admin carry no identity and mutate nothing (D-23); they
 		// only need the current role projection, built and handed over inside
 		// this same critical section so the handshake pair is atomic for every
-		// role. Admin is deliberately not key-checked yet (D-24/ADMN-04).
+		// role. Admin is authorized by the hub BEFORE this call (D-76/ADMN-04),
+		// so no key is ever needed — or accepted — here.
 		if req.Role != RoleScreen && req.Role != RoleAdmin {
 			return JoinResult{}, fmt.Errorf("game: join role %q is not one of player|screen|admin", req.Role)
 		}

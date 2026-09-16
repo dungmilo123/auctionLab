@@ -14,6 +14,7 @@ import (
 	"auctionlab/internal/api"
 	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
+	"auctionlab/internal/netinfo"
 	"auctionlab/internal/store"
 )
 
@@ -76,6 +77,26 @@ func run() error {
 	// only, and it is the sole source of the key after boot (D-74/D-77).
 	log.Printf("admin: /admin?k=%s", adminKey)
 
+	// Boot step 2c — D-83's join-URL candidates. The enumeration runs once, here,
+	// because interfaces do not change during a show (a hotspot switch is a
+	// restart), and its product is a BOOT INPUT rather than durable state:
+	// config_json persists the SELECTED url (D-84), never the proposals.
+	//
+	// It is best-effort by contract (netinfo.System, T-04-11): a machine with no
+	// private address — or a kernel that refuses to list its interfaces — offers
+	// no candidate and the boot continues, because D-86's "this page's URL"
+	// fallback is what keeps the panel usable. Aborting the boot here would take
+	// the show down over a cosmetic list.
+	candidates, err := netinfo.Enumerate(netinfo.System, *port)
+	if err != nil {
+		log.Printf("netinfo: %v (offering no LAN join URL; the admin can still enter one)", err)
+	}
+	if len(candidates) > 0 {
+		log.Printf("lan: %d join URL candidate(s), first=%s", len(candidates), candidates[0])
+	} else {
+		log.Printf("lan: no private IPv4 address on this machine; the admin panel will offer its own origin")
+	}
+
 	engine, err := game.New(game.Config{
 		Store: st,
 		Now:   time.Now,
@@ -83,6 +104,9 @@ func run() error {
 			log.Printf("fatal: unrecoverable game state: %v", err)
 			os.Exit(1)
 		},
+		// D-84/D-86: what the admin panel may offer. The engine projects the
+		// list; it never persists it (the selection is what config_json holds).
+		JoinURLCandidates: candidates,
 	})
 	if err != nil {
 		return err
@@ -101,8 +125,10 @@ func run() error {
 	// Boot step 3 — the hub. It owns /ws and it IS the engine's fan-out edge:
 	// the engine calls Enqueue with its exclusive lock held after every
 	// committed mutation and every presence change, so the enqueue can never
-	// lose a race with the state it describes (D-33).
-	ws := hub.New(engine)
+	// lose a race with the state it describes (D-33). It also owns D-76's admin
+	// authorization, which is why the resolved key goes here and not into
+	// game.Config.
+	ws := hub.New(engine, adminKey)
 	engine.SetPublisher(ws.Fanout)
 
 	// Boot step 4 — the D-56 ticker. It starts only after the publisher is

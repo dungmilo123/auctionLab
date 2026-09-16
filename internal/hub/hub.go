@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"auctionlab/internal/api"
 	"auctionlab/internal/game"
 )
 
@@ -92,6 +93,14 @@ type Hub struct {
 	policy Policy
 	now    func() time.Time
 
+	// adminKey is the resolved ADMIN_KEY (D-74), injected at boot by cmd/server —
+	// the one component that knows the env/persisted/minted precedence. It is
+	// only ever COMPARED (authorizedAdmin), never logged and never echoed, and it
+	// deliberately does not travel into game.Config: the admin projection is
+	// built from state, and a capability that reached state would be one field
+	// away from a browser (D-74/T-04-04).
+	adminKey string
+
 	registry registry
 
 	// Counters are atomic and package-visible so the ordering tests can assert
@@ -101,16 +110,17 @@ type Hub struct {
 	resyncs atomic.Int64
 }
 
-// New builds the hub for one engine. It is the only constructor cmd/server
-// uses; newHub is the same thing with D-40's policy injected for tests.
-func New(engine *game.Engine) *Hub {
-	return newHub(engine, DefaultPolicy)
+// New builds the hub for one engine and one resolved admin capability. It is the
+// only constructor cmd/server uses; newHub is the same thing with D-40's policy
+// injected for tests.
+func New(engine *game.Engine, adminKey string) *Hub {
+	return newHub(engine, DefaultPolicy, adminKey)
 }
 
 // newHub is New with the policy injected, so a test can pin the liveness
 // mechanism and the FIFO depth with values short enough to observe (D-40).
-func newHub(engine *game.Engine, policy Policy) *Hub {
-	return &Hub{engine: engine, policy: policy, now: time.Now}
+func newHub(engine *game.Engine, policy Policy, adminKey string) *Hub {
+	return &Hub{engine: engine, policy: policy, now: time.Now, adminKey: adminKey}
 }
 
 // registry is the copy-on-write set of live connections. Reads take no lock at
@@ -201,6 +211,11 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := newClient(h, conn)
+	// D-76: this is the only place the *http.Request exists — the admin role
+	// arrives in the first frame, long after the request is gone — so the
+	// capability cookie is captured here and the decision happens in handleJoin.
+	// The value is never logged (T-04-04).
+	c.adminCookie = requestedAdminCookie(r)
 	c.armLiveness()
 	h.registry.add(c)
 	go c.writePump()
@@ -211,6 +226,33 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	c.readPump()
+}
+
+// requestedAdminCookie reads D-75's capability cookie off the upgrade request.
+//
+// r.Cookie matches ONE named cookie, so nothing else the browser sends can
+// influence the decision, and an absent cookie is reported as "" — which
+// authorizedAdmin can never accept (api.Equal refuses an empty value outright).
+func requestedAdminCookie(r *http.Request) string {
+	cookie, err := r.Cookie(api.AdminCookieName)
+	if err != nil {
+		return "" // no cookie: handleJoin still has D-76's join.key channel
+	}
+	return cookie.Value
+}
+
+// authorizedAdmin answers D-76's admin-join decision: the capability arrives
+// either as the cookie the browser sent with the upgrade request or as the `key`
+// field a script/probe carries in the join frame, and BOTH are compared through
+// the phase's one fixed-width comparison (api.Equal, T-04-01) — a second
+// implementation of the comparison is exactly what reusing it prevents.
+//
+// Fail-closed by construction: api.Equal hashes both sides to a fixed width and
+// refuses an empty supplied value, so a hub built without a key — or a join
+// offering only an empty cookie — authorizes nobody (T-04-03). Neither value is
+// ever logged or echoed.
+func (h *Hub) authorizedAdmin(cookie, key string) bool {
+	return api.Equal(cookie, h.adminKey) || api.Equal(key, h.adminKey)
 }
 
 // Enqueue fans one committed revision out as each connection's own role

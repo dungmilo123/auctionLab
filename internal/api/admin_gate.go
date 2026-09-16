@@ -18,7 +18,11 @@ import (
 // is covered), 12 hours (a show's length) — and deliberately NO Secure, because
 // the venue LAN is plain http and a Secure cookie would never be sent.
 const (
-	adminCookieName   = "auction_admin"
+	// AdminCookieName is the capability cookie's name, and it is exported because
+	// the WebSocket edge needs it too: D-76 reads the same cookie off the upgrade
+	// request in internal/hub (the role only exists after the first frame, so the
+	// join is where the check runs). One name, one place.
+	AdminCookieName   = "auction_admin"
 	adminCookieMaxAge = 43200 // 12h
 	adminGatePath     = "/admin"
 )
@@ -58,7 +62,7 @@ func AdminGate(key string, next http.Handler) http.Handler {
 		if supplied := r.URL.Query().Get("k"); supplied != "" {
 			if Equal(supplied, key) {
 				http.SetCookie(w, &http.Cookie{
-					Name:     adminCookieName,
+					Name:     AdminCookieName,
 					Value:    supplied,
 					Path:     "/",
 					MaxAge:   adminCookieMaxAge,
@@ -74,7 +78,7 @@ func AdminGate(key string, next http.Handler) http.Handler {
 			wrong = true
 		}
 
-		if cookie, err := r.Cookie(adminCookieName); err == nil && Equal(cookie.Value, key) {
+		if cookie, err := r.Cookie(AdminCookieName); err == nil && Equal(cookie.Value, key) {
 			next.ServeHTTP(w, r)
 			return
 		}

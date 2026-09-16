@@ -33,6 +33,12 @@ type client struct {
 	hub  *Hub
 	conn *websocket.Conn
 
+	// adminCookie is D-75's capability cookie exactly as it arrived on the HTTP
+	// upgrade request (D-76). ServeWS writes it once, in the same goroutine that
+	// later reads it inside handleJoin, so it needs no atomic — and it is never
+	// logged, never echoed and never sent to the engine (T-04-04).
+	adminCookie string
+
 	// who is the resolved identity (D-23). It is written once by the handshake
 	// and read by the fan-out, the resync paths and the registry.
 	who atomic.Pointer[identity]
@@ -373,6 +379,11 @@ func (c *client) handleAdmin(in inbound) {
 // snapshot — runs inside ONE engine.mu critical section, which is what makes
 // "no event can slip between hello and the snapshot" a structural property
 // rather than a hope.
+//
+// The admin role is authorized here first (D-76/ADMN-04): the check cannot run
+// at the upgrade, because the role does not exist until the first frame, so the
+// cookie captured by ServeWS and the frame's own `key` are both tested before
+// the engine is asked to resolve anything.
 func (c *client) handleJoin(in inbound) {
 	if c.role() != "" {
 		c.sendError(CodeUnsupported, "this connection has already joined")
@@ -382,6 +393,20 @@ func (c *client) handleJoin(in inbound) {
 	case RolePlayer, RoleScreen, RoleAdmin:
 	default:
 		c.sendError(CodeBadMessage, "join needs role player|screen|admin")
+		return
+	}
+
+	// D-76: cookie OR join.key, compared in constant time against the boot key.
+	// A refusal reuses the ordinary rejection path — the typed error goes out on
+	// the lock-held private FIFO, the socket stays open for a corrected attempt,
+	// and D-23's cap retires it — so an unauthorized admin join is
+	// indistinguishable, structurally, from a player who mistyped a nickname.
+	if in.Role == RoleAdmin && !c.hub.authorizedAdmin(c.adminCookie, in.Key) {
+		c.sendError(CodeNotAuthorized, "admin join needs the admin key")
+		c.rejectedJoins++
+		if c.rejectedJoins >= maxRejectedJoins {
+			c.retire()
+		}
 		return
 	}
 
