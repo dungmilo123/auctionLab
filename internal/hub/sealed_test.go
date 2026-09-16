@@ -286,6 +286,42 @@ func TestSealedSubmitRejects(t *testing.T) {
 	})
 }
 
+// TestSealedSubmitConfirmationIsPrivate is D-111's private half at the
+// transport edge: `sealed.received` is addressed to the submitting connection
+// alone (the `To` mechanism D-53's `bid.rejected` uses), so a second player's
+// socket sees the ordinary snapshot and never the confirmation — the count is
+// the only sealed fact that crosses between players (D-116).
+func TestSealedSubmitConfirmationIsPrivate(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	clock := &testClock{t: base.Add(1 * time.Second)}
+	h, _, _ := newLiveSealedHub(t, clock, base.UnixMilli(), 1_000_000)
+
+	// The other player joins FIRST and is drained by its own goroutine, so the
+	// frames the submit fans out can be observed without racing the submitter's
+	// own expected sequence (the join's snapshots and the resume's are on both
+	// streams, in that order, for the reason every mutation ends in one).
+	other := dialWS(t, h)
+	join(t, other, `{"type":"join","role":"player","nickname":"Binh"}`)
+	otherReader := startReader(other)
+
+	conn, _ := sealedSubmitDial(t, h)
+	writeFrame(t, conn, `{"type":"sealed.submit","amount":150000}`)
+	frames := expectFrames(t, conn, TypeSealedReceived, TypeStateSnapshot)
+
+	// The submitter receives it; the other player receives the SAME revision's
+	// snapshot and nothing else. The loop ends at that snapshot, so the assertion
+	// is about the whole stream the mutation produced rather than about one read.
+	for {
+		env := otherReader.next(t)
+		if env.Type == TypeSealedReceived {
+			t.Fatalf("a second player's socket received %q — the confirmation is private to the submitter (D-111)", env.Type)
+		}
+		if env.Type == TypeStateSnapshot && env.Rev == frames[0].Rev {
+			break
+		}
+	}
+}
+
 // assertNothingPersisted is D-53's storage half for a refused command: neither
 // an effective sealed row nor an audit row exists.
 func assertNothingPersisted(t *testing.T, st *store.Store) {
