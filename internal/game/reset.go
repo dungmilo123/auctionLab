@@ -52,6 +52,30 @@ func (e *Engine) Reset(mode ResetMode) error {
 	}, true, nil)
 }
 
+// ReleaseSession is `admin.player.release {id}` (D-80): the presenter's insurance
+// against a device that can no longer be reached — a phone that changed networks,
+// a browser that lost its storage, an origin-scoped token after the tunnel URL
+// rotated. Releasing writes the row's token to a sentinel no mint can produce, so
+// the token that device still holds can never resume the identity again (D-30
+// (1) is gone for that row), and the row's nickname becomes claimable by the next
+// device that types it.
+//
+// The write is durable, so it bumps the revision and ends with the role snapshot
+// (D-35) — the admin's Players tab learns about it from the same fan-out as
+// everything else. Releasing an already-released row is a no-op.
+func (e *Engine) ReleaseSession(playerID string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	p := e.state.players[playerID]
+	if p == nil {
+		return fmt.Errorf("game: player.release %q does not exist", playerID)
+	}
+
+	// RED-phase stub: nothing is persisted and the caller is told so.
+	return fmt.Errorf("game: player.release %q is not implemented yet", playerID)
+}
+
 // resetLocked rewrites the scratch state into a fresh lobby. It runs inside
 // applyLocked, so nothing here is durable until the write set it produces
 // commits.
