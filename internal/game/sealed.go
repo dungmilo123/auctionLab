@@ -50,6 +50,14 @@ func (e *Engine) SubmitSealed(playerID string, amount int64, emit func(View, Bid
 		// the budget and the amount it reports are the numbers of this moment —
 		// and nothing persisted, published or revised.
 		rejection := BidRejection{Reason: reason, Budget: p.budget, Amount: amount}
+		// D-112 #4/SEAL-02: below_minimum reports the ITEM's own floor —
+		// start_price — and never the English ladder's next bid, which is right
+		// for a sealed run only by accident and absent for a Dutch refusal that
+		// deliberately carries none.
+		if reason == ReasonBelowMinimum && it != nil {
+			min := it.startPrice
+			rejection.MinNextBid = &min
+		}
 		if emit != nil {
 			emit(view{e}, rejection)
 		}
@@ -66,6 +74,22 @@ func (e *Engine) SubmitSealed(playerID string, amount int64, emit func(View, Bid
 		// not allowed to have) is closed by the same comparison rather than by a
 		// branch of its own.
 		return reject(ReasonWindowClosed)
+	}
+
+	// The amount ladder, in this exact order — the ORDER is the contract
+	// (D-112), and it is deliberately NOT PlaceBid's (which checks the amount
+	// first): a closed window must read window_closed even when the amount was
+	// also impossible, and a bid that is both under the floor and over the
+	// budget must read below_minimum. Both bounds are INCLUSIVE: `[start_price,
+	// budget]` are the amounts SEAL-02 permits.
+	if amount <= 0 {
+		return reject(ReasonInvalidAmount)
+	}
+	if amount < it.startPrice {
+		return reject(ReasonBelowMinimum)
+	}
+	if amount > p.budget {
+		return reject(ReasonExceedsBudget)
 	}
 
 	return e.applyLocked(func(s *state) error {
