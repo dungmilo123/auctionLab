@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -37,6 +38,12 @@ type PlayerView struct {
 // in the CURRENT run — a pointer so "never bid" is the key's absence while a
 // real 0 would still travel — and `is_top_bidder` is computed by the server so
 // the outbid banner never has to (D-72).
+//
+// Phase 4 (D-89/ECON-05, additive): `rank` is the player's place in the ONE
+// server standing, computed here for exactly the reason `is_top_bidder` is: a
+// public LeaderEntry carries no id, so a client could only invent a rank by
+// matching its nickname (research Pitfall 1). 0 means "no standing" — the
+// finale body omits the block rather than printing "rank 0".
 type PlayerMe struct {
 	ID          string `json:"id"`
 	Nickname    string `json:"nickname"`
@@ -45,6 +52,7 @@ type PlayerMe struct {
 	Connected   bool   `json:"connected"`
 	LastBid     *int64 `json:"last_bid,omitempty"`
 	IsTopBidder bool   `json:"is_top_bidder"`
+	Rank        int    `json:"rank"`
 }
 
 // LobbyEntry is one row of the lobby list: a nickname and whether that player is
@@ -190,6 +198,35 @@ func (s *state) priceTick(now time.Time) (PriceTick, bool) {
 	return tick, true
 }
 
+// RecentBid is one public row of the projector's feed: who bid, how much, when.
+// It is public data by construction — the bid amounts are what the room already
+// watched happen — and it carries no player id, exactly like LeaderEntry (D-25).
+type RecentBid struct {
+	Nickname string `json:"nickname"`
+	Amount   int64  `json:"amount"`
+	TS       int64  `json:"ts"`
+}
+
+// SealedProgress is D-88's public sealed counter: how many sealed bids the
+// current item has collected, and out of how many players. It is COUNT-ONLY on
+// purpose — the amounts are secrets until the reveal — which is why the
+// projector can render "X/Y đã nộp" from it without a leak surface. Phase 6 owns
+// the submit path that moves `submitted`; Phase 4 ships the field and the shell.
+type SealedProgress struct {
+	Submitted int `json:"submitted"`
+	Total     int `json:"total"`
+}
+
+// maxRecentBids is D-88's cap on that feed: five rows is what a projector shows
+// without scrolling, and a bounded payload is what keeps a 4 Hz dashboard
+// cheap.
+const maxRecentBids = 5
+
+// sealedTypes are the item types whose bids travel the sealed flow (PLAN.md §5):
+// sealed-first-price and Vickrey. The counter is advertised for both and for
+// neither of the open-outcry types.
+var sealedTypes = []string{"sealed_first", "vickrey"}
+
 // ScreenView is the projector's view: public state only. Before SETTLED it
 // carries no truth_value, and it never carries an identity or a token (D-25).
 type ScreenView struct {
@@ -205,6 +242,16 @@ type ScreenView struct {
 	// selection exists. The screen never receives the candidate LIST: it has no
 	// choice to make, and a list on a projector is a list of wrong answers.
 	JoinURL string `json:"join_url"`
+
+	// Phase 4 (D-88, additive): the live dashboard's two public extras. The feed
+	// is the newest five accepted bids of the CURRENT run, newest first, derived
+	// from the in-memory trail the ladder already maintains (no table, no second
+	// source of truth); it is never null, so a projector renders an empty list
+	// rather than guarding a null. The sealed counter is an explicit null for
+	// every other item type, which is what lets the shell tell "not a sealed
+	// item" from "a field this build does not know".
+	RecentBids     []RecentBid     `json:"recent_bids"`
+	SealedProgress *SealedProgress `json:"sealed_progress"`
 }
 
 // AdminView is the control panel's view. Phase 2 delivers it secret-capable even
@@ -308,6 +355,7 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 			Budget:     p.budget,
 			TotalValue: p.totalValue,
 			Connected:  s.connected[p.id],
+			Rank:       s.rankOf(p.id),
 		}
 		// D-67/D-72: the outbid banner is derived from these two server-computed
 		// values, never from client arithmetic — `last_bid` is scoped to the
@@ -326,14 +374,64 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 // screenView builds the projector's projection.
 func (s *state) screenView(now time.Time) ScreenView {
 	return ScreenView{
-		Phase:       string(s.phase),
-		Revision:    s.revision,
-		ServerTS:    now.UnixMilli(),
-		Lobby:       s.lobby(),
-		Leaderboard: s.leaderboard(),
-		Item:        s.currentPublicItem(),
-		JoinURL:     s.selectedJoinURL(),
+		Phase:          string(s.phase),
+		Revision:       s.revision,
+		ServerTS:       now.UnixMilli(),
+		Lobby:          s.lobby(),
+		Leaderboard:    s.leaderboard(),
+		Item:           s.currentPublicItem(),
+		JoinURL:        s.selectedJoinURL(),
+		RecentBids:     s.recentBids(),
+		SealedProgress: s.sealedProgress(),
 	}
+}
+
+// recentBids is D-88's feed: the newest accepted bids of the CURRENT run,
+// newest first, capped at maxRecentBids. It walks the authoritative trail
+// backwards — the same trail topBid and lastBidOf read, and the same run
+// boundary (itemID + startedAt) they scope by — so the feed cannot disagree with
+// the price on screen, and a walk backwards is what leaves equal timestamps in
+// insertion order (the later entry is seen first). The result is never nil: an
+// empty feed is an empty list, not a null a client has to guard.
+func (s *state) recentBids() []RecentBid {
+	feed := make([]RecentBid, 0, maxRecentBids)
+	run := s.currentAuction
+	if run == nil {
+		return feed
+	}
+	for i := len(s.bids) - 1; i >= 0 && len(feed) < maxRecentBids; i-- {
+		b := s.bids[i]
+		if b.itemID != run.itemID || b.createdAt < run.startedAt {
+			continue
+		}
+		entry := RecentBid{Amount: b.amount, TS: b.createdAt}
+		if p := s.players[b.playerID]; p != nil {
+			entry.Nickname = p.nickname
+		}
+		feed = append(feed, entry)
+	}
+	return feed
+}
+
+// sealedProgress is D-88's count-only sealed indicator: the number of sealed
+// rows the current item has collected out of the number of players, for a sealed
+// item type only, and nil (an explicit JSON null) for every other type.
+//
+// The amounts deliberately stay out: this is the ONE sealed fact a projector may
+// show, and the type makes the limit structural rather than a comment (D-26).
+// Phase 6 will move `submitted`; nothing else here changes.
+func (s *state) sealedProgress() *SealedProgress {
+	it := s.items[s.currentItemID]
+	if it == nil || !slices.Contains(sealedTypes, it.auctionType) {
+		return nil
+	}
+	submitted := 0
+	for _, sheet := range s.sealedBids {
+		if sheet.itemID == it.id {
+			submitted++
+		}
+	}
+	return &SealedProgress{Submitted: submitted, Total: len(s.players)}
 }
 
 // adminView builds the control panel's projection.
@@ -399,19 +497,7 @@ func (s *state) lobby() []LobbyEntry {
 // order — the PLAN.md §5 tie-break chain, applied consistently so the lobby, the
 // live dashboard and the podium never disagree.
 func (s *state) leaderboard() []LeaderEntry {
-	ids := append([]string(nil), s.order...)
-	sort.SliceStable(ids, func(i, j int) bool {
-		a, b := s.players[ids[i]], s.players[ids[j]]
-		switch {
-		case a.budget != b.budget:
-			return a.budget > b.budget
-		case a.totalValue != b.totalValue:
-			return a.totalValue > b.totalValue
-		default:
-			return a.joinedAt < b.joinedAt
-		}
-	})
-
+	ids := s.leaderboardOrder()
 	entries := make([]LeaderEntry, 0, len(ids))
 	for i, id := range ids {
 		p := s.players[id]
@@ -423,6 +509,47 @@ func (s *state) leaderboard() []LeaderEntry {
 		})
 	}
 	return entries
+}
+
+// leaderboardOrder is the ONE ordering every standing reads: the sorted player
+// ids behind leaderboard(), the finale podium and PlayerMe.rank (ECON-05). The
+// sort lives here and nowhere else — a second sort is how the projector and a
+// phone would start disagreeing — and the final player-id rung is what makes it
+// a TOTAL order, so a tie on budget, total value and joined_at can never fall
+// back on the order the rows happened to arrive in.
+func (s *state) leaderboardOrder() []string {
+	ids := append([]string(nil), s.order...)
+	sort.SliceStable(ids, func(i, j int) bool {
+		a, b := s.players[ids[i]], s.players[ids[j]]
+		switch {
+		case a.budget != b.budget:
+			return a.budget > b.budget
+		case a.totalValue != b.totalValue:
+			return a.totalValue > b.totalValue
+		case a.joinedAt != b.joinedAt:
+			return a.joinedAt < b.joinedAt
+		default:
+			return ids[i] < ids[j]
+		}
+	})
+	return ids
+}
+
+// rankOf is ECON-05's personal half: a player's own 1-based place in that one
+// standing, computed by the server because the public LeaderEntry carries no id
+// for a client to match against (D-89, research Pitfall 1). An id the engine does
+// not know is rank 0 — "no standing" — and the finale body omits the block
+// rather than printing a zero.
+func (s *state) rankOf(playerID string) int {
+	if playerID == "" {
+		return 0
+	}
+	for i, id := range s.leaderboardOrder() {
+		if id == playerID {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 // currentPublicItem projects the current item, or nil when none is current
