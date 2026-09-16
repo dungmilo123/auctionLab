@@ -37,11 +37,12 @@ const (
 // carries a LIVE sealed run and one registered player (whose token
 // `sealedPlayerToken` resumes it).
 //
-// The item can only be started through `admin.item.start` once the sealed
-// per-type live guard lands in a later plan of this phase, and the wire
-// contracts below are this plan's subject — so the fixture seeds the durable
-// rows through the store (exactly what the engine package's mustOpenSealedRun
-// does) and lets the real boot validate and resume them (D-101).
+// The wire contracts below are this plan's subject, so the fixture seeds the
+// durable rows through the store (exactly what the engine package's
+// mustOpenSealedRun does) and lets the real boot validate and resume them
+// (D-101): the item's LIVE edge is driven by `admin.item.start` in the engine's
+// own tests (D-107's guard), and a hub case that had to build one through the
+// admin socket would be testing the editor rather than the transport.
 func newLiveSealedHub(t *testing.T, clock *testClock, startedAt, budget int64) (*Hub, *game.Engine, *store.Store) {
 	t.Helper()
 
