@@ -3,6 +3,7 @@ import LanguageControl from '@/components/LanguageControl'
 import { Card } from '@/components/ui/card'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
 import { keepRejection, type HeldRejection } from '@/lib/rejection'
+import { isSealedAuction } from '@/lib/screen'
 import {
   openPlayerSocket,
   readStoredToken,
@@ -16,6 +17,7 @@ import ItemIntro from './ItemIntro'
 import JoinForm from './JoinForm'
 import LiveDutch from './LiveDutch'
 import LiveEnglish from './LiveEnglish'
+import LiveSealed from './LiveSealed'
 import Lobby from './Lobby'
 import SettledReveal from './SettledReveal'
 
@@ -176,6 +178,13 @@ function PlayerView() {
     connectionRef.current?.send({ type: 'dutch.accept' })
   }
 
+  function submitSealed(amount: number) {
+    // D-111/D-119: the amount is the raw integer the field parsed; the frame is
+    // `sealed.submit` and the server owns every rule (D-52). An edit rides the
+    // same command — the engine upserts `(item_id, player_id)`.
+    connectionRef.current?.send({ type: 'sealed.submit', amount })
+  }
+
   function renderBody() {
     // No snapshot has been applied yet: the player has not joined (or is
     // resuming), so the join screen is the only body that exists.
@@ -207,9 +216,11 @@ function PlayerView() {
         // `min_next_bid` are visible without waiting for a snapshot (D-56/D-71).
         //
         // D-103: the LIVE arm branches on the item's own type BEFORE the
-        // English body is chosen. `LiveEnglish` keeps its gate and its
-        // `PendingLive` fallback for the sealed types (Phase 6 replaces that);
-        // a Dutch item never reaches it.
+        // English body is chosen. Phase 6 adds the sealed arm (D-119): a sealed
+        // run has no price and no ladder, so it gets its own body — the
+        // `isSealedAuction` predicate is the app's one definition of the two
+        // sealed types, never a literal compared here. `LiveEnglish` keeps its
+        // `PendingLive` fallback as the whole family's defensive body.
         return view.item?.auctionType === 'dutch' ? (
           <LiveDutch
             view={view}
@@ -217,6 +228,14 @@ function PlayerView() {
             rejection={held}
             onClearRejection={() => setRejection(null)}
             onAccept={placeAccept}
+          />
+        ) : isSealedAuction(view.item?.auctionType ?? '') ? (
+          <LiveSealed
+            view={view}
+            status={status}
+            rejection={held}
+            onClearRejection={() => setRejection(null)}
+            onSubmit={submitSealed}
           />
         ) : (
           <LiveEnglish
