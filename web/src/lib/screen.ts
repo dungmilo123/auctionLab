@@ -1,5 +1,5 @@
 /**
- * The projector's pure logic (D-86/D-88/D-90).
+ * The projector's pure logic (D-86/D-88/D-89/D-90).
  *
  * Everything here is a selector: no DOM, no React, no socket, no clock — the
  * convention `lib/admin.ts` and `lib/bid.ts` already follow, and the only way
@@ -16,6 +16,8 @@
  *     about what the route can invite or render — never a guess about what the
  *     server meant.
  */
+
+import type { LeaderEntry, PlayerMe } from '@/ws/protocol'
 
 /**
  * The class `ScreenView` puts on `document.documentElement` for the route's
@@ -57,4 +59,38 @@ export function isSealedAuction(auctionType: string): boolean {
  */
 export function isEnglishAuction(auctionType: string): boolean {
   return auctionType === 'english'
+}
+
+/**
+ * The podium (D-89): the standings' own first three, in the order the server
+ * sent them. There is no sort here and no rank arithmetic — ECON-05's one order
+ * lives on the server (`leaderboardOrder`), and the podium is a prefix of the
+ * same list the standings block renders underneath it, so the two can never
+ * disagree. A zero-player finale yields an empty podium rather than fabricated
+ * placements, and the list is copied so a caller cannot reorder the view.
+ */
+export function podiumEntries(standings: readonly LeaderEntry[]): LeaderEntry[] {
+  // RED sentinel: the declaration `screen.test.ts` compiles against.
+  void standings
+  return []
+}
+
+/**
+ * The player's own standing for the finale body (D-89/ECON-05), or null when
+ * the block must be omitted entirely.
+ *
+ * The rank is the SERVER's (`me.rank` — 04-06's `readRank`, where 0 means "no
+ * standing") and the total is the length of the standings the same snapshot
+ * carried. Matching a nickname against a public `LeaderEntry` (which carries no
+ * id) would be a second ranking rule in the browser; `is_top_bidder` is
+ * server-computed for exactly this reason (D-72).
+ */
+export function playerRank(
+  me: PlayerMe | null,
+  standings: readonly LeaderEntry[],
+): { rank: number; total: number } | null {
+  // RED sentinel: the declaration `screen.test.ts` compiles against.
+  void me
+  void standings
+  return null
 }

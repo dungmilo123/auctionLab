@@ -2,7 +2,15 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { SCREEN_SCALE_CLASS, isEnglishAuction, isSealedAuction, joinUrlInvitable } from './screen'
+import type { LeaderEntry, PlayerMe } from '@/ws/protocol'
+import {
+  SCREEN_SCALE_CLASS,
+  isEnglishAuction,
+  isSealedAuction,
+  joinUrlInvitable,
+  playerRank,
+  podiumEntries,
+} from './screen'
 
 // This is the one test in the suite that reads a shipped file instead of
 // importing a module: `tsconfig.app.json` scopes the app's type environment to
@@ -107,5 +115,86 @@ describe('the Body 2 type gates (D-88)', () => {
     for (const type of ['dutch', 'sealed_first', 'vickrey', '']) {
       expect(isEnglishAuction(type)).toBe(false)
     }
+  })
+})
+
+/** One standing row, in the shape `readLeaderboard` hands the UI. */
+function row(rank: number, nickname: string): LeaderEntry {
+  return { rank, nickname, totalValue: 0, budget: 1_000_000 }
+}
+
+/** The player's own row, with the one field each case varies. */
+function me(rank: number): PlayerMe {
+  return {
+    id: 'p1',
+    nickname: 'An',
+    budget: 1_000_000,
+    totalValue: 0,
+    connected: true,
+    lastBid: null,
+    isTopBidder: false,
+    rank,
+  }
+}
+
+describe('the podium (D-89)', () => {
+  it("takes the standings' own prefix, in the server's order and never re-sorted", () => {
+    // Deliberately out of rank-number order: the server owns ECON-05's order
+    // (budget → total_value → joined_at → player id), so a client sort by the
+    // `rank` NUMBER would put these three back in a different order than the
+    // room saw the scoreboard.
+    const standings = [row(3, 'Chi'), row(1, 'An'), row(2, 'Bình')]
+    expect(podiumEntries(standings).map((entry) => entry.nickname)).toEqual(['Chi', 'An', 'Bình'])
+  })
+
+  it('caps the celebration at three entries and copies the list it was given', () => {
+    const standings = [row(1, 'An'), row(2, 'Bình'), row(3, 'Chi'), row(4, 'Dung')]
+    const podium = podiumEntries(standings)
+    expect(podium).toHaveLength(3)
+    expect(podium.map((entry) => entry.nickname)).toEqual(['An', 'Bình', 'Chi'])
+    expect(podium).not.toBe(standings)
+  })
+
+  it('renders one or two blocks with no empty frame, and nothing at all for zero players', () => {
+    expect(podiumEntries([row(1, 'An')])).toHaveLength(1)
+    expect(podiumEntries([row(1, 'An'), row(2, 'Bình')])).toHaveLength(2)
+    expect(podiumEntries([])).toEqual([])
+  })
+})
+
+describe("the player's own rank (D-89/ECON-05)", () => {
+  it('reads the server-computed rank with the standings it was given', () => {
+    expect(playerRank(me(2), [row(1, 'An'), row(2, 'Bình'), row(3, 'Chi')])).toEqual({
+      rank: 2,
+      total: 3,
+    })
+  })
+
+  it('omits the block entirely when the server sent no standing', () => {
+    // 0 is the wire's "no standing" (04-06's readRank), and a null `me` is the
+    // screen role's shape: neither may render a blank rank scaffold.
+    expect(playerRank(me(0), [row(1, 'An')])).toBeNull()
+    expect(playerRank(null, [row(1, 'An')])).toBeNull()
+  })
+
+  it('counts zero standings as zero rather than inventing a place', () => {
+    expect(playerRank(me(0), [])).toBeNull()
+  })
+})
+
+// T-04-14's second half, pinned where it can be. `openScreenSocket`'s handle has
+// no `send` at all (client.test.ts asserts that half at runtime), but the route
+// itself has no DOM harness in this phase — so "the projector renders no
+// control" is asserted against the source the bundler ships. A future screen
+// control therefore has to delete this test on purpose, in a visible diff.
+const screenViewSource = readFileSync(
+  fileURLToPath(new URL('../routes/screen/ScreenView.tsx', import.meta.url)),
+  'utf8',
+)
+
+describe('the read-only guarantee (D-87/T-04-14)', () => {
+  it('mounts no control, binds no handler and sends nothing', () => {
+    expect(screenViewSource).not.toMatch(/<Button|<button|on(Click|Change|Submit|KeyDown|Input)/)
+    expect(screenViewSource).not.toMatch(/\.send\(/)
   })
 })
