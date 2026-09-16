@@ -350,8 +350,9 @@ func (s *state) adminView(now time.Time) AdminView {
 		Leaderboard: s.leaderboard(),
 		Item:        s.currentPublicItem(),
 	}
-	// D-84: the selection is the admin panel's, and it is the same value every
-	// /screen projector renders its QR from.
+	// D-83/D-84: the two halves of the Join URLs panel. The candidates are the
+	// boot-time proposals; the selection is the URL every QR code is built from.
+	view.JoinURLs = s.joinURLs()
 	view.SelectedJoinURL = s.selectedJoinURL()
 
 	for _, id := range s.order {

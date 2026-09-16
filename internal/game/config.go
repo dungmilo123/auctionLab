@@ -1,5 +1,12 @@
 package game
 
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"unicode/utf8"
+)
+
 // This file is D-81/D-84's config contract: `admin.config.update` is the ONE
 // command that edits the persisted configuration, and the join URL the QR codes
 // are rendered from is the same persisted server state (D-84) — a proposal list
@@ -24,12 +31,19 @@ const MaxJoinURLLen = 200
 // UpdateConfig is `admin.config.update` (D-81/D-84): an ordinary applyLocked
 // mutation that edits the persisted configuration and nothing else.
 //
-// It deliberately never touches a player's balance — `starting_budget` is what
-// the NEXT join is minted with and what a reset restores (D-78), so a mid-game
-// edit cannot silently move anyone's economics.
+// Invalid input is refused BEFORE anything is touched, so a bad form value is a
+// refusal and never a half-applied edit — the same shape as every other admin
+// command (D-66's validators). It also deliberately never touches a player's
+// balance: `starting_budget` is what the NEXT join is minted with and what a
+// reset restores (D-78), so a mid-game edit cannot silently move anyone's
+// economics.
 func (e *Engine) UpdateConfig(in ConfigInput) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
+	if err := validateConfigInput(in); err != nil {
+		return err
+	}
 
 	next := e.state.config
 	if in.StartingBudget != nil {
@@ -52,6 +66,46 @@ func (e *Engine) UpdateConfig(in ConfigInput) error {
 	}, true, nil)
 }
 
+// validateConfigInput runs D-81/D-86's rules in order and returns ONE error
+// naming the field at fault, the shape every other admin validator in this
+// package uses (items.go's validateItemInput). An absent field is not validated
+// at all: a partial update only has to justify what it changes.
+func validateConfigInput(in ConfigInput) error {
+	if in.StartingBudget != nil {
+		if *in.StartingBudget < 1 || *in.StartingBudget > MaxAmount {
+			return fmt.Errorf("game: config starting_budget %d must be within [1, %d]", *in.StartingBudget, MaxAmount)
+		}
+	}
+	if in.JoinURL != nil {
+		if err := validateJoinURL(*in.JoinURL); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateJoinURL is D-86's rule, and nothing more: non-empty, `http://` or
+// `https://`, at most MaxJoinURLLen characters.
+//
+// The URL is never dialled, never resolved and never compared against the
+// boot-time candidates, because it is only ever the text a QR code encodes and a
+// phone types (T-04-09) — and because D-86 explicitly allows the admin to select
+// `location.origin`, a value the server cannot see and must not second-guess.
+// Counted in RUNES like every other user-supplied string here (D-28/D-66): a
+// byte count would refuse a URL the admin's own keyboard measured as short.
+func validateJoinURL(raw string) error {
+	if raw == "" {
+		return errors.New("game: config join_url must not be empty")
+	}
+	if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
+		return fmt.Errorf("game: config join_url %q must start with http:// or https://", raw)
+	}
+	if utf8.RuneCountInString(raw) > MaxJoinURLLen {
+		return fmt.Errorf("game: config join_url must be at most %d characters", MaxJoinURLLen)
+	}
+	return nil
+}
+
 // selectedJoinURL is D-84's authoritative join URL: the persisted selection
 // whenever one exists, and the first candidate only when the show has never
 // selected one.
@@ -69,4 +123,12 @@ func (s *state) selectedJoinURL() string {
 		return s.joinURLCandidates[0]
 	}
 	return ""
+}
+
+// joinURLs is D-83's candidate list as the admin panel receives it: a copy, so
+// no consumer can mutate the engine's boot data, and never nil, so the panel
+// renders an empty list instead of a null it has to guard against.
+func (s *state) joinURLs() []string {
+	urls := make([]string, 0, len(s.joinURLCandidates))
+	return append(urls, s.joinURLCandidates...)
 }
