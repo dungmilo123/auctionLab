@@ -28,6 +28,13 @@ type PlayerView struct {
 	Lobby       []LobbyEntry  `json:"lobby"`
 	Leaderboard []LeaderEntry `json:"leaderboard"`
 	Item        *PublicItem   `json:"item"` // null until an item is current (Phase 3)
+
+	// Phase 6 (D-116, additive): the SAME count-only progress the projector
+	// carries, so a player reads X/Y without any amount reaching them. It is an
+	// explicit null for every non-sealed item — never an absent key — so a
+	// client can tell "not a sealed item" from "a field this build does not
+	// know", exactly like ScreenView's own copy.
+	SealedProgress *SealedProgress `json:"sealed_progress"`
 }
 
 // PlayerMe is the player's own row: the values they are allowed to know about
@@ -53,6 +60,13 @@ type PlayerMe struct {
 	LastBid     *int64 `json:"last_bid,omitempty"`
 	IsTopBidder bool   `json:"is_top_bidder"`
 	Rank        int    `json:"rank"`
+
+	// Phase 6 (D-115, additive): this player's OWN effective sealed amount,
+	// while the current item is a sealed run that is still open. A pointer so
+	// "not submitted" is the key's ABSENCE (the last_bid precedent), and the key
+	// is `my_bid` — never any `sealed_bid*` spelling, which D-26's leak lock
+	// rejects in this package and again in the hub.
+	MyBid *int64 `json:"my_bid,omitempty"`
 }
 
 // LobbyEntry is one row of the lobby list: a nickname and whether that player is
@@ -198,6 +212,17 @@ func (s *state) priceTick(now time.Time) (PriceTick, bool) {
 		return PriceTick{}, false
 	}
 
+	// Phase 6 (D-116): a sealed run has NO moving number at all — no price, no
+	// ladder, nothing a client could interpolate — so the beat stays silent. The
+	// window still closes on the wall clock: the ticker's settle arm reads
+	// `deadline_at` directly (SettleIfDue), so a sealed item settles exactly like
+	// English while this frame never leaves. A tick that fired here would have to
+	// invent a price from the ladder's fallback (start_price) and publish a
+	// number that is not true (research Pitfall 5).
+	if it := s.items[run.itemID]; it != nil && slices.Contains(sealedTypes, it.auctionType) {
+		return PriceTick{}, false
+	}
+
 	// Phase 5 (D-91/D-94): a Dutch run branches BEFORE the ladder reads. Every
 	// English reader would answer the wrong number here — currentPrice() falls
 	// back to start_price when the trail holds no bid for the run, and a Dutch
@@ -314,6 +339,11 @@ type AdminView struct {
 	// ADMIN_KEY deliberately travels in neither (D-74).
 	JoinURLs        []string `json:"join_urls"`
 	SelectedJoinURL string   `json:"selected_join_url"`
+
+	// Phase 6 (D-117, additive): the presenter's sealed count, the SAME number
+	// the player and the projector render, so the ledger card never counts rows
+	// in the browser. An explicit null outside a sealed item.
+	SealedProgress *SealedProgress `json:"sealed_progress"`
 }
 
 // AdminConfig is the persisted configuration the admin panel edits (Phase 4).
@@ -364,10 +394,13 @@ type AdminItem struct {
 
 // AdminSealedBid is one effective sealed bid (PLAN.md §5). Phase 6 owns the
 // flow; the projection exists now so the secret has a home that is not a player
-// view.
+// view. The nickname travels WITH the row (the recent_bids precedent, D-117), so
+// the presenter's card never has to join the ledger against the player list —
+// the browser must not contain a second matching rule.
 type AdminSealedBid struct {
 	ItemID      string `json:"item_id"`
 	PlayerID    string `json:"player_id"`
+	Nickname    string `json:"nickname"`
 	Amount      int64  `json:"amount"`
 	SubmittedAt int64  `json:"submitted_at"`
 	UpdatedAt   int64  `json:"updated_at"`
@@ -385,6 +418,9 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 		Lobby:       s.lobby(),
 		Leaderboard: s.leaderboard(),
 		Item:        s.currentPublicItem(now.UnixMilli()),
+		// D-116: the count-only progress, from the ONE counting rule the
+		// projector and the private confirmation already share.
+		SealedProgress: s.sealedProgress(),
 	}
 	if p := s.players[playerID]; p != nil {
 		view.Me = PlayerMe{
@@ -404,6 +440,16 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 		}
 		if top, ok := s.topBid(); ok && top.playerID == p.id {
 			view.Me.IsTopBidder = true
+		}
+		// D-115: the player's OWN effective amount, and only while the current
+		// item is a sealed run that is still OPEN — the amount of a closed
+		// window is the reveal's business (it publishes the price, never the
+		// bid), and an absent key is the wire's "not submitted".
+		if it := s.items[s.currentItemID]; it != nil && s.phase == PhaseLive && slices.Contains(sealedTypes, it.auctionType) {
+			if row, ok := s.sealedBidOf(it.id, p.id); ok {
+				amount := row.amount
+				view.Me.MyBid = &amount
+			}
 		}
 	}
 	return view
@@ -516,16 +562,54 @@ func (s *state) adminView(now time.Time) AdminView {
 	for _, id := range s.itemOrder {
 		view.Items = append(view.Items, adminItem(s.items[id]))
 	}
-	for _, bid := range s.sealedBids {
-		view.SealedBids = append(view.SealedBids, AdminSealedBid{
-			ItemID:      bid.itemID,
-			PlayerID:    bid.playerID,
-			Amount:      bid.amount,
-			SubmittedAt: bid.submittedAt,
-			UpdatedAt:   bid.updatedAt,
-		})
+	// D-117: the presenter's ledger is the CURRENT item's effective rows, in
+	// ARRIVAL order (first submission, then player id) — the tie-break's own
+	// fields, so the list can never imply a ranking the settle would not
+	// produce. s.sealedBids accumulates across items until a reset, so an
+	// unscoped walk would list a previous item's bids under the current one. The
+	// nickname rides the row (recent_bids' precedent): the browser does not
+	// filter, sort, join or count.
+	for _, row := range s.sealedLedger() {
+		entry := AdminSealedBid{
+			ItemID:      row.itemID,
+			PlayerID:    row.playerID,
+			Amount:      row.amount,
+			SubmittedAt: row.submittedAt,
+			UpdatedAt:   row.updatedAt,
+		}
+		if p := s.players[row.playerID]; p != nil {
+			entry.Nickname = p.nickname
+		}
+		view.SealedBids = append(view.SealedBids, entry)
 	}
+	view.SealedProgress = s.sealedProgress()
 	return view
+}
+
+// sealedLedger is the presenter's sealed view in the order the card shows: the
+// FIRST submission instant first, then the player id. It is the tie-break's own
+// fields applied as an arrival log (never the ranking order the settle uses), it
+// is scoped to the current item, and it is a COPY — so ordering the presenter's
+// list can never reorder the state the settle reads (D-117).
+func (s *state) sealedLedger() []sealedBid {
+	it := s.items[s.currentItemID]
+	if it == nil {
+		return nil
+	}
+	rows := make([]sealedBid, 0, len(s.sealedBids))
+	for _, row := range s.sealedBids {
+		if row.itemID == it.id {
+			rows = append(rows, row)
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if a.submittedAt != b.submittedAt {
+			return a.submittedAt < b.submittedAt
+		}
+		return a.playerID < b.playerID
+	})
+	return rows
 }
 
 // lobby lists every player in join order with its live presence.
@@ -714,36 +798,48 @@ func (s *state) addLiveFields(view *PublicItem, it *item, now int64) {
 		return
 	}
 
-	if it.auctionType == "dutch" {
-		// The Dutch branch lives in dutch.go, beside the derivation it calls:
-		// every Dutch number in the system is computed in one file.
-		s.addDutchLiveFields(view, it, run, now)
-	} else if price, ok := s.currentPrice(); ok {
-		view.CurrentPrice = &price
-	}
-	// A Dutch item never reaches topBidderNickname's answer: currentPrice and
-	// topBid both filter on the `bid` kind, and the ladder's own window guard
-	// (now >= run.deadlineAt with deadlineAt 0) refuses every bid on a Dutch run
-	// — so an acceptance can never light the outbid banner (D-98).
-	if nickname, ok := s.topBidderNickname(); ok {
-		view.TopBidder = &Bidder{Nickname: nickname}
-	}
-	if run.deadlineAt > 0 {
-		deadline := run.deadlineAt
-		view.DeadlineAt = &deadline
-	}
-	if s.phase == PhaseLive && it.auctionType == "english" {
-		// Only an open window advertises a next bid: after SETTLED there is
-		// nothing to bid on, and a stale minimum would invite a bid the ladder
-		// refuses (D-52 #3). And only a LADDER advertises one at all — for a
-		// Dutch item the minimum is a lie the client could act on (D-98), which
-		// is why the field is absent rather than zero.
-		if min, ok := s.minNextBid(); ok {
-			view.MinNextBid = &min
+	// D-116: a sealed run has exactly ONE live field — its deadline. The rest of
+	// this builder is the ladder's description, and none of it is true for a
+	// closed window: currentPrice() would fall back to start_price and publish a
+	// plausible-but-false number the client could act on (research Pitfall 4).
+	// The counts live in sealed_progress, a separate projection field.
+	if slices.Contains(sealedTypes, it.auctionType) {
+		if run.deadlineAt > 0 {
+			deadline := run.deadlineAt
+			view.DeadlineAt = &deadline
 		}
+	} else {
+		if it.auctionType == "dutch" {
+			// The Dutch branch lives in dutch.go, beside the derivation it calls:
+			// every Dutch number in the system is computed in one file.
+			s.addDutchLiveFields(view, it, run, now)
+		} else if price, ok := s.currentPrice(); ok {
+			view.CurrentPrice = &price
+		}
+		// A Dutch item never reaches topBidderNickname's answer: currentPrice and
+		// topBid both filter on the `bid` kind, and the ladder's own window guard
+		// (now >= run.deadlineAt with deadlineAt 0) refuses every bid on a Dutch run
+		// — so an acceptance can never light the outbid banner (D-98).
+		if nickname, ok := s.topBidderNickname(); ok {
+			view.TopBidder = &Bidder{Nickname: nickname}
+		}
+		if run.deadlineAt > 0 {
+			deadline := run.deadlineAt
+			view.DeadlineAt = &deadline
+		}
+		if s.phase == PhaseLive && it.auctionType == "english" {
+			// Only an open window advertises a next bid: after SETTLED there is
+			// nothing to bid on, and a stale minimum would invite a bid the ladder
+			// refuses (D-52 #3). And only a LADDER advertises one at all — for a
+			// Dutch item the minimum is a lie the client could act on (D-98), which
+			// is why the field is absent rather than zero.
+			if min, ok := s.minNextBid(); ok {
+				view.MinNextBid = &min
+			}
+		}
+		extensionsUsed := run.extensionsUsed
+		view.ExtensionsUsed = &extensionsUsed
 	}
-	extensionsUsed := run.extensionsUsed
-	view.ExtensionsUsed = &extensionsUsed
 
 	if s.phase == PhaseSettled {
 		// The settle mutation recorded the reveal on the run; a process that

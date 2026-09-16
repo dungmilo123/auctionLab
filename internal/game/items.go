@@ -147,6 +147,21 @@ func validateItemInput(in ItemInput) error {
 		if in.FloorPrice != nil && *in.FloorPrice > in.StartPrice {
 			return fmt.Errorf("game: item input floor_price %d must not exceed start_price %d", *in.FloorPrice, in.StartPrice)
 		}
+	case "sealed_first", "vickrey":
+		// D-107: a sealed window is a WALL-CLOCK window — the run settles on
+		// `deadline_at` exactly like English — so a duration is required; and it
+		// is never extended, so anti-snipe must be disabled. Both refusals land
+		// here, where the presenter can still fix the row, mirroring how the
+		// Dutch arm refuses `duration_ms`. The English extension fields
+		// (`anti_snipe_window_ms`, `max_extensions`) stay untouched: they are
+		// inert for this type, and the editor inlines every field it holds into
+		// a save, so refusing them would make a sealed row unsaveable.
+		if in.DurationMS == nil || *in.DurationMS < 1 {
+			return fmt.Errorf("game: item input duration_ms must be a positive integer for a %s item (D-107)", in.AuctionType)
+		}
+		if in.AntiSnipeMode != "disabled" {
+			return fmt.Errorf("game: item input anti_snipe_mode %q must be disabled for a sealed item — a closed window is never extended (D-107)", in.AntiSnipeMode)
+		}
 	}
 	return nil
 }
@@ -370,14 +385,16 @@ func (e *Engine) StartItem(itemID string) error {
 			// presenter's back (Pitfall 4).
 			return fmt.Errorf("game: item.start %q while item %q is in intro", itemID, e.state.currentItemID)
 		}
-		// D-92: the LIVE edge is guarded BY TYPE. An english run needs its
-		// wall-clock deadline, because the ticker's settle arm and the boot's
+		// D-92/D-107: the LIVE edge is guarded BY TYPE. An english run needs
+		// its wall-clock deadline, because the ticker's settle arm and the boot's
 		// resume both require one; a dutch run needs its own mechanics and
 		// deliberately carries NO deadline (D-93 — the column stays NULL and
-		// nothing may settle Dutch on the clock); the sealed types are Phase 6's
-		// and cannot go live yet. A row that fails its type's guard stays in
-		// intro and the presenter skips it with `admin.item.next`, which is the
-		// documented way out.
+		// nothing may settle Dutch on the clock); a sealed run settles on the
+		// wall clock exactly like English, so it needs the duration its deadline
+		// is computed from (anti-snipe is a save-time rule above, because a
+		// sealed window is never extended). A row that fails its type's guard
+		// stays in intro and the presenter skips it with `admin.item.next`,
+		// which is the documented way out.
 		switch it.auctionType {
 		case "english":
 			if it.durationMS <= 0 {
@@ -395,6 +412,10 @@ func (e *Engine) StartItem(itemID string) error {
 			if err := dutchMechanicsError(it); err != nil {
 				return fmt.Errorf("game: item %q has %w", itemID, err)
 			}
+		case "sealed_first", "vickrey":
+			if it.durationMS <= 0 {
+				return fmt.Errorf("game: item %q has duration_ms %d; a live sealed run always needs a wall-clock deadline (D-107)", itemID, it.durationMS)
+			}
 		default:
 			return fmt.Errorf("game: item %q is %s; that type cannot go live yet", itemID, it.auctionType)
 		}
@@ -405,12 +426,14 @@ func (e *Engine) StartItem(itemID string) error {
 			live := s.items[itemID]
 			live.status = "live"
 			run := &auctionRun{itemID: itemID, startedAt: now}
-			if live.auctionType == "english" && live.durationMS > 0 {
-				// The deadline is what an English run settles on, and it is set
-				// BY TYPE, never by value: a Dutch run has no duration_ms at all
-				// (the guard above enforces it), so this stays 0 and the column
-				// stays NULL (D-93) — the price is re-derived from started_at
-				// instead, and nothing may settle Dutch on the clock.
+			if (live.auctionType == "english" || slices.Contains(sealedTypes, live.auctionType)) && live.durationMS > 0 {
+				// The deadline is what an English OR SEALED run settles on, and
+				// it is set BY TYPE, never by value: a Dutch run has no
+				// duration_ms at all (the guard above enforces it), so this
+				// stays 0 and the column stays NULL (D-93) — the price is
+				// re-derived from started_at instead, and nothing may settle
+				// Dutch on the clock. A sealed window is closed by the same
+				// wall clock and never extended (D-107).
 				run.deadlineAt = now + live.durationMS
 			}
 			s.currentAuction = run
