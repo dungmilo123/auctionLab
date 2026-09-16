@@ -130,10 +130,17 @@ func run() error {
 	// API or WS traffic no matter where it is registered (the real failure mode
 	// of an overlapping pattern is a registration-time panic). What must hold
 	// is that "/api/" and "/ws" stay non-overlapping with the "/" SPA fallback.
+	//
+	// D-75: the admin capability gate owns /admin and everything under it —
+	// registered here, ahead of the fallback, so no deep link can reach the SPA
+	// document without a valid capability cookie. Step 2b resolved the key.
+	admin := api.AdminGate(adminKey, spaHandler)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
 	mux.HandleFunc("/ws", ws.ServeWS)
+	mux.Handle("GET /admin", admin)
+	mux.Handle("/admin/", admin)
 	mux.Handle("/", spaHandler)
 
 	addr := fmt.Sprintf(":%d", *port)
