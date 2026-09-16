@@ -6,13 +6,14 @@ import (
 	"time"
 )
 
-// UserVersion is D-36's schema version, raised to 2 by D-50: Phase 3 adds
-// `auction_runtime.extensions_used` because the anti-snipe cap must survive a
-// crash exactly (deriving it from deadline arithmetic does not reconstruct the
-// number of extends). The bootstrap stays one idempotent DDL pass plus one
-// guarded migration — deliberately no migration framework, because a demo
-// database is disposable (delete auction.db to reset).
-const UserVersion = 2
+// UserVersion is D-36's schema version, raised to 2 by D-50 and to 3 by D-74:
+// Phase 3 adds `auction_runtime.extensions_used` because the anti-snipe cap must
+// survive a crash exactly (deriving it from deadline arithmetic does not
+// reconstruct the number of extends), and Phase 4 adds the `server_config` KV
+// table the boot admin capability persists into. The bootstrap stays one
+// idempotent DDL pass plus one guarded migration — deliberately no migration
+// framework, because a demo database is disposable (delete auction.db to reset).
+const UserVersion = 3
 
 // gameConfigJSON is the bootstrapped game row's default configuration (D-36 /
 // PLAN.md §5: starting_budget 1.000.000 VND). It is written by the schema
@@ -109,6 +110,17 @@ CREATE TABLE IF NOT EXISTS events (
 );
 `
 
+// serverConfigDDL is D-74's additive key/value table. It is deliberately NOT
+// part of schemaDDL above: PLAN.md §5 is what schemaDDL transcribes, and the
+// version gate below is what creates this table, exactly as the v1→v2 ALTER is
+// what creates `extensions_used`. `key` is a legal SQLite column name (probed
+// against this driver) and is D-74's own vocabulary.
+const serverConfigDDL = `
+CREATE TABLE IF NOT EXISTS server_config (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);`
+
 // Schema applies the complete schema (D-36) and brings the file to
 // UserVersion. It is idempotent: a second call on an existing file changes
 // nothing and still reports the same version.
@@ -152,13 +164,16 @@ func Schema(db *sql.DB) error {
 // migrate brings a v1 (or brand-new) file to UserVersion. Two properties are
 // the contract (D-50, research §1–2):
 //
-//   - the ALTER and `PRAGMA user_version` commit in ONE transaction, so a crash
-//     can never leave the column and the version disagreeing about the schema;
-//   - the `PRAGMA table_info` probe runs first, because a boot that crashed
-//     exactly between the ALTER and the pragma leaves a file where the column
-//     exists but the version is still 1 — a version-only guard would re-issue
-//     the ALTER and fail forever with "duplicate column name" (a plain error,
-//     not a UNIQUE violation, so D-34 would escalate it to a process exit).
+//   - the ALTER/CREATE and `PRAGMA user_version` commit in ONE transaction, so a
+//     crash can never leave the schema and the version disagreeing about each
+//     other;
+//   - every step is guarded by a probe, because a boot that crashed exactly
+//     between the change and the pragma leaves a file where the change exists
+//     but the version does not — a version-only guard would re-issue it and fail
+//     forever with "duplicate column name" (a plain error, not a UNIQUE
+//     violation, so D-34 would escalate it to a process exit).
+//
+// A v1 file runs both steps; a v2 file only the 2→3 step.
 func migrate(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -166,6 +181,8 @@ func migrate(db *sql.DB) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// v1 → v2 (D-50): the anti-snipe cap column. `PRAGMA table_info` is the
+	// probe (see the doc comment above).
 	has, err := columnExists(tx, "auction_runtime", "extensions_used")
 	if err != nil {
 		return err
@@ -174,6 +191,14 @@ func migrate(db *sql.DB) error {
 		if _, err := tx.Exec(`ALTER TABLE auction_runtime ADD COLUMN extensions_used INTEGER NOT NULL DEFAULT 0`); err != nil {
 			return fmt.Errorf("store: adding auction_runtime.extensions_used: %w", err)
 		}
+	}
+
+	// v2 → v3 (D-74): the server_config KV the boot admin capability persists
+	// into. `CREATE TABLE IF NOT EXISTS` is its own crash-window probe — the
+	// statement is safe to re-issue, which is why no separate table_info check is
+	// needed here.
+	if _, err := tx.Exec(serverConfigDDL); err != nil {
+		return fmt.Errorf("store: creating the server_config table: %w", err)
 	}
 
 	// PRAGMA cannot be parameterized; UserVersion is a compile-time constant.

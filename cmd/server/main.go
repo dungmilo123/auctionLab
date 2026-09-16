@@ -61,6 +61,21 @@ func run() error {
 	if err := store.Schema(st.DB); err != nil {
 		return err
 	}
+
+	// Boot step 2b — D-74's admin capability. The key comes from ADMIN_KEY, the
+	// persisted server_config row, or one minted and written to that row before
+	// the listener opens; every failure exits rather than serving a key the file
+	// does not hold. It deliberately does NOT enter game.Config: the admin
+	// projection is built from config_json, and a key that could reach a
+	// projection would be a leak.
+	adminKey, err := st.ResolveAdminKey(os.Getenv, game.NewToken)
+	if err != nil {
+		return err
+	}
+	// The one line the presenter needs. It is printed to the server console
+	// only, and it is the sole source of the key after boot (D-74/D-77).
+	log.Printf("admin: /admin?k=%s", adminKey)
+
 	engine, err := game.New(game.Config{
 		Store: st,
 		Now:   time.Now,

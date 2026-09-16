@@ -83,10 +83,11 @@ func hasColumn(t *testing.T, db *sql.DB, table, column string) bool {
 }
 
 // TestMigrationV1ToV2 is D-50's contract: a populated v1 file migrates once to
-// user_version 2, the new column is backfilled for the row that existed before
-// the migration, and a second boot does not re-issue the ALTER (a blind second
-// ALTER fails with "duplicate column name", which is NOT a UNIQUE violation and
-// would therefore hit D-34's fatal path — research §1).
+// the current UserVersion (the v1→v2 ALTER plus every later additive step), the
+// new column is backfilled for the row that existed before the migration, and a
+// second boot does not re-issue the ALTER (a blind second ALTER fails with
+// "duplicate column name", which is NOT a UNIQUE violation and would therefore
+// hit D-34's fatal path — research §1).
 func TestMigrationV1ToV2(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	st := openMigrateStore(t, path)
@@ -106,7 +107,7 @@ func TestMigrationV1ToV2(t *testing.T) {
 		t.Fatalf("Schema on a v1 file: %v", err)
 	}
 
-	t.Run("reports user_version 2", func(t *testing.T) {
+	t.Run("reports the current user_version", func(t *testing.T) {
 		var got int
 		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 			t.Fatalf("PRAGMA user_version: %v", err)
@@ -146,8 +147,8 @@ func TestMigrationV1ToV2(t *testing.T) {
 		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 			t.Fatalf("PRAGMA user_version: %v", err)
 		}
-		if got != 2 {
-			t.Errorf("user_version = %d after a second pass, want 2", got)
+		if got != UserVersion {
+			t.Errorf("user_version = %d after a second pass, want %d", got, UserVersion)
 		}
 	})
 }
