@@ -40,14 +40,20 @@ func (e *Engine) loadAuctionState() error {
 		return err
 	}
 	for _, row := range bids {
-		// Only accepted bids join the trail. The table is the append-only audit
-		// and a later phase may write other kinds; the same filter the boot
-		// reconstruction query uses keeps a foreign row out of the ladder (H5).
+		// Both kinds this build WRITES are loaded: a ladder `bid` for the
+		// English run and an `accept` for a Dutch acceptance (D-98). Loading the
+		// acceptance is what lets a process that restarts on a SETTLED Dutch
+		// file rebuild the reveal its settle produced — the reconstruction set is
+		// exactly the set the mutation path writes, never wider.
+		//
+		// The table is the append-only audit and a later phase may write other
+		// kinds; anything this build does not understand stays out, because a
+		// reader that meets an unknown kind would treat it as data (H5).
 		//
 		// The kind travels WITH the row: the ladder and feed predicates filter on
-		// it (D-98), so a loaded bid that lost its kind would silently vanish
+		// it (D-98), so a loaded entry that lost its kind would silently vanish
 		// from every English read after a restart.
-		if row.Kind != trailBid {
+		if row.Kind != trailBid && row.Kind != trailAccept {
 			continue
 		}
 		s.bids = append(s.bids, bid{
@@ -130,6 +136,22 @@ func (e *Engine) validateResumedAuction() error {
 			// A resumed English auction whose wall clock is unknown could
 			// neither settle nor tick; there is no correct value to guess.
 			return fmt.Errorf("game: phase LIVE on english item %q with no persisted deadline — a resumed English auction must have one (D-62)", current.id)
+		}
+		if current.auctionType == "dutch" {
+			// D-101: a Dutch LIVE run's clock IS started_at — every projection
+			// and every accept re-derives the price from it — and it
+			// deliberately carries NO deadline (D-93). Both halves are
+			// mandatory: a zero start makes the derivation meaningless, and a
+			// persisted deadline would hand the ticker and this boot a clock the
+			// type is not allowed to have, i.e. a silent auto-settle of a run
+			// the presenter is still running (T-05-04). Neither is repaired:
+			// inventing either value would change what the room can accept.
+			if rt.StartedAt <= 0 {
+				return fmt.Errorf("game: phase LIVE on dutch item %q with started_at %d — a Dutch run's price re-derives from a positive start (D-101)", current.id, rt.StartedAt)
+			}
+			if rt.DeadlineAt != nil {
+				return fmt.Errorf("game: phase LIVE on dutch item %q with a persisted deadline %d — a Dutch run must carry none (D-93)", current.id, *rt.DeadlineAt)
+			}
 		}
 		s.currentAuction = run
 		return nil
