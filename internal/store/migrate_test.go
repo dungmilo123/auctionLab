@@ -411,12 +411,10 @@ func TestServerConfig(t *testing.T) {
 		envKey       = "2222222222222222222222222222222222222222222222222222222222222222"
 		mintedKey    = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	)
-	var (
-		noEnv          = func(string) string { return "" }
-		mintMustNotRun = func() (string, error) {
-			return "", errors.New("the mint must not run when a higher rung answered")
-		}
-	)
+	noEnv := func(string) string { return "" }
+	mintMustNotRun := func() (string, error) {
+		return "", errors.New("the mint must not run when a higher rung answered")
+	}
 
 	t.Run("an absent row is not found, never an empty value", func(t *testing.T) {
 		st, _ := newStore(t)
