@@ -207,6 +207,16 @@ type state struct {
 	// lock-held fan-out edge (publishLocked) hands the hub the exact frames the
 	// committed mutation produced (D-57).
 	events []Event
+
+	// reset is the D-78 reset intent of the mutation that produced THIS state
+	// (the mode, or "" for every other mutation). It is per-mutation intent
+	// rather than durable state, and clone() never copies it — for the same
+	// reason `events` is not copied. It exists because a reset's write set
+	// cannot be derived from a diff: the trail collapses to nothing, sealed bids
+	// have no in-memory identity at all until Phase 6, and a nil currentAuction
+	// means the run is over for the ordinary item flow too, not that the
+	// auction_runtime rows must go.
+	reset ResetMode
 }
 
 // Engine is the authoritative game state and the single mutation path. All
@@ -389,6 +399,17 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		DeletedItems: next.deletedItems(e.state),
 		Runtime:      next.runtimeRow(e.state),
 		Bids:         next.bidTail(e.state),
+		// Phase 4 (D-78): the reset half of the write set. Every field above is
+		// growth-only — a cleared trail is invisible to bidTail, sealed bids have
+		// no diff at all, and a nil Runtime means "unchanged" rather than
+		// "removed" — so the removals travel as the explicit write set the store
+		// needs, read from the intent Reset recorded rather than inferred from a
+		// difference. `DeletedPlayers` is the one removal a diff CAN see, because
+		// a player row does have an in-memory identity to compare against.
+		ClearBids:       next.reset != "",
+		ClearSealedBids: next.reset != "",
+		DeleteRuntime:   next.reset != "",
+		DeletedPlayers:  next.deletedPlayers(e.state),
 	}); err != nil {
 		if store.IsUniqueViolation(err) {
 			// A UNIQUE collision is a rejection, not corruption: the write set
@@ -649,9 +670,10 @@ func (v view) Tick() (PriceTick, bool) { return v.e.state.priceTick(v.e.now()) }
 // leave the live state half-updated, and so the committed state is published
 // atomically as one pointer swap.
 //
-// events is deliberately NOT copied: each mutation starts with an empty event
-// list, so the list on the published state is exactly what that mutation
-// produced (D-57).
+// events and reset are deliberately NOT copied: each mutation starts with an
+// empty event list and no reset intent, so the list on the published state is
+// exactly what that mutation produced (D-57) and a later mutation can never
+// inherit a clear it did not ask for.
 func (s *state) clone() *state {
 	next := &state{
 		phase:         s.phase,
@@ -771,6 +793,19 @@ func (s *state) deletedItems(prev *state) []string {
 	var ids []string
 	for _, id := range prev.itemOrder {
 		if _, ok := s.items[id]; !ok {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// deletedPlayers is deletedItems for the D-78 `clear_players` arm: the ids the
+// committed state held and the scratch copy does not. The store runs this delete
+// after the sealed-bid and bid clears, because both tables reference players.
+func (s *state) deletedPlayers(prev *state) []string {
+	var ids []string
+	for _, id := range prev.order {
+		if _, ok := s.players[id]; !ok {
 			ids = append(ids, id)
 		}
 	}

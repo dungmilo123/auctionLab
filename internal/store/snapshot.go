@@ -137,8 +137,11 @@ func (s *Store) Commit(m Mutation) error {
 	// write set: players (referenced by bids), then items (referenced by the
 	// game row's current_item_id, the runtime row and bids), then the game row
 	// update (which may point at a row created in this very mutation), then the
-	// deletes (safe only after the game row stopped referencing the old item),
-	// then the runtime row, then the append-only bids.
+	// runtime deletes (a runtime row references the item it belongs to), then the
+	// item deletes (safe only after the game row stopped referencing the old
+	// item), then the D-78 reset deletes children-first — sealed_bids, bids and
+	// auction_runtime all precede the players they reference — and finally the
+	// runtime row, then the append-only bids.
 	const upsertPlayer = `
 INSERT INTO players (id, nickname, nickname_key, token, budget, total_value, joined_at, last_seen_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -208,10 +211,40 @@ UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ? WHE
 		return fmt.Errorf("store: game row missing — Bootstrap must run before the first mutation")
 	}
 
+	// D-78: the reset half of the write set. A runtime row is a child of the item
+	// it belongs to, so the removal runs before the item deletes.
+	if m.DeleteRuntime {
+		if _, err := tx.Exec(`DELETE FROM auction_runtime`); err != nil {
+			return fmt.Errorf("store: clearing the auction_runtime rows: %w", err)
+		}
+	}
+
 	const deleteItem = `DELETE FROM items WHERE id = ?`
 	for _, id := range m.DeletedItems {
 		if _, err := tx.Exec(deleteItem, id); err != nil {
 			return fmt.Errorf("store: deleting item %q: %w", id, err)
+		}
+	}
+
+	// D-78: sealed bids and bids both reference players, so the clears run before
+	// any player delete. `DELETE FROM players` with a live child row raises
+	// `foreign key constraint failed`, which the engine escalates through its
+	// fatal hook to a process exit (T-04-05) — the order here is the mitigation,
+	// and reset_test.go's negative control pins it.
+	if m.ClearSealedBids {
+		if _, err := tx.Exec(`DELETE FROM sealed_bids`); err != nil {
+			return fmt.Errorf("store: clearing the sealed_bids rows: %w", err)
+		}
+	}
+	if m.ClearBids {
+		if _, err := tx.Exec(`DELETE FROM bids`); err != nil {
+			return fmt.Errorf("store: clearing the bids rows: %w", err)
+		}
+	}
+	const deletePlayer = `DELETE FROM players WHERE id = ?`
+	for _, id := range m.DeletedPlayers {
+		if _, err := tx.Exec(deletePlayer, id); err != nil {
+			return fmt.Errorf("store: deleting player %q: %w", id, err)
 		}
 	}
 
