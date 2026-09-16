@@ -33,10 +33,10 @@ func failingSource(err error) InterfaceSource {
 }
 
 // TestEnumerate is D-83's ranking contract: keep private IPv4 from UP,
-// non-loopback interfaces only, rank 192.168/16 before 10/8 before 172.16/12,
-// and order equal classes by address so the candidate list is total (the
-// secondary sort is not optional — D-84's default selection is "the first
-// candidate", and an OS-determined order would make that default flicker
+// non-loopback, non-container interfaces only, rank 192.168/16 before 10/8
+// before 172.16/12, and order equal classes by address so the candidate list is
+// total (the secondary sort is not optional — D-84's default selection is "the
+// first candidate", and an OS-determined order would make that default flicker
 // between boots).
 func TestEnumerate(t *testing.T) {
 	cases := []struct {
@@ -48,7 +48,7 @@ func TestEnumerate(t *testing.T) {
 		{
 			name: "ranks 192.168 before 10 before 172.16/12",
 			ifaces: []Interface{
-				{Name: "docker0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.17.0.1/16"))}},
+				{Name: "eth1", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.17.0.1/16"))}},
 				{Name: "eth0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "10.0.0.7/8"))}},
 				{Name: "wlan0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "192.168.0.103/24"))}},
 			},
@@ -59,12 +59,10 @@ func TestEnumerate(t *testing.T) {
 			},
 		},
 		{
-			// D-83's locked filter deliberately RETAINS Docker bridge noise: the
-			// choice is the presenter's, and a bridge address is a real address.
-			name: "orders one class by address, bridging included",
+			name: "orders one class by address",
 			ifaces: []Interface{
-				{Name: "br-b", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.20.0.1/16"))}},
-				{Name: "br-a", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.18.0.1/16"))}},
+				{Name: "enp8s0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.20.0.1/16"))}},
+				{Name: "enp9s0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.18.0.1/16"))}},
 				{Name: "wlan0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "192.168.1.5/24"))}},
 				{Name: "eth0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "192.168.0.103/24"))}},
 			},
@@ -157,6 +155,64 @@ func TestEnumerate(t *testing.T) {
 				t.Errorf("Enumerate = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestEnumerateExcludesContainerInterfaces is UI-review finding 6 and D-83's
+// dated addendum: a container bridge IS a private IPv4 address the machine
+// answers on, but it is not an address a phone in the room can reach, and on a
+// Docker host it floods the presenter's panel (6 of 7 rows measured live). The
+// exclusion is by interface NAME — the address rule and its ranking are
+// untouched, and each family is a separate sub-test so a failure names it.
+func TestEnumerateExcludesContainerInterfaces(t *testing.T) {
+	families := []struct {
+		family string
+		iface  string
+		addr   string
+	}{
+		{"the Docker default bridge", "docker0", "172.17.0.1/16"},
+		{"a Docker user-defined bridge", "br-1a2b3c4d5e6f", "172.18.0.1/16"},
+		{"a container veth pair", "veth9f2a1b7c", "172.19.0.1/16"},
+		{"the libvirt bridge", "virbr0", "192.168.122.1/24"},
+		{"the Podman bridge", "podman0", "10.88.0.1/16"},
+		{"the CNI bridge", "cni0", "10.89.0.1/16"},
+	}
+
+	for _, f := range families {
+		t.Run(f.family, func(t *testing.T) {
+			got, err := Enumerate(source(
+				Interface{Name: f.iface, Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, f.addr))}},
+				Interface{Name: "wlan0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "192.168.0.103/24"))}},
+			), 8080)
+			if err != nil {
+				t.Fatalf("Enumerate: %v", err)
+			}
+			want := []string{"http://192.168.0.103:8080/"}
+			if !slices.Equal(got, want) {
+				t.Errorf("Enumerate = %v, want %v — %s must contribute no candidate", got, want, f.iface)
+			}
+		})
+	}
+}
+
+// TestEnumerateKeepsOrdinaryPrivateAddresses is the other half of the rule: the
+// exclusion is a NAME rule, never an IP-range one. A real 172.17.x address on an
+// ordinary interface stays eligible (and keeps its 172.16/12 rank), because the
+// presenter may well be on a network that really uses that block.
+func TestEnumerateKeepsOrdinaryPrivateAddresses(t *testing.T) {
+	got, err := Enumerate(source(
+		Interface{Name: "enp8s0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "172.17.0.42/16"))}},
+		Interface{Name: "wlan0", Flags: net.FlagUp, Addrs: []net.Addr{ptrAddr(ipnet(t, "192.168.0.103/24"))}},
+	), 8080)
+	if err != nil {
+		t.Fatalf("Enumerate: %v", err)
+	}
+	want := []string{
+		"http://192.168.0.103:8080/",
+		"http://172.17.0.42:8080/",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("Enumerate = %v, want %v", got, want)
 	}
 }
 
