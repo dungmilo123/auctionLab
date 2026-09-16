@@ -123,12 +123,20 @@ func validateItemInput(in ItemInput) error {
 			return fmt.Errorf("game: item input max_extensions %d must be at least 1 or null for no cap", *in.MaxExtensions)
 		}
 	case "dutch":
-		// Phase 5 owns the flow, but a present field must still make sense.
+		// Phase 5 owns the flow. Every present field must make sense, and the
+		// floor pair is the type's one cross-field rule (D-92): an ABSENT floor
+		// is still legal — a Dutch row may be configured before its mechanics
+		// are filled in — but a floor above the start price could never be
+		// reached honestly, so it is refused at save time (where the presenter
+		// can act on it) rather than at go-live time.
 		if in.DecrementStep != nil && *in.DecrementStep < 1 {
 			return fmt.Errorf("game: item input decrement_step must be a positive integer when present")
 		}
 		if in.DecrementIntervalMS != nil && *in.DecrementIntervalMS < 1 {
 			return fmt.Errorf("game: item input decrement_interval_ms must be a positive integer when present")
+		}
+		if in.FloorPrice != nil && *in.FloorPrice > in.StartPrice {
+			return fmt.Errorf("game: item input floor_price %d must not exceed start_price %d", *in.FloorPrice, in.StartPrice)
 		}
 	}
 	return nil
@@ -329,19 +337,31 @@ func (e *Engine) StartItem(itemID string) error {
 			// presenter's back (Pitfall 4).
 			return fmt.Errorf("game: item.start %q while item %q is in intro", itemID, e.state.currentItemID)
 		}
-		// WR-02: this phase plays ENGLISH only (D-66 ships dutch/sealed/vickrey
-		// as validated-but-unplayed data), and a run with no wall-clock deadline
-		// can never settle on the clock — the ticker's settle arm and the boot's
-		// resume both require one — so it would sit in LIVE with `Force end` as
-		// its only exit while the English ladder still accepted bids on it (a
-		// Dutch row carries min_increment 0, so `below_minimum` could never
-		// fire). Refuse the edge here: the row stays in intro and the presenter
-		// skips it with `admin.item.next`, which is the documented way out.
-		if it.auctionType != "english" {
-			return fmt.Errorf("game: item %q is %s; only an english auction can go live in this phase", itemID, it.auctionType)
-		}
-		if it.durationMS <= 0 {
-			return fmt.Errorf("game: item %q has duration_ms %d; a live run always needs a wall-clock deadline", itemID, it.durationMS)
+		// D-92: the LIVE edge is guarded BY TYPE. An english run needs its
+		// wall-clock deadline, because the ticker's settle arm and the boot's
+		// resume both require one; a dutch run needs its own mechanics and
+		// deliberately carries NO deadline (D-93 — the column stays NULL and
+		// nothing may settle Dutch on the clock); the sealed types are Phase 6's
+		// and cannot go live yet. A row that fails its type's guard stays in
+		// intro and the presenter skips it with `admin.item.next`, which is the
+		// documented way out.
+		switch it.auctionType {
+		case "english":
+			if it.durationMS <= 0 {
+				return fmt.Errorf("game: item %q has duration_ms %d; a live run always needs a wall-clock deadline", itemID, it.durationMS)
+			}
+		case "dutch":
+			if it.floorPrice <= 0 || it.floorPrice > it.startPrice {
+				return fmt.Errorf("game: item %q has floor_price %d; a Dutch run needs 0 < floor_price <= start_price (%d)", itemID, it.floorPrice, it.startPrice)
+			}
+			if it.decrementStep < 1 {
+				return fmt.Errorf("game: item %q has decrement_step %d; a Dutch run needs a positive decrement step", itemID, it.decrementStep)
+			}
+			if it.decrementIntervalMS < 1 {
+				return fmt.Errorf("game: item %q has decrement_interval_ms %d; a Dutch run needs a positive decrement interval", itemID, it.decrementIntervalMS)
+			}
+		default:
+			return fmt.Errorf("game: item %q is %s; that type cannot go live yet", itemID, it.auctionType)
 		}
 		if !CanTransition(PhaseItemIntro, PhaseLive) {
 			return fmt.Errorf("game: the machine does not declare ITEM_INTRO → LIVE")
@@ -351,6 +371,9 @@ func (e *Engine) StartItem(itemID string) error {
 			live.status = "live"
 			run := &auctionRun{itemID: itemID, startedAt: now}
 			if live.durationMS > 0 {
+				// The deadline is what an English run settles on. A Dutch run has
+				// no duration_ms at all, so this stays 0 and the column stays
+				// NULL (D-93) — the price is re-derived from started_at instead.
 				run.deadlineAt = now + live.durationMS
 			}
 			s.currentAuction = run

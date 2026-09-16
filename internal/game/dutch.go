@@ -13,9 +13,10 @@ import "fmt"
 // settleLocked, which keeps the budget arithmetic and the one reveal
 // constructor in their single home (D-98/D-100).
 
-// ReasonAlreadySold is D-97's payload-level reason ...
-//
-// RED: declared so the reason-order test compiles.
+// ReasonAlreadySold is D-97's payload-level reason: the item the player just
+// tried to accept was SOLD by another player's acceptance. It is a payload-level
+// string like the ladder's five reasons (D-53) — the frozen error catalog keeps
+// its seven values — and the client maps it to its own copy.
 const ReasonAlreadySold = "already_sold"
 
 // dutchPriceAt is D-91's ONE price derivation, and the only place a Dutch price
@@ -140,8 +141,18 @@ func (e *Engine) AcceptDutch(playerID string, emit func(View, BidRejection)) err
 		return &BidRejectedError{Reason: reason}
 	}
 
-	// 2 (D-96): every closed window — not LIVE, not a Dutch item, a run the
-	// presenter already advanced past, a run that settled without an acceptance.
+	// 2a (D-97): this run was sold by ANOTHER player's acceptance of this very
+	// Dutch item. It must be answered BEFORE the generic not-LIVE check: the
+	// winner's accept settled inside this same lock, so an accept that arrives
+	// second sees a SETTLED phase — and window_closed would tell the loser that
+	// the window simply ran out instead of that somebody accepted first.
+	if it != nil && it.auctionType == "dutch" && run != nil && run.itemID == it.id &&
+		run.settle != nil && run.settle.Outcome == "sold" {
+		return reject(ReasonAlreadySold)
+	}
+	// 2b (D-96): every other closed window — not LIVE, not a Dutch item, a run
+	// the presenter already advanced past, a run that settled without an
+	// acceptance (a force-end is `unsold`, not `already_sold`).
 	if it == nil || run == nil || run.itemID != it.id ||
 		e.state.phase != PhaseLive || it.auctionType != "dutch" {
 		return reject(ReasonWindowClosed)
