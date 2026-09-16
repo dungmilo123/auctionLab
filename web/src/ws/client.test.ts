@@ -511,6 +511,99 @@ describe('the reduced view contract (D-57/D-70)', () => {
   })
 })
 
+describe('the deliberate session end (D-78/D-80 close code 4002)', () => {
+  let connection: PlayerConnection | null = null
+
+  afterEach(() => {
+    connection?.close()
+    connection = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('drops the stale identity and signals the route on 4002, not on an ordinary drop', () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    let ended = 0
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+      onSessionEnded: () => {
+        ended += 1
+      },
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    socket.accept()
+    connection.join('Milo')
+    socket.deliver(
+      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
+    )
+    expect(readStoredToken()).toBe('tok')
+
+    // A network drop is NOT a session end: the identity is kept so D-45's
+    // resume can restore it, and the route is left where it is.
+    socket.drop(1006)
+    expect(statuses.at(-1)).toBe('lost')
+    expect(ended).toBe(0)
+    expect(readStoredToken()).toBe('tok')
+
+    // The stored token reopens the socket on the next visibility change…
+    env.fireVisibility('visible')
+    const second = env.sockets[1]
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    second.accept()
+
+    // …and the presenter then clears the room / releases this row: the server
+    // ends the session with its dedicated code. The device must not stay on a
+    // lobby whose identity is gone, so the token is dropped and the route is
+    // told to return to the join form.
+    second.drop(4002)
+    expect(ended).toBe(1)
+    expect(readStoredToken()).toBe('')
+    expect(statuses.at(-1)).toBe('lost')
+    // Nothing left to resume with: a later visibility change opens no socket.
+    env.fireVisibility('visible')
+    expect(env.sockets).toHaveLength(2)
+  })
+
+  it('keeps the identity on 4001, which is a supersede and not a session end', () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    let ended = 0
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+      onSessionEnded: () => {
+        ended += 1
+      },
+    })
+
+    const socket = env.sockets[0]
+    expect(socket).toBeDefined()
+    if (socket === undefined) return
+    socket.accept()
+    connection.join('Milo')
+    socket.deliver(
+      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
+    )
+
+    socket.drop(4001)
+    expect(statuses.at(-1)).toBe('superseded')
+    expect(ended).toBe(0)
+    expect(readStoredToken()).toBe('tok')
+  })
+})
+
 describe('the admin connection (D-64/H17)', () => {
   let admin: AdminConnection | null = null
 

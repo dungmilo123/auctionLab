@@ -68,6 +68,15 @@ export const TOKEN_KEY = 'auctionlab.player_token'
 /** Close code 4001: another connection took this identity (D-31). */
 export const SUPERSEDED_CLOSE_CODE = 4001
 
+/**
+ * Close code 4002: the PRESENTER ended this session — D-78's `clear_players`, or
+ * D-80's release of one row. The capability this device held is gone (the row
+ * was deleted or its token released), so the role must return to its entry
+ * state instead of rendering what it last saw. Like 4001 it is a deliberate
+ * server decision, never a network drop.
+ */
+export const SESSION_ENDED_CLOSE_CODE = 4002
+
 /** The four connection states UI-SPEC allows — exactly these, no more. */
 export type ConnectionStatus = 'connecting' | 'open' | 'lost' | 'superseded'
 
@@ -90,6 +99,12 @@ export type SocketOptions = {
   onHello?: (hello: Hello) => void
   /** called when the server refuses the stored identity (D-30 (3)) */
   onTokenInvalid?: () => void
+  /**
+   * called when the server ends this session on purpose (D-78/D-80's close code
+   * 4002): the identity is gone, so the role must drop everything it is showing
+   * and return to its entry state (the player's join form).
+   */
+  onSessionEnded?: () => void
   onStatus: (status: ConnectionStatus) => void
   /** one reduced view per admitted frame (D-57/D-70); invalid frames never arrive */
   onView?: (view: ViewState) => void
@@ -118,6 +133,12 @@ export type PlayerSocketHandlers = {
   onView?(view: ViewState): void
   /** D-53's private bid refusal, rendered as the feedback row. */
   onBidRejected?(rejection: BidRejected): void
+  /**
+   * The presenter ended this identity's session (D-78's `clear_players`, D-80's
+   * release): the server closed the socket with 4002, the stored token has been
+   * dropped, and the route must go back to the join form.
+   */
+  onSessionEnded?(): void
 }
 
 export type PlayerConnection = {
@@ -332,6 +353,18 @@ export function openSocket(opts: SocketOptions): Socket {
     socket.onclose = (event: CloseEvent) => {
       if (current !== socket) return // a deliberate close already ran
       current = null
+      if (event.code === SESSION_ENDED_CLOSE_CODE) {
+        // D-78/D-80: the presenter ended this session, so the identity this
+        // device held is gone and the view it is showing is stale by
+        // construction. Drop the reduced view here (the module's copy of it is
+        // the app's state, so it must not outlive the identity it described)
+        // and hand the role the two signals that return it to its entry state:
+        // `onTokenInvalid` clears the stored token when this role has one, and
+        // `onSessionEnded` resets the route.
+        view = initialViewState()
+        opts.onTokenInvalid?.()
+        opts.onSessionEnded?.()
+      }
       // `superseded` is a status, not a terminal state: the token is kept, so
       // the next visibility/pageshow runs D-45's resume and reopens with it —
       // which means two tabs of one identity take turns superseding each other,
@@ -455,6 +488,7 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
       if (hello.token !== '') storeToken(hello.token)
     },
     onTokenInvalid: clearStoredToken,
+    onSessionEnded: handlers.onSessionEnded,
     onStatus: handlers.onStatus,
     onView: handlers.onView,
     onSnapshot: handlers.onSnapshot,

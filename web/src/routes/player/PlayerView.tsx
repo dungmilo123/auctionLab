@@ -97,6 +97,19 @@ function PlayerView() {
         setRejection(null)
       },
       onBidRejected: setRejection,
+      // D-78/D-80: the presenter ended this identity's session (a cleared room
+      // or a released row) and the server closed the socket with 4002. The body
+      // on screen describes a lobby that no longer exists, so the route returns
+      // to the join form's entry state. The status line then reports the closed
+      // socket, and reload is the recovery (the phase's accepted one).
+      onSessionEnded: () => {
+        setView(initialViewState())
+        setSnapshot(null)
+        setJoining(false)
+        setRestoring(false)
+        setErrorKey(null)
+        setRejection(null)
+      },
       onError: (error: ErrorPayload) => {
         setJoining(false)
         setRestoring(false)
