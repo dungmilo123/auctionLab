@@ -7,6 +7,7 @@ import type {
   PlayerSnapshot,
   PriceTick,
   PublicItem,
+  RecentBid,
   ScreenSnapshot,
 } from './protocol'
 import { initialViewState, reduceView, type ViewFrame } from './view'
@@ -429,6 +430,93 @@ describe('the projector view (D-87/D-88/D-89)', () => {
     expect(state.recentBids).toEqual(feed)
     expect(state.sealedProgress).toEqual({ submitted: 2, total: 3 })
     expect(state.live?.itemId).toBe('i1')
+  })
+
+  // UI-review finding 1: a bid produces no snapshot, so a projector that only
+  // wrote `recentBids` in the screen-snapshot arm showed a live price beside a
+  // feed frozen at the last snapshot. The live path is the same frame that
+  // patches the price (D-88's "additive" rule).
+  it('prepends an accepted bid to the feed while the projector runs (finding 1)', () => {
+    const view = applied(initialViewState(), {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({
+        phase: 'LIVE',
+        item: publicItem(),
+        recentBids: [{ nickname: 'An', amount: 120_000, ts: TS }],
+      }),
+    })
+
+    const patched = applied(
+      view,
+      accepted({ nickname: 'Bình', amount: 140_000, currentPrice: 140_000, minNextBid: 150_000 }),
+    )
+
+    // The overlay moved with the same frame...
+    expect(patched.live?.currentPrice).toBe(140_000)
+    expect(patched.live?.minNextBid).toBe(150_000)
+    expect(patched.live?.topBidder).toBe('Bình')
+    // ...and the feed's newest row is the bid that just landed, stamped with the
+    // envelope's server clock (the same instant the server's snapshot feed uses).
+    expect(patched.recentBids).toEqual([
+      { nickname: 'Bình', amount: 140_000, ts: TS + 500 },
+      { nickname: 'An', amount: 120_000, ts: TS },
+    ])
+  })
+
+  it('keeps the feed newest-first and capped at five, and the snapshot still replaces it (finding 1)', () => {
+    const seed: RecentBid[] = [
+      { nickname: 'S4', amount: 120_000, ts: TS + 400 },
+      { nickname: 'S3', amount: 119_000, ts: TS + 300 },
+      { nickname: 'S2', amount: 118_000, ts: TS + 200 },
+      { nickname: 'S1', amount: 117_000, ts: TS + 100 },
+    ]
+    let view = applied(initialViewState(), {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({ phase: 'LIVE', item: publicItem(), recentBids: seed }),
+    })
+
+    for (let n = 1; n <= 3; n += 1) {
+      view = applied(view, {
+        kind: 'bid.accepted',
+        ts: TS + 1_000 * n,
+        bid: {
+          playerId: `p${n}`,
+          nickname: `Mới ${n}`,
+          amount: 120_000 + n,
+          currentPrice: 120_000 + n,
+          minNextBid: 130_000 + n,
+          deadlineAt: TS + 30_000,
+          extensionsUsed: 0,
+        },
+      })
+    }
+
+    expect(view.recentBids.map((bid) => bid.nickname)).toEqual([
+      'Mới 3',
+      'Mới 2',
+      'Mới 1',
+      'S4',
+      'S3',
+    ])
+    expect(view.recentBids.map((bid) => bid.ts)).toEqual([
+      TS + 3_000,
+      TS + 2_000,
+      TS + 1_000,
+      TS + 400,
+      TS + 300,
+    ])
+
+    // A reload mid-LIVE paints the feed from the server's own list, never merged
+    // with what the client patched.
+    const reloaded = applied(view, {
+      kind: 'screen-snapshot',
+      snapshot: screenSnapshot({
+        phase: 'LIVE',
+        item: publicItem(),
+        recentBids: [{ nickname: 'An', amount: 120_000, ts: TS }],
+      }),
+    })
+    expect(reloaded.recentBids).toEqual([{ nickname: 'An', amount: 120_000, ts: TS }])
   })
 
   it('resets the role extras when the next snapshot belongs to another role', () => {
