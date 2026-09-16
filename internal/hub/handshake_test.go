@@ -287,15 +287,20 @@ func TestPreJoinCommand(t *testing.T) {
 
 // TestUnsupportedCommand pins D-24's forward-compatibility rule: a command from
 // a later phase is already in the frozen catalog, so it answers the typed
-// unsupported error instead of looking like an unknown message. Phase 5 routes
-// `dutch.accept` (player-only, dutch_test.go pins that contract), so the example
-// moves on to Phase 6's sealed-bid vocabulary.
+// unsupported error instead of looking like an unknown message.
+//
+// Phase 6 implements the LAST client→server entry the catalog reserved
+// (`sealed.submit` is routed player-only, pinned by sealed_test.go), so the
+// example moves to a type deliberately OUTSIDE the catalog: the default arm is
+// what this case exists to exercise, and after this phase no catalog entry can
+// stand in for it. `CodeUnsupported` stays reachable through the two other
+// paths that own it (a second join on one connection, the pre-join guard).
 func TestUnsupportedCommand(t *testing.T) {
 	h, _ := newTestHub(t)
 	conn := dialWS(t, h)
 	join(t, conn, adminJoinJSON)
 
-	writeFrame(t, conn, `{"type":"sealed.submit","id":"whatever"}`)
+	writeFrame(t, conn, `{"type":"future.command","id":"whatever"}`)
 	assertErrorCode(t, readFrame(t, conn), CodeUnsupported)
 }
 

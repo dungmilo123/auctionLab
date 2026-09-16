@@ -172,8 +172,27 @@ func nullableInt64(v *int64) any {
 // item_id, then the FIRST submission instant, then player id — so a restart
 // reproduces the slice exactly and the tie-break reads the same sequence the
 // live process built (D-108/D-113).
-//
-// RED: not implemented yet.
 func (s *Store) LoadSealedBids() ([]SealedBidRow, error) {
-	return nil, nil
+	const query = `
+SELECT item_id, player_id, amount, submitted_at, updated_at
+FROM sealed_bids ORDER BY item_id, submitted_at, player_id`
+
+	rows, err := s.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("store: loading sealed bids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var sealed []SealedBidRow
+	for rows.Next() {
+		var b SealedBidRow
+		if err := rows.Scan(&b.ItemID, &b.PlayerID, &b.Amount, &b.SubmittedAt, &b.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("store: scanning a sealed bid row: %w", err)
+		}
+		sealed = append(sealed, b)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("store: reading sealed bids: %w", err)
+	}
+	return sealed, nil
 }

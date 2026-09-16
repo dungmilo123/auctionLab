@@ -226,6 +226,24 @@ UPDATE game SET phase = ?, current_item_id = ?, revision = ?, updated_at = ?,
 		return fmt.Errorf("store: game row missing — Bootstrap must run before the first mutation")
 	}
 
+	// Phase 6 (D-108/D-110): the effective sealed bids, in the SAME transaction
+	// as the revision. The statement runs after the player and item rows it
+	// references are in and before every delete below, and its DO UPDATE
+	// deliberately omits `submitted_at`: that omission IS the immutability rule
+	// SEAL-05's tie-break depends on. The list is an upsert write set, so
+	// re-committing an unchanged row is a no-op.
+	const upsertSealedBid = `
+INSERT INTO sealed_bids (item_id, player_id, amount, submitted_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(item_id, player_id) DO UPDATE SET
+  amount     = excluded.amount,
+  updated_at = excluded.updated_at`
+	for _, b := range m.SealedBids {
+		if _, err := tx.Exec(upsertSealedBid, b.ItemID, b.PlayerID, b.Amount, b.SubmittedAt, b.UpdatedAt); err != nil {
+			return fmt.Errorf("store: upserting the sealed bid for item %q player %q: %w", b.ItemID, b.PlayerID, err)
+		}
+	}
+
 	// D-78: the reset half of the write set. A runtime row is a child of the item
 	// it belongs to, so the removal runs before the item deletes.
 	if m.DeleteRuntime {

@@ -134,9 +134,14 @@ func TestProtocol(t *testing.T) {
 		// Phase 5's 05-01 removes `dutch.accept`: it routes to the engine now,
 		// and its transport contract is pinned by dutch_test.go (player-only,
 		// with the private refusal frames).
-		future := []string{
-			TypeSealedSubmit,
-		}
+		//
+		// Phase 6's 06-01 removes `sealed.submit` — the LAST client→server entry
+		// the freeze reserved — so this list is deliberately EMPTY and the loop
+		// below is an assertion about a closed set rather than about a subset.
+		// The explicit frame after it keeps the default arm itself under test
+		// with a type the catalog never published (handshake_test.go's
+		// TestUnsupportedCommand pins the same arm from the socket fixture).
+		future := []string{}
 
 		h, _ := newTestHub(t)
 		conn := dialWS(t, h)
@@ -153,6 +158,15 @@ func TestProtocol(t *testing.T) {
 			if got := frameString(t, frameData(t, env), "code"); got != "unsupported" {
 				t.Fatalf("%s: error code = %q, want %q", kind, got, "unsupported")
 			}
+		}
+
+		writeFrame(t, conn, `{"type":"future.command"}`)
+		env := readFrame(t, conn)
+		if env.Type != "error" {
+			t.Fatalf("future.command: frame type = %q, want \"error\"", env.Type)
+		}
+		if got := frameString(t, frameData(t, env), "code"); got != "unsupported" {
+			t.Fatalf("future.command: error code = %q, want %q", got, "unsupported")
 		}
 	})
 

@@ -440,6 +440,11 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		DeletedItems: next.deletedItems(e.state),
 		Runtime:      next.runtimeRow(e.state),
 		Bids:         next.bidTail(e.state),
+		// Phase 6 (D-110): the sealed write set is derived by the same
+		// scratch-vs-committed diff, so the upsert list carries exactly the rows
+		// this mutation changed — `submitted_at` included, which is what lets the
+		// store's statement preserve it (D-108).
+		SealedBids: next.sealedBidsWriteSet(e.state),
 		// A reset empties the trail, the sealed bids and the runtime rows;
 		// `DeletedPlayers` is the one removal a diff CAN see, because a player
 		// row does have an in-memory identity to compare against.
@@ -978,6 +983,41 @@ func (s *state) bidTail(prev *state) []store.BidRow {
 		rows = append(rows, store.BidRow{
 			ItemID: b.itemID, PlayerID: b.playerID,
 			Amount: b.amount, Kind: b.kind, CreatedAt: b.createdAt,
+		})
+	}
+	return rows
+}
+
+// sealedBidsWriteSet is the upsert list of the effective sealed rows that
+// changed since prev (D-110). Like changedItems it is DERIVED by diffing the
+// scratch state against the committed one rather than recorded by the mutation,
+// so a mutation cannot forget to persist what it changed; and like changedItems
+// the row is a flat comparable struct, so `!=` is the entire "this row moved"
+// test — an edit that rewrote only `updated_at` still travels.
+//
+// The list is an UPSERT write set, not an append: `sealed_bids` holds one row
+// per (item, player), and the store's statement preserves `submitted_at` for
+// exactly this reason (D-108).
+func (s *state) sealedBidsWriteSet(prev *state) []store.SealedBidRow {
+	if len(s.sealedBids) == 0 {
+		return nil
+	}
+	type sheetKey struct{ itemID, playerID string }
+	committed := make(map[sheetKey]sealedBid, len(prev.sealedBids))
+	for _, b := range prev.sealedBids {
+		committed[sheetKey{b.itemID, b.playerID}] = b
+	}
+	var rows []store.SealedBidRow
+	for _, b := range s.sealedBids {
+		if old, existed := committed[sheetKey{b.itemID, b.playerID}]; existed && old == b {
+			continue
+		}
+		rows = append(rows, store.SealedBidRow{
+			ItemID:      b.itemID,
+			PlayerID:    b.playerID,
+			Amount:      b.amount,
+			SubmittedAt: b.submittedAt,
+			UpdatedAt:   b.updatedAt,
 		})
 	}
 	return rows

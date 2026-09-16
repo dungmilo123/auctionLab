@@ -375,9 +375,39 @@ func (c *client) handleDutchAccept() {
 // player-only, so a command from the wrong role is a protocol error and never
 // reaches the engine (D-111/H12).
 //
-// RED: not implemented yet.
-func (c *client) handleSealedSubmit(_ inbound) {
-	c.sendError(CodeUnsupported, "sealed.submit is not implemented yet")
+// The amount is parsed from its RAW literal and never pre-refused (WR-01): a
+// literal the decoder cannot read as a whole number becomes 0, which the engine
+// answers with the frozen `invalid_amount` reason — the copy the player is owed
+// — instead of a frame-level bad_message that would claim the frame was not
+// JSON. The engine takes the player id from the CONNECTION, so nothing in the
+// body can name another player.
+//
+// A refusal travels through the callback with the engine's exclusive lock held
+// (D-53/D-111): the budget and the amount it reports are the numbers of that
+// moment, and the private frame takes its seq on the same lock-held FIFO as
+// every state event (Pitfall 1).
+func (c *client) handleSealedSubmit(in inbound) {
+	if c.role() != RolePlayer {
+		c.sendError(CodeBadMessage, "sealed.submit needs the player role")
+		return
+	}
+
+	amount := amountFromLiteral(in.Amount)
+	err := c.hub.engine.SubmitSealed(c.playerID(), amount, func(v game.View, rejection game.BidRejection) {
+		c.enqueue(v.Rev(), TypeBidRejected, rejection)
+	})
+	if err == nil {
+		return
+	}
+
+	// A *BidRejectedError means the private frame already answered the player;
+	// there is nothing left to say. Anything else is an engine-level failure.
+	var rejected *game.BidRejectedError
+	if errors.As(err, &rejected) {
+		return
+	}
+	log.Printf("ws: sealed submit from %s: %v", c.describe(), err)
+	c.sendError(CodeBadMessage, "the sealed bid could not be submitted")
 }
 
 // amountFromLiteral reads a `bid.place` amount out of its raw JSON literal
