@@ -162,6 +162,20 @@ describe('the item draft (D-82b)', () => {
     expect(payload.hint_max).toBeNull()
     expect(payload.floor_price).toBeNull()
   })
+
+  it('omits duration_ms from a Dutch payload, and only from a Dutch one (D-93)', () => {
+    // A Dutch run has no wall-clock window, so the hidden field must not reach
+    // the server, which refuses it outright (items.go's validateItemInput) —
+    // and the presenter cannot see the field to clear it on this type.
+    const dutch = draftPayload(filled({ auctionType: 'dutch', durationMs: '30000' }))
+    expect(dutch.auction_type).toBe('dutch')
+    expect(dutch.duration_ms).toBeNull()
+
+    // Every other type keeps the value it was shown: the sealed types are timed
+    // as well, so discarding their duration would lose the presenter's input.
+    const sealed = draftPayload(filled({ auctionType: 'sealed_first', minIncrement: '', durationMs: '45000' }))
+    expect(sealed.duration_ms).toBe(45_000)
+  })
 })
 
 describe('the socket gate (D-82a)', () => {

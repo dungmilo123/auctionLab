@@ -286,10 +286,17 @@ func (e *Engine) PlaceBid(playerID string, amount int64, emit func(View, BidReje
 	if amount <= 0 {
 		return reject(ReasonInvalidAmount)
 	}
-	if it == nil || run == nil || run.itemID != it.id || e.state.phase != PhaseLive || now >= run.deadlineAt {
+	if it == nil || run == nil || run.itemID != it.id || e.state.phase != PhaseLive ||
+		it.auctionType != "english" || now >= run.deadlineAt {
 		// The closed window is checked against wall-clock now, so a bid that
 		// arrives after the deadline is refused even before the ticker settles
 		// (research Q7: the clock decides, not the ticker).
+		//
+		// D-98/D-93: this IS the English ladder, so the item's TYPE decides
+		// whether a bid can join it at all — a Dutch run has no window to bid
+		// in, and the guard must not depend on its deadline being zero (a
+		// deadline set by value was exactly how a Dutch item could grow a top
+		// bidder and a min_next_bid the projection then published).
 		return reject(ReasonWindowClosed)
 	}
 	if min, ok := e.state.minNextBid(); ok && amount < min {

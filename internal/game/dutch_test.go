@@ -880,6 +880,80 @@ func TestDutchForceEndIsUnsold(t *testing.T) {
 	}
 }
 
+// TestDutchRunRefusesLadderBids is the D-98 half the accept test cannot cover:
+// the English ladder is ENGLISH. A `bid.place` on a Dutch run is refused with
+// `window_closed` — and the refusal is structural (the guard reads the item's
+// TYPE), never an accident of the deadline happening to be zero, so a Dutch run
+// can grow neither a bid row nor a top bidder / min_next_bid the projection
+// would publish.
+func TestDutchRunRefusesLadderBids(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	an := mustJoin(t, env, "An")
+	it := dutchFixture()
+	mustOpenDutchRun(t, env, it)
+	env.clock.t = env.clock.t.Add(3 * time.Second)
+
+	// requireLadderClosed runs one bid and pins the whole non-mutation: the
+	// window_closed refusal, no revision, no audit row, no top bid, no settle.
+	requireLadderClosed := func(t *testing.T, what string) {
+		t.Helper()
+
+		revBefore := env.engine.Rev()
+		rejection, refused, err := env.placeBid(an.PlayerID, 70_000)
+		if !refused {
+			t.Fatalf("%s: a ladder bid on a Dutch run was not refused: err = %v", what, err)
+		}
+		if rejection.Reason != ReasonWindowClosed {
+			t.Errorf("%s: refusal reason = %q, want %q: a Dutch run has no ladder to join (D-98)", what, rejection.Reason, ReasonWindowClosed)
+		}
+		if got := env.engine.Rev(); got != revBefore {
+			t.Errorf("%s: revision = %d after a refused bid, want the unchanged %d", what, got, revBefore)
+		}
+		rows, err := env.store.LoadBids()
+		if err != nil {
+			t.Fatalf("loading the bid audit: %v", err)
+		}
+		if len(rows) != 0 {
+			t.Errorf("%s: a refused Dutch bid appended %d audit row(s), want none (D-98)", what, len(rows))
+		}
+		env.engine.mu.RLock()
+		_, hasTop := env.engine.state.topBid()
+		run := env.engine.state.currentAuction
+		env.engine.mu.RUnlock()
+		if hasTop {
+			t.Errorf("%s: a refused bid became the run's top bid", what)
+		}
+		if run.settle != nil {
+			t.Errorf("%s: a refused bid settled the Dutch run: %+v", what, run.settle)
+		}
+	}
+
+	requireLadderClosed(t, "a deadline-less Dutch run")
+
+	// Defence in depth (CR-01): even a Dutch run that somehow carries a deadline
+	// — a shape only an out-of-band write can still produce, because the LIVE
+	// guard and the boot both refuse it — must not accept a ladder bid, and the
+	// answer must not depend on the deadline's VALUE. Without the guard's
+	// type arm, `now >= run.deadlineAt` would stop refusing here and the bid
+	// would be persisted with kind=bid, growing the ladder and the projection's
+	// top_bidder on a Dutch item (D-98 forbids both).
+	env.engine.mu.Lock()
+	env.engine.state.currentAuction.deadlineAt = env.clock.now().UnixMilli() + 30_000
+	env.engine.mu.Unlock()
+
+	requireLadderClosed(t, "a Dutch run carrying an out-of-band deadline")
+
+	// With the run still unwritten, the projection is clean of ladder fields.
+	doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	item := asObject(t, doc["item"], "item")
+	if _, ok := item["top_bidder"]; ok {
+		t.Error("a Dutch item projected a top bidder: an acceptance is not a bid, and neither is a refused one (D-98)")
+	}
+	if _, ok := item["min_next_bid"]; ok {
+		t.Error("a Dutch item projected min_next_bid: the Dutch price has no ladder (D-98)")
+	}
+}
+
 // TestAcceptIsNotALadderBid is D-98/D-105's separation contract: the acceptance
 // rides the ONE append-only trail with kind `accept`, so the durable audit keeps
 // the evidence while every English read ignores it — the ladder holds nothing,

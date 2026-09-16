@@ -83,6 +83,15 @@ func TestItemUpsertValidation(t *testing.T) {
 	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
 	revBefore := env.engine.Rev()
 
+	// dutchWithNoWindow is the shape a real Dutch save produces: the shipped
+	// editor hides duration_ms for that type, and the server refuses the field
+	// outright (CR-01/D-93), so a Dutch case must start from a row whose window
+	// is ABSENT rather than inherit validEnglishInput's 30_000.
+	dutchWithNoWindow := func(in *ItemInput) {
+		in.AuctionType = "dutch"
+		in.DurationMS = nil
+	}
+
 	cases := []struct {
 		name    string
 		mutate  func(in *ItemInput)
@@ -103,15 +112,23 @@ func TestItemUpsertValidation(t *testing.T) {
 		{"a zero anti-snipe window is rejected", func(in *ItemInput) { in.AntiSnipeWindowMS = opt(0) }, "anti_snipe_window_ms"},
 		{"a zero max_extensions is rejected", func(in *ItemInput) { in.MaxExtensions = opt(0) }, "max_extensions"},
 		{"a Dutch item with a zero decrement step is rejected", func(in *ItemInput) {
-			in.AuctionType = "dutch"
+			dutchWithNoWindow(in)
 			in.DecrementStep = opt(0)
 		}, "decrement_step"},
-		{"a Dutch floor price above the bound is rejected", func(in *ItemInput) {
+		{"a Dutch item carrying duration_ms is rejected", func(in *ItemInput) {
+			// The shipped editor used to inline duration_ms into every payload
+			// (admin.ts's draftPayload), which is how a Dutch row acquired a
+			// wall-clock window the type cannot have — refused at save time
+			// (D-93/CR-01), before it can reach a run.
 			in.AuctionType = "dutch"
+			in.DurationMS = opt(30_000)
+		}, "duration_ms"},
+		{"a Dutch floor price above the bound is rejected", func(in *ItemInput) {
+			dutchWithNoWindow(in)
 			in.FloorPrice = opt(1_000_000_000_001)
 		}, "floor_price"},
 		{"a Dutch floor price above the start price is rejected", func(in *ItemInput) {
-			in.AuctionType = "dutch"
+			dutchWithNoWindow(in)
 			in.FloorPrice = opt(in.StartPrice + 1)
 		}, "floor_price"},
 	}
@@ -714,6 +731,44 @@ func TestNoDeadlineNeverGoesLive(t *testing.T) {
 		}
 		if got := env.engine.Phase(); got != PhaseItemIntro {
 			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
+		}
+	})
+
+	t.Run("a dutch row carrying duration_ms is refused at the LIVE edge too", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		id := mustUpsertItem(t, env, validDutchInput())
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+
+		// The save-time rule (validateItemInput's dutch arm) refuses the field,
+		// so only a row loaded from outside the validator — a hand-edited file —
+		// can carry one. Mutate the loaded row directly: the LIVE edge must
+		// refuse it by TYPE, because a deadline set by value is what let a Dutch
+		// run settle on the clock and freeze the room (CR-01 / D-93).
+		env.engine.mu.Lock()
+		env.engine.state.items[id].durationMS = 30_000
+		env.engine.mu.Unlock()
+
+		revBefore := env.engine.Rev()
+		err := env.engine.StartItem(id)
+		if err == nil {
+			t.Fatal("a Dutch row carrying duration_ms went LIVE: the run would carry a wall-clock deadline the ticker settles on (D-93/D-99)")
+		}
+		if !strings.Contains(err.Error(), "duration_ms") {
+			t.Errorf("error %q does not name duration_ms, so the operator cannot tell what is wrong", err)
+		}
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
+		}
+		if got := env.engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refused start, want the unchanged %d", got, revBefore)
+		}
+		env.engine.mu.RLock()
+		run := env.engine.state.currentAuction
+		env.engine.mu.RUnlock()
+		if run != nil {
+			t.Errorf("a refused Dutch start created a run: %+v", run)
 		}
 	})
 }

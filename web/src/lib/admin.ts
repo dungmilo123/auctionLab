@@ -229,7 +229,12 @@ export function draftPayload(draft: EditorDraft): Record<string, unknown> {
     floor_price: num('floorPrice'),
     decrement_step: num('decrementStep'),
     decrement_interval_ms: num('decrementIntervalMs'),
-    duration_ms: num('durationMs'),
+    // D-93's client mirror: a Dutch run has no wall-clock window, so the
+    // duration is omitted from a Dutch payload rather than echoed from a since-
+    // hidden field (a draft that was English when the value was typed, or one
+    // loaded from another type). The server refuses the field outright; every
+    // other type keeps the value it was shown (the sealed types are timed too).
+    duration_ms: fields.auctionType === 'dutch' ? null : num('durationMs'),
     anti_snipe_mode: fields.antiSnipeMode,
     anti_snipe_window_ms: num('antiSnipeWindowMs'),
     max_extensions: num('maxExtensions'),
