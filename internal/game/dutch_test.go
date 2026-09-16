@@ -489,6 +489,42 @@ func TestAcceptDutchReasonOrder(t *testing.T) {
 		}
 		requireRefusal(t, env, an.PlayerID, ReasonWindowClosed, -1)
 	})
+
+	t.Run("sold before a restart is still already_sold, never window_closed", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		base := testStart
+
+		// --- process 1: the win, then a kill -9 ------------------------------
+		first := newTestEnvAt(t, path, &testClock{t: base})
+		an := mustJoin(t, first, "An")
+		binh := mustJoin(t, first, "Bình")
+		it := dutchFixture()
+		mustOpenDutchRun(t, first, it)
+		first.clock.t = base.Add(3 * time.Second)
+		if _, refused, err := first.acceptDutch(an.PlayerID); err != nil || refused {
+			t.Fatalf("the first accept was refused: err = %v, refusal = %+v", err, refused)
+		}
+		if err := first.store.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+
+		// --- process 2: reopen on the sold file -------------------------------
+		// `run.settle` is never persisted (sameRuntime excludes it), so the
+		// reason has to come from the durable kind=accept row the reveal itself
+		// is rebuilt from. Reading the in-memory settle would answer
+		// window_closed here while the live process answered already_sold — the
+		// same late accept getting two different explanations.
+		second := newTestEnvAt(t, path, &testClock{t: base.Add(600 * time.Second)})
+		if got := second.engine.Phase(); got != PhaseSettled {
+			t.Fatalf("phase after the restart = %s, want SETTLED", got)
+		}
+		if got := second.runOf(t).settle; got != nil {
+			t.Fatalf("the restarted run carries an in-memory settle %+v: this case is only meaningful without one", got)
+		}
+		// The reopen lands past floor time, so the refusal's amount is the pinned
+		// floor; the REASON is the subject here.
+		requireRefusal(t, second, binh.PlayerID, ReasonAlreadySold, it.floorPrice)
+	})
 }
 
 // TestAcceptDutchRaceHasExactlyOneWinner is DTCH-02's race drill: concurrent

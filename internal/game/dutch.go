@@ -185,9 +185,18 @@ func (e *Engine) AcceptDutch(playerID string, emit func(View, BidRejection)) err
 	// winner's accept settled inside this same lock, so an accept that arrives
 	// second sees a SETTLED phase — and window_closed would tell the loser that
 	// the window simply ran out instead of that somebody accepted first.
-	if it != nil && it.auctionType == "dutch" && run != nil && run.itemID == it.id &&
-		run.settle != nil && run.settle.Outcome == "sold" {
-		return reject(ReasonAlreadySold)
+	//
+	// The answer comes from the DURABLE acceptance, never from the in-memory
+	// run.settle: `settle` is deliberately not persisted (sameRuntime excludes
+	// it), so a process that restarted on a sold file would otherwise answer
+	// window_closed for the very accept the live process answered already_sold —
+	// the projection would even rebuild the sold reveal beside it (D-62/D-101).
+	// An acceptance only ever exists for a sold run, because acceptDutchLocked
+	// appends it and settles in the same mutation.
+	if it != nil && it.auctionType == "dutch" && run != nil && run.itemID == it.id {
+		if _, ok := e.state.runAcceptance(); ok {
+			return reject(ReasonAlreadySold)
+		}
 	}
 	// 2b (D-96): every other closed window — not LIVE, not a Dutch item, a run
 	// the presenter already advanced past, a run that settled without an
