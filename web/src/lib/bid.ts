@@ -38,10 +38,11 @@ export function parseBidAmount(raw: string): number | null {
 }
 
 /**
- * The copy key one `bid.rejected.reason` selects (D-53). The reason vocabulary
- * is the server's payload-level set; every key below exists in the Phase-3
- * dictionary, and an unknown reason falls back to `error.generic` rather than
- * rendering the server's log-only `message` (UI-SPEC §Rejection feedback).
+ * The copy key one `bid.rejected.reason` selects (D-53/D-97). The reason
+ * vocabulary is the server's payload-level set — the ladder's five plus Phase
+ * 5's Dutch `already_sold`; every key below exists in the dictionary, and an
+ * unknown reason falls back to `error.generic` rather than rendering the
+ * server's log-only `message` (UI-SPEC §Rejection feedback).
  */
 export type BidReasonKey =
   | 'reason.invalidAmount'
@@ -49,6 +50,7 @@ export type BidReasonKey =
   | 'reason.belowMinimum'
   | 'reason.exceedsBudget'
   | 'reason.alreadyLeading'
+  | 'reason.alreadySold'
   | 'error.generic'
 
 const REASON_KEYS: Readonly<Record<string, BidReasonKey>> = {
@@ -57,6 +59,10 @@ const REASON_KEYS: Readonly<Record<string, BidReasonKey>> = {
   below_minimum: 'reason.belowMinimum',
   exceeds_budget: 'reason.exceedsBudget',
   already_leading: 'reason.alreadyLeading',
+  // Phase 5 (D-97): the Dutch accept race loser's own notice — the item was
+  // sold by another player's acceptance, and the reveal alone does not say why
+  // their tap did not count.
+  already_sold: 'reason.alreadySold',
 }
 
 /** Map a rejection reason to its copy key; unknown reasons fall back. */

@@ -175,6 +175,20 @@ export function validateDraft(draft: EditorDraft): DraftErrors {
   const max = fields.hintMax === '' ? null : parseBidAmount(fields.hintMax)
   if (min !== null && max !== null && min > max) errors.hintMin = 'admin.err.hintOrder'
 
+  // D-92's Dutch pair rule, the phase's second cross-field check: a floor above
+  // the start price could never be reached honestly, and the server refuses it
+  // at save time (items.go's validateItemInput, inside its `dutch` arm — an
+  // absent floor stays legal for a row still being configured). The rule is
+  // scoped to the type that renders the floor field, so it can never disable
+  // Save behind a message the presenter cannot see.
+  if (visible.floorPrice) {
+    const floor = fields.floorPrice === '' ? null : parseBidAmount(fields.floorPrice)
+    const start = fields.startPrice === '' ? null : parseBidAmount(fields.startPrice)
+    if (floor !== null && start !== null && floor > start) {
+      errors.floorPrice = 'admin.err.floorOrder'
+    }
+  }
+
   return errors
 }
 

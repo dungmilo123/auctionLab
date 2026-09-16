@@ -301,6 +301,27 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   // Phase 4 — the player's finale body (04-08 replaces the placeholder)
   'finale.podiumHeading': { en: 'Top 3', vi: 'Ba người dẫn đầu' },
   'finale.yourRank': { en: 'Your rank: {rank} of {total}', vi: 'Hạng của bạn: {rank}/{total}' },
+
+  // Phase 5 — the Dutch live body, its refusals and the floor rule (05-UI-SPEC)
+  'dutch.accept': { en: 'Accept this price', vi: 'Nhận giá này' },
+  'dutch.accepting': { en: 'Accepting…', vi: 'Đang nhận…' },
+  'dutch.floorLabel': { en: 'Floor price', vi: 'Giá sàn' },
+  'dutch.atFloor': {
+    en: 'At the floor price — this is as low as it goes.',
+    vi: 'Đã tới giá sàn — không giảm thêm nữa.',
+  },
+  'dutch.tooExpensive': {
+    en: 'Above your budget ({budget} VND) — the price is still falling.',
+    vi: 'Cao hơn ngân sách của bạn ({budget} VND) — giá vẫn đang giảm.',
+  },
+  'reason.alreadySold': {
+    en: 'Someone accepted first — this item is sold.',
+    vi: 'Đã có người nhận trước — item này đã bán.',
+  },
+  'admin.err.floorOrder': {
+    en: "Floor price can't be above the start price.",
+    vi: 'Giá sàn không được lớn hơn giá khởi điểm.',
+  },
 }
 
 const KEYS = Object.keys(APPROVED) as CopyKey[]
@@ -320,6 +341,7 @@ const DOCUMENTED_VALUES: Record<keyof typeof LIVE_PARAM_KEYS, Record<string, str
   'admin.releaseConfirm': { name: 'Đèn bàn' },
   'screen.sealedProgress': { submitted: '3', total: '7' },
   'finale.yourRank': { rank: '2', total: '12' },
+  'dutch.tooExpensive': { budget: '500.000' },
 }
 
 describe('the approved copy table', () => {

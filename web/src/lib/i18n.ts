@@ -334,6 +334,27 @@ export const COPY = {
   // ---- Phase 4: the player's finale body (04-08 replaces the placeholder) ----
   'finale.podiumHeading': { en: 'Top 3', vi: 'Ba người dẫn đầu' },
   'finale.yourRank': { en: 'Your rank: {rank} of {total}', vi: 'Hạng của bạn: {rank}/{total}' },
+
+  // ---- Phase 5: the Dutch live body, its refusals and the floor rule (D-106) ----
+  'dutch.accept': { en: 'Accept this price', vi: 'Nhận giá này' },
+  'dutch.accepting': { en: 'Accepting…', vi: 'Đang nhận…' },
+  'dutch.floorLabel': { en: 'Floor price', vi: 'Giá sàn' },
+  'dutch.atFloor': {
+    en: 'At the floor price — this is as low as it goes.',
+    vi: 'Đã tới giá sàn — không giảm thêm nữa.',
+  },
+  'dutch.tooExpensive': {
+    en: 'Above your budget ({budget} VND) — the price is still falling.',
+    vi: 'Cao hơn ngân sách của bạn ({budget} VND) — giá vẫn đang giảm.',
+  },
+  'reason.alreadySold': {
+    en: 'Someone accepted first — this item is sold.',
+    vi: 'Đã có người nhận trước — item này đã bán.',
+  },
+  'admin.err.floorOrder': {
+    en: "Floor price can't be above the start price.",
+    vi: 'Giá sàn không được lớn hơn giá khởi điểm.',
+  },
 } as const satisfies Record<string, Copy>
 
 export type CopyKey = keyof typeof COPY
@@ -380,6 +401,8 @@ export const LIVE_PARAM_KEYS = {
   'admin.releaseConfirm': ['name'],
   'screen.sealedProgress': ['submitted', 'total'],
   'finale.yourRank': ['rank', 'total'],
+  // Phase 5: the Dutch too-expensive explanation names the player's own budget.
+  'dutch.tooExpensive': ['budget'],
 } as const satisfies Partial<Record<CopyKey, readonly string[]>>
 
 /** The keys whose copy is a template (derived, so the two can never drift). */
