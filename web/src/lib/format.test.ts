@@ -1,8 +1,11 @@
 // The Players list renders LOCAL wall-clock time (D-80), so the only way the
 // literal expectations below are about THE FUNCTION rather than about this
-// machine is to pin the process timezone. It is pinned in this file — before
-// any Date call in the suite and with no Vitest config and no `Intl`, because
-// the venue may be fully offline (03-RESEARCH Pitfall 9).
+// machine is to pin the process timezone — here, at the top of the file and
+// before any Date call in the suite. No Vitest config is added for it, and no
+// `Intl` is involved: the venue may be fully offline (03-RESEARCH Pitfall 9).
+// The app tsconfig carries only `vite/client` types, so the one Node global
+// this file needs is declared rather than pulled in as a dependency.
+declare const process: { env: { TZ?: string } }
 process.env.TZ = 'UTC'
 
 import { describe, expect, it } from 'vitest'

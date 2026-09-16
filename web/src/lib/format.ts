@@ -18,12 +18,18 @@ export function formatVND(amount: number): string {
 }
 
 /**
- * The Players list's time-of-day value (D-80) — RED DECLARATION.
+ * The Players list's time-of-day value (D-80): zero-padded 24-hour LOCAL time,
+ * `HH:MM`.
  *
- * A relative age would need a ticking clock and an absolute date is noise for a
- * one-hour show; the presenter needs "did they join before or after the break"
- * precision, not more.
+ * Local via `getHours`/`getMinutes` — no `Intl` and no locale database (the
+ * venue may be offline), and no date, because the presenter needs "did they join
+ * before or after the break" precision rather than a calendar. Its test pins
+ * `TZ=UTC` in its own file, which is what makes the literal expectations about
+ * this function instead of about the machine that ran the suite.
  */
-export function formatTimeOfDay(_ms: number): string {
-  return ''
+export function formatTimeOfDay(ms: number): string {
+  const at = new Date(ms)
+  const hours = String(at.getHours()).padStart(2, '0')
+  const minutes = String(at.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
 }

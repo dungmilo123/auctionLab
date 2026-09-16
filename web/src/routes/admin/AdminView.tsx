@@ -7,9 +7,14 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatVND } from '@/lib/format'
+import { formatTimeOfDay, formatVND } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
-import { openAdminSocket, type AdminCommand, type AdminConnection } from '@/ws/admin'
+import {
+  openAdminSocket,
+  type AdminCommand,
+  type AdminConnection,
+  type ResetMode,
+} from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
 import type { Phase } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
@@ -22,12 +27,18 @@ import {
   draftPayload,
   draftValid,
   mutationsEnabled,
+  presenterSettle,
+  releaseFrame,
+  resetConfirmKey,
+  resetFrame,
+  sortPlayersByJoinedAt,
   urlCandidates,
   validateDraft,
   validateStartingBudget,
   visibleFields,
   type DraftFields,
   type EditorDraft,
+  type PresenterSettle,
 } from '@/lib/admin'
 
 // The protected control room (ADMN-01..07, D-64/H17).
@@ -128,6 +139,8 @@ type FlightFlags = {
   reordering: boolean
   budgetSaving: boolean
   urlChoosing: boolean
+  resetting: boolean
+  releasing: boolean
 }
 
 /** The matching "this frame just went out" events, owned by the page. */
@@ -137,6 +150,8 @@ type FlightMark = {
   reordered(): void
   budget(): void
   url(): void
+  reset(): void
+  release(): void
 }
 
 /** `code` selects the copy; the server's `message` is never rendered (carried rule). */
@@ -825,7 +840,10 @@ function SetupPanel({
             <Button
               type="button"
               variant="outline"
-              disabled={flags.saving || !saveable}
+              // D-82b: the button is disabled for as long as ANY visible field
+              // is invalid — the same call that renders the messages — and
+              // D-82a keeps it off while the socket cannot deliver.
+              disabled={!online || flags.saving || !saveable}
               onClick={save}
             >
               {flags.saving ? t('admin.saving') : t('admin.save')}
@@ -837,10 +855,87 @@ function SetupPanel({
   )
 }
 
+/** One settle read-out row: label 14/700, value 16/400, baseline-aligned. */
+function SettleRow({
+  labelKey,
+  value,
+  caption,
+}: {
+  labelKey: CopyKey
+  value: string
+  caption: boolean
+}) {
+  const { t } = useLanguage()
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <p className="text-sm leading-[1.5] font-bold">{t(labelKey)}</p>
+      <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">
+        <span>{value}</span>
+        {caption && (
+          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
+        )}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * The presenter's settle card (D-81/ADMN-07), rendered only at SETTLED. It is a
+ * read-out: no accent, no destructive, no action — and every number on it is the
+ * server's own (the reveal object the settle commit built), so the browser never
+ * recomputes an outcome.
+ */
+function PresenterSettleCard({ card }: { card: PresenterSettle }) {
+  const { t } = useLanguage()
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">{t(card.headingKey)}</h2>
+
+      {card.outcome === 'unsold' && (
+        <p className="text-base leading-[1.5]">{t('settle.unsoldBody')}</p>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {/* Omitted, never blanked: an empty winner slot would read as a missing
+            value rather than as "nobody won" (ECON-03). */}
+        {card.winner !== null && (
+          <SettleRow labelKey="settle.winnerLabel" value={card.winner} caption={false} />
+        )}
+        <SettleRow labelKey="settle.priceLabel" value={formatVND(card.price)} caption />
+        {/* The presenter's secret view: truth_value is never public. */}
+        <SettleRow labelKey="settle.truthLabel" value={formatVND(card.truthValue)} caption />
+        {card.outcome === 'sold' && (
+          <SettleRow labelKey="settle.deltaLabel" value={card.deltaText} caption />
+        )}
+        {card.winnerBudget !== null && (
+          <SettleRow
+            labelKey="admin.winnerBudgetLabel"
+            value={formatVND(card.winnerBudget)}
+            caption
+          />
+        )}
+      </div>
+    </Card>
+  )
+}
+
 /** The Control tab (ADMN-02, ADMN-03, ADMN-07) — the presenter's live hand. */
-function ControlPanel({ view, online, send }: { view: ViewState; online: boolean; send(frame: AdminCommand): void }) {
+function ControlPanel({
+  view,
+  online,
+  send,
+  flags,
+  mark,
+}: {
+  view: ViewState
+  online: boolean
+  send(frame: AdminCommand): void
+  flags: FlightFlags
+  mark: FlightMark
+}) {
   const { t } = useLanguage()
   const [armedForceEnd, setArmedForceEnd] = useState<Phase | null>(null)
+  const [armedReset, setArmedReset] = useState<{ mode: ResetMode; phase: Phase } | null>(null)
 
   const items = [...view.items].sort((a, b) => a.orderIndex - b.orderIndex)
   const currentItem = view.item
@@ -859,98 +954,199 @@ function ControlPanel({ view, online, send }: { view: ViewState; online: boolean
   const forceEndEnabled = online && phase === 'LIVE'
   const nextEnabled = online && (phase === 'ITEM_INTRO' || phase === 'SETTLED')
 
-  // The armed strip is phase-derived: a force-end that moves the phase
-  // dismisses its own strip.
+  // The armed strips are phase-derived: a force-end that moves the phase — or a
+  // reset that returns it to LOBBY — dismisses its own strip.
   const forceEndArmed = armedForceEnd !== null && armedForceEnd === phase
+  const resetArmed = armedReset !== null && armedReset.phase === phase ? armedReset.mode : null
+  // D-81's read-out, from the snapshot only.
+  const settle = presenterSettle(phase, currentItem, view.players)
 
   return (
-    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
-      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
-        {t('admin.controlHeading')}
-      </h2>
+    <>
+      <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+          {t('admin.controlHeading')}
+        </h2>
 
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <p className="text-sm leading-[1.5] font-bold">{t('admin.phaseLabel')}</p>
-        <p className="text-base leading-[1.5]">{t(PHASE_KEYS[phase])}</p>
-        <span aria-hidden="true">·</span>
-        <p className="text-sm leading-[1.5] font-bold">{t('admin.currentItemLabel')}</p>
-        {currentItem === null ? (
-          <p className="text-base leading-[1.5]">{t('admin.noCurrentItem')}</p>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <p className="text-sm leading-[1.5] font-bold">{t('admin.phaseLabel')}</p>
+          <p className="text-base leading-[1.5]">{t(PHASE_KEYS[phase])}</p>
+          <span aria-hidden="true">·</span>
+          <p className="text-sm leading-[1.5] font-bold">{t('admin.currentItemLabel')}</p>
+          {currentItem === null ? (
+            <p className="text-base leading-[1.5]">{t('admin.noCurrentItem')}</p>
+          ) : (
+            <>
+              <p className="min-w-0 break-words text-base leading-[1.5]">{currentItem.name}</p>
+              <p className="text-sm leading-[1.5] font-bold">{statusName(currentItem.status, t)}</p>
+            </>
+          )}
+        </div>
+
+        {forceEndArmed ? (
+          <div className="flex flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
+            <p className="text-base leading-[1.5]">{t('admin.forceEndConfirm')}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="default"
+                className={CONFIRM_FILL}
+                disabled={!online}
+                onClick={() => {
+                  setArmedForceEnd(null)
+                  send({ type: 'admin.item.force_end' })
+                }}
+              >
+                {t('admin.forceEnd')}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setArmedForceEnd(null)}>
+                {t('admin.dontEnd')}
+              </Button>
+            </div>
+          </div>
         ) : (
-          <>
-            <p className="min-w-0 break-words text-base leading-[1.5]">{currentItem.name}</p>
-            <p className="text-sm leading-[1.5] font-bold">{statusName(currentItem.status, t)}</p>
-          </>
-        )}
-      </div>
-
-      {forceEndArmed ? (
-        <div className="flex flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
-          <p className="text-base leading-[1.5]">{t('admin.forceEndConfirm')}</p>
           <div className="flex flex-wrap gap-2">
+            {/* Fixed positions, never appearing or disappearing: the presenter's
+                hand learns one layout. Exactly one of these can carry the accent
+                and `Force end` never does — it is irreversible. */}
             <Button
               type="button"
-              variant="default"
-              className={CONFIRM_FILL}
-              disabled={!online}
+              variant={startEnabled ? 'default' : 'outline'}
+              disabled={!startEnabled}
               onClick={() => {
-                setArmedForceEnd(null)
-                send({ type: 'admin.item.force_end' })
+                if (startId !== null) send({ type: 'admin.item.start', id: startId })
               }}
+            >
+              {t('admin.start')}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!forceEndEnabled}
+              onClick={() => setArmedForceEnd(phase)}
             >
               {t('admin.forceEnd')}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setArmedForceEnd(null)}>
-              {t('admin.dontEnd')}
+
+            <Button
+              type="button"
+              variant={nextEnabled && phase === 'SETTLED' ? 'default' : 'outline'}
+              disabled={!nextEnabled}
+              onClick={() => send({ type: 'admin.item.next' })}
+            >
+              {phase === 'ITEM_INTRO' ? t('admin.skipItem') : t('admin.next')}
             </Button>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {/* Fixed positions, never appearing or disappearing: the presenter's
-              hand learns one layout. Exactly one of these can carry the accent
-              and `Force end` never does — it is irreversible. */}
-          <Button
-            type="button"
-            variant={startEnabled ? 'default' : 'outline'}
-            disabled={!startEnabled}
-            onClick={() => {
-              if (startId !== null) send({ type: 'admin.item.start', id: startId })
-            }}
-          >
-            {t('admin.start')}
-          </Button>
+        )}
 
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!forceEndEnabled}
-            onClick={() => setArmedForceEnd(phase)}
-          >
-            {t('admin.forceEnd')}
-          </Button>
+        {(phase === 'LOBBY' || phase === 'FINALE') && startId === null && (
+          <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.noPendingItem')}</p>
+        )}
+      </Card>
 
-          <Button
-            type="button"
-            variant={nextEnabled && phase === 'SETTLED' ? 'default' : 'outline'}
-            disabled={!nextEnabled}
-            onClick={() => send({ type: 'admin.item.next' })}
-          >
-            {phase === 'ITEM_INTRO' ? t('admin.skipItem') : t('admin.next')}
-          </Button>
-        </div>
-      )}
+      {/* The presenter settles the room reads: exactly at SETTLED, above the
+          reset card, and never anywhere else. */}
+      {settle !== null && <PresenterSettleCard card={settle} />}
 
-      {(phase === 'LOBBY' || phase === 'FINALE') && startId === null && (
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.noPendingItem')}</p>
-      )}
-    </Card>
+      {/* Card 3 — Reset (ADMN-03, D-78/D-79). Both buttons are outline and
+          neither is ever accent: an irreversible control must not be the most
+          inviting thing on the page. They are gated by the socket alone and
+          never by phase — a `keep_players` reset in a fresh lobby is a
+          server-side no-op, and the server decides that, not this panel. */}
+      <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+          {t('admin.resetHeading')}
+        </h2>
+        <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.resetNote')}</p>
+
+        {resetArmed !== null ? (
+          <div className="flex flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
+            <p className="text-base leading-[1.5]">{t(resetConfirmKey(resetArmed))}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="default"
+                className={CONFIRM_FILL}
+                disabled={!online || flags.resetting}
+                onClick={() => {
+                  // Disarm on the confirm click — the carried force-end/delete
+                  // shape — because a no-op reset answers with NO frame at all
+                  // (the engine short-circuits a fresh lobby), so a strip that
+                  // waited for a snapshot to close could never close.
+                  setArmedReset(null)
+                  mark.reset()
+                  send(resetFrame(resetArmed))
+                }}
+              >
+                {t('admin.resetConfirm')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={flags.resetting}
+                onClick={() => setArmedReset(null)}
+              >
+                {t('admin.resetCancel')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!online || flags.resetting}
+              onClick={() => setArmedReset({ mode: 'keep_players', phase })}
+            >
+              {t('admin.resetKeep')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!online || flags.resetting}
+              onClick={() => setArmedReset({ mode: 'clear_players', phase })}
+            >
+              {t('admin.resetClear')}
+            </Button>
+          </div>
+        )}
+      </Card>
+    </>
   )
 }
 
-/** The Players tab (ADMN-05, D-80). */
-function PlayersPanel({ view }: { view: ViewState }) {
+/**
+ * The Players tab (ADMN-05, D-80). Rows are rendered from explicit safe
+ * properties — nickname, budget, total_value, presence, joined_at and the
+ * offline last_seen — sorted by `joined_at`; a token is not reachable from the
+ * row type at all (T-04-04), so no render, copy or spread path can leak one.
+ */
+function PlayersPanel({
+  view,
+  online,
+  send,
+  flags,
+  mark,
+}: {
+  view: ViewState
+  online: boolean
+  send(frame: AdminCommand): void
+  flags: FlightFlags
+  mark: FlightMark
+}) {
   const { t, count } = useLanguage()
+  const [armedRelease, setArmedRelease] = useState<{ id: string; phase: Phase } | null>(null)
+
+  const players = sortPlayersByJoinedAt(view.players)
+  // The armed row is derived: a tab change unmounts this panel, a phase change
+  // and a snapshot in which the player is gone both dismiss the strip.
+  const releaseArmedId =
+    armedRelease !== null &&
+    armedRelease.phase === view.phase &&
+    players.some((player) => player.id === armedRelease.id)
+      ? armedRelease.id
+      : null
 
   return (
     <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
@@ -958,11 +1154,96 @@ function PlayersPanel({ view }: { view: ViewState }) {
         <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
           {t('admin.playersHeading')}
         </h2>
-        <p className="text-base leading-[1.5]">{count(view.players.length)}</p>
+        <p className="text-base leading-[1.5]">{count(players.length)}</p>
       </div>
 
-      {view.players.length === 0 && (
+      {players.length === 0 ? (
         <p className="text-base leading-[1.5]">{t('admin.playersEmpty')}</p>
+      ) : (
+        <ul>
+          {players.map((player) => (
+            <li
+              key={player.id}
+              className="flex min-h-11 flex-wrap items-center gap-2 border-t-2 border-t-border px-2 py-1 first:border-t-0"
+            >
+              <span
+                aria-hidden="true"
+                className={`size-3 shrink-0 border-2 border-border ${
+                  player.connected ? 'bg-foreground' : 'bg-transparent'
+                }`}
+              />
+              {/* Presence is never carried by the square alone: the fill is
+                  hidden from assistive technology and this text is the state. */}
+              <span className="sr-only">
+                {player.connected ? t('presence.connected') : t('presence.disconnected')}
+              </span>
+              {/* The name keeps a 10rem floor, so a crowded line breaks BELOW
+                  it: the row's `flex-wrap` drops the trailing values and the
+                  action to the next line instead of squeezing the name. */}
+              <span className="min-w-40 flex-1 break-words text-base leading-[1.5]">
+                {player.nickname}
+              </span>
+              <span className="text-sm leading-[1.5] font-bold">{t('admin.playerBudget')}</span>
+              <span className="text-base leading-[1.5]">{formatVND(player.budget)}</span>
+              <span className="text-sm leading-[1.5] font-bold">{t('admin.playerValue')}</span>
+              <span className="text-base leading-[1.5]">{formatVND(player.totalValue)}</span>
+              <span className="text-sm leading-[1.5] font-bold">{t('admin.playerJoined')}</span>
+              <span className="font-mono text-sm leading-[1.5] text-muted-foreground">
+                {formatTimeOfDay(player.joinedAt)}
+              </span>
+              {!player.connected && (
+                <>
+                  <span className="text-sm leading-[1.5] font-bold">
+                    {t('admin.playerLastSeen')}
+                  </span>
+                  <span className="font-mono text-sm leading-[1.5] text-muted-foreground">
+                    {formatTimeOfDay(player.lastSeenAt)}
+                  </span>
+                </>
+              )}
+
+              {releaseArmedId === player.id ? (
+                <div className="flex w-full flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
+                  <p className="min-w-0 break-words text-base leading-[1.5]">
+                    {fill(t('admin.releaseConfirm'), { name: player.nickname })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="default"
+                      className={CONFIRM_FILL}
+                      disabled={!online || flags.releasing}
+                      onClick={() => {
+                        setArmedRelease(null)
+                        mark.release()
+                        send(releaseFrame(player.id))
+                      }}
+                    >
+                      {t('admin.releaseSession')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={flags.releasing}
+                      onClick={() => setArmedRelease(null)}
+                    >
+                      {t('admin.keepSession')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!online}
+                  onClick={() => setArmedRelease({ id: player.id, phase: view.phase })}
+                >
+                  {t('admin.releaseSession')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   )
@@ -985,6 +1266,8 @@ function AdminView() {
   const [reorderAt, setReorderAt] = useState<number | null>(null)
   const [budgetAt, setBudgetAt] = useState<number | null>(null)
   const [urlAt, setUrlAt] = useState<number | null>(null)
+  const [resetAt, setResetAt] = useState<number | null>(null)
+  const [releaseAt, setReleaseAt] = useState<number | null>(null)
   const connectionRef = useRef<AdminConnection | null>(null)
 
   // The socket is created INSIDE this effect and closed in its cleanup, so a
@@ -1008,6 +1291,8 @@ function AdminView() {
         setReorderAt(null)
         setBudgetAt(null)
         setUrlAt(null)
+        setResetAt(null)
+        setReleaseAt(null)
       },
     })
     connectionRef.current = connection
@@ -1026,6 +1311,8 @@ function AdminView() {
     reordering: reorderAt !== null && catalogSeq <= reorderAt,
     budgetSaving: budgetAt !== null && catalogSeq <= budgetAt,
     urlChoosing: urlAt !== null && catalogSeq <= urlAt,
+    resetting: resetAt !== null && catalogSeq <= resetAt,
+    releasing: releaseAt !== null && catalogSeq <= releaseAt,
   }
   const mark: FlightMark = {
     saved: () => setSavedAt(catalogSeq),
@@ -1033,6 +1320,8 @@ function AdminView() {
     reordered: () => setReorderAt(catalogSeq),
     budget: () => setBudgetAt(catalogSeq),
     url: () => setUrlAt(catalogSeq),
+    reset: () => setResetAt(catalogSeq),
+    release: () => setReleaseAt(catalogSeq),
   }
   const errorCode = errorAt !== null && catalogSeq <= errorAt.seq ? errorAt.code : null
 
@@ -1090,8 +1379,12 @@ function AdminView() {
       {tab === 'setup' && (
         <SetupPanel view={view} online={online} send={send} flags={flags} mark={mark} />
       )}
-      {tab === 'control' && <ControlPanel view={view} online={online} send={send} />}
-      {tab === 'players' && <PlayersPanel view={view} />}
+      {tab === 'control' && (
+        <ControlPanel view={view} online={online} send={send} flags={flags} mark={mark} />
+      )}
+      {tab === 'players' && (
+        <PlayersPanel view={view} online={online} send={send} flags={flags} mark={mark} />
+      )}
     </main>
   )
 }

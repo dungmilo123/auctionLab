@@ -21,6 +21,7 @@ import type { AdminCommand, AdminConfigInput, ResetMode } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
 import type { AdminItem, AdminPlayer, Phase, PublicItem } from '@/ws/protocol'
 import { parseBidAmount } from './bid'
+import { formatVND } from './format'
 import type { CopyKey } from './i18n'
 
 export const MAX_ITEM_NAME_RUNES = 80
@@ -310,43 +311,84 @@ export function configFrame(config: AdminConfigInput): AdminCommand {
   return { type: 'admin.config.update', config }
 }
 
-/** D-79's per-mode confirm sentence — RED DECLARATION. */
-export function resetConfirmKey(_mode: ResetMode): CopyKey {
-  return 'admin.resetKeepConfirm'
+/** D-79's per-mode confirm sentence — the two strips name their own consequence. */
+export function resetConfirmKey(mode: ResetMode): CopyKey {
+  return mode === 'keep_players' ? 'admin.resetKeepConfirm' : 'admin.resetClearConfirm'
 }
 
-/** The reset frame, carrying exactly the armed mode — RED DECLARATION. */
-export function resetFrame(_mode: ResetMode): AdminCommand {
-  return { type: 'admin.game.reset', mode: 'keep_players' }
+/**
+ * The reset frame: the armed mode IS the wire mode (D-78's closed vocabulary),
+ * so the second click sends exactly what the strip described and nothing else.
+ */
+export function resetFrame(mode: ResetMode): AdminCommand {
+  return { type: 'admin.game.reset', mode }
 }
 
-/** D-80's release command — RED DECLARATION. */
-export function releaseFrame(_id: string): AdminCommand {
-  return { type: 'admin.player.release', id: '' }
+/** D-80's release command: the row's player, and no other field. */
+export function releaseFrame(id: string): AdminCommand {
+  return { type: 'admin.player.release', id }
 }
 
-/** D-80's row order — RED DECLARATION. */
+/**
+ * D-80's row order: `joined_at` ascending. The sort is stable, so two players
+ * who joined in the same millisecond keep the order the snapshot carried (the
+ * server's own joined_at-then-id order, ECON-05's one standing), and the
+ * snapshot array is copied rather than reordered in place.
+ */
 export function sortPlayersByJoinedAt(players: readonly AdminPlayer[]): AdminPlayer[] {
-  return [...players]
+  return [...players].sort((a, b) => a.joinedAt - b.joinedAt)
 }
 
-/** D-81's presenter read-out — RED DECLARATION. */
+/** D-81's presenter read-out — the settled presenter card's whole model. */
 export type PresenterSettle = {
   outcome: 'sold' | 'unsold'
   headingKey: CopyKey
+  /** the winner's nickname, or null when unsold */
   winner: string | null
   price: number
+  /** the presenter's secret view (D-81/ADMN-07) */
   truthValue: number
+  /** the server's own net for the winner (ECON-02/ECON-03) */
   budgetDelta: number
+  /** `formatVND(budgetDelta)`, with a leading `+` only when positive */
   deltaText: string
+  /** the winner's budget NOW, from the presenter rows; null when unsold */
   winnerBudget: number | null
 }
 
-/** D-81/ADMN-07's presenter read-out — RED DECLARATION. */
+/**
+ * D-81/ADMN-07's presenter card, derived from the snapshot and nothing else:
+ * the reveal object the settle commit built (`item.settle`) and the presenter's
+ * own player rows. Nothing here recomputes an outcome — the winner, the price,
+ * the truth value and the net are all the server's numbers, and the "winner's
+ * budget now" is the row the same snapshot carries (matched by nickname, the
+ * one public identity a leader entry has).
+ *
+ * Returns null outside SETTLED and when there is no reveal to read, which is
+ * what keeps the card off every other phase rather than rendering a blank one.
+ */
 export function presenterSettle(
-  _phase: Phase,
-  _item: PublicItem | null,
-  _players: readonly AdminPlayer[],
+  phase: Phase,
+  item: PublicItem | null,
+  players: readonly AdminPlayer[],
 ): PresenterSettle | null {
-  return null
+  if (phase !== 'SETTLED' || item === null || item.settle === null) return null
+
+  const settle = item.settle
+  const sold = settle.outcome === 'sold'
+  const winner = sold ? settle.winner : null
+  return {
+    outcome: sold ? 'sold' : 'unsold',
+    headingKey: sold ? 'settle.soldHeading' : 'settle.unsoldHeading',
+    winner,
+    price: settle.price,
+    truthValue: settle.truthValue,
+    budgetDelta: settle.budgetDelta,
+    // A `+` is presentation, never a second number: the delta is the server's
+    // own and `formatVND` already carries a minus sign when it has one.
+    deltaText:
+      settle.budgetDelta > 0 ? `+${formatVND(settle.budgetDelta)}` : formatVND(settle.budgetDelta),
+    winnerBudget:
+      winner === null ? null : (players.find((player) => player.nickname === winner)?.budget ?? null),
+  }
 }
