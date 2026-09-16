@@ -119,13 +119,27 @@ type Config struct {
 	Now       func() time.Time
 	Fatal     func(error)
 	Publisher Publisher
+
+	// JoinURLCandidates is D-83's boot-time LAN enumeration: the join URLs the
+	// admin panel offers for selection, in rank order. It is a boot input and
+	// never durable state — config_json persists the SELECTED url (D-84), not
+	// the proposals — so it is passed here rather than loaded from the store.
+	JoinURLCandidates []string
 }
 
 // engineConfig mirrors the persisted game.config_json (D-36). Persisting the
 // defaults means a future admin.config.update changes this row, not a constant.
+//
+// Phase 4 (D-84, additive): `JoinURL` is the persisted SELECTION, and it is
+// omitempty so every file written before Phase 4 keeps its exact shape (the key
+// is simply absent, which unmarshals to ""). It is also the reason the ADMIN_KEY
+// can never be persisted here: config_json is projected to the admin panel, so a
+// secret placed in it would be one `AdminConfig` field away from the browser
+// (D-74).
 type engineConfig struct {
 	StartingBudget int64  `json:"starting_budget"`
 	Currency       string `json:"currency"`
+	JoinURL        string `json:"join_url,omitempty"`
 }
 
 // player is one player's authoritative row plus its live presence. The struct
@@ -217,6 +231,12 @@ type state struct {
 	// means the run is over for the ordinary item flow too, not that the
 	// auction_runtime rows must go.
 	reset ResetMode
+
+	// joinURLCandidates is D-83's boot-time enumeration: the LAN addresses this
+	// show can be reached on, in rank order. It is NOT durable — config_json
+	// persists only the selected URL (D-84) — and it never changes after New,
+	// so clone() may copy the slice header rather than the strings.
+	joinURLCandidates []string
 }
 
 // Engine is the authoritative game state and the single mutation path. All

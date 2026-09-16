@@ -199,6 +199,12 @@ type ScreenView struct {
 	Lobby       []LobbyEntry  `json:"lobby"`
 	Leaderboard []LeaderEntry `json:"leaderboard"`
 	Item        *PublicItem   `json:"item"`
+
+	// Phase 4 (D-84, additive): the ONE URL every projector renders its QR from
+	// — the admin's persisted selection, or the first candidate before any
+	// selection exists. The screen never receives the candidate LIST: it has no
+	// choice to make, and a list on a projector is a list of wrong answers.
+	JoinURL string `json:"join_url"`
 }
 
 // AdminView is the control panel's view. Phase 2 delivers it secret-capable even
@@ -216,6 +222,13 @@ type AdminView struct {
 	Lobby       []LobbyEntry     `json:"lobby"`
 	Leaderboard []LeaderEntry    `json:"leaderboard"`
 	Item        *PublicItem      `json:"item"`
+
+	// Phase 4 (D-83/D-84, additive): the Join URLs panel's two halves — the
+	// boot-time proposals in rank order, and the URL the QR codes are actually
+	// built from. Both are public data (a join URL is meant to be scanned); the
+	// ADMIN_KEY deliberately travels in neither (D-74).
+	JoinURLs        []string `json:"join_urls"`
+	SelectedJoinURL string   `json:"selected_join_url"`
 }
 
 // AdminConfig is the persisted configuration the admin panel edits (Phase 4).
