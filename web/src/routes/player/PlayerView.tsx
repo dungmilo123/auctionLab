@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import LanguageControl from '@/components/LanguageControl'
 import { Card } from '@/components/ui/card'
-import { bidReasonKey } from '@/lib/bid'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
+import { keepRejection, type HeldRejection } from '@/lib/rejection'
 import {
   openPlayerSocket,
   readStoredToken,
   type ConnectionStatus,
   type PlayerConnection,
 } from '@/ws/client'
-import type { BidRejected, ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
+import type { ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
 import Finale from './Finale'
 import ItemIntro from './ItemIntro'
@@ -70,33 +70,11 @@ function errorCopyKey(code: string): CopyKey {
 /**
  * D-53's private refusal, held WITH the item it was refused for.
  *
- * The refusal is deliberately not view state (it is feedback, not a patch), so
- * this route decides when it goes away. D-97 narrows the carried "a rejection
- * clears on the next snapshot" rule for exactly one reason: the Dutch race
- * loser's `already_sold` is enqueued AFTER the winner's settle, so the reveal's
- * own snapshot has already landed by the time it arrives — and a later snapshot
- * for the same item (a join, a presence change, a resync during the reveal)
- * must not take the notice away. Carrying the item id is what makes the scope a
- * fact about the notice rather than a guess about frame order.
+ * The rule — and its one narrowing, D-97's `already_sold` lifetime — lives in
+ * `lib/rejection.ts`, where the node suite pins it (WR-04). This route only
+ * applies it and renders the held payload: a refusal is feedback, not a patch,
+ * so it is deliberately not view state.
  */
-type HeldRejection = {
-  payload: BidRejected
-  /** the item the refusal belongs to; null before any item is current */
-  itemId: string | null
-}
-
-/**
- * The next held refusal after one snapshot. Every reason keeps the carried
- * behaviour (any snapshot clears it); `already_sold` survives exactly while the
- * same item's SETTLED body is on screen and dies with a phase or item change.
- */
-function keepRejection(prev: HeldRejection | null, next: PlayerSnapshot): HeldRejection | null {
-  if (prev === null) return null
-  if (bidReasonKey(prev.payload.reason) !== 'reason.alreadySold') return null
-  if (next.phase !== 'SETTLED' || next.item === null || next.item.id !== prev.itemId) return null
-  return prev
-}
-
 function PlayerView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
