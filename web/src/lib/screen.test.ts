@@ -124,6 +124,13 @@ describe('the Body 2 type gates (D-88)', () => {
       expect(isDutchAuction(type)).toBe(false)
     }
   })
+
+  it('assigns each frozen type to exactly one live arm, so no arm can render twice', () => {
+    for (const type of ['english', 'dutch', 'sealed_first', 'vickrey']) {
+      const arms = [isEnglishAuction(type), isDutchAuction(type), isSealedAuction(type)]
+      expect(arms.filter(Boolean)).toHaveLength(1)
+    }
+  })
 })
 
 /** One standing row, in the shape `readLeaderboard` hands the UI. */
@@ -202,7 +209,62 @@ const screenViewSource = readFileSync(
 
 describe('the read-only guarantee (D-87/T-04-14)', () => {
   it('mounts no control, binds no handler and sends nothing', () => {
-    expect(screenViewSource).not.toMatch(/<Button|<button|on(Click|Change|Submit|KeyDown|Input)/)
+    // The handler set is spelled out rather than matched loosely: `onStatus:` /
+    // `onView:` live on the socket handler object, not on an element, so an
+    // element that grew a handler has to trip one of these names.
+    expect(screenViewSource).not.toMatch(
+      /<Button|<button|on(Click|Change|Submit|KeyDown|KeyUp|KeyPress|Input|Focus|Blur|Pointer|Touch|Mouse)/,
+    )
     expect(screenViewSource).not.toMatch(/\.send\(/)
+  })
+})
+
+// D-105's arm is public-only and read-only by STRUCTURE (T-05-05/T-05-08). The
+// projector still has no DOM harness, so the Dutch arm's boundaries are asserted
+// where they are decidable: the ONE derivation it may call, the shared
+// predicates that select its arm and its at-floor line, the public types its
+// inputs are declared as, and the absence of every surface it must not grow —
+// a second clock, a second formula or a reconnect affordance. The server-side
+// half of the leak boundary stays where it already is
+// (`internal/hub/leak_wire_test.go`'s Dutch walk); the client adds no second
+// authority over what an auction may show.
+describe('the Dutch arm is public-only and read-only (D-105)', () => {
+  it('derives its falling price through lib/dutch.ts, the one module the phone calls', () => {
+    expect(screenViewSource).toMatch(/from '@\/lib\/dutch'/)
+    // One call site: the arm recomputes the shared derivation's inputs, never a
+    // formula of its own (05-UI-SPEC §The falling price).
+    expect(screenViewSource.match(/dutchPrice\(/g)).toHaveLength(1)
+    expect(screenViewSource).toMatch(/anchorDutch\(/)
+    expect(screenViewSource).toMatch(/elapsedOf\(/)
+    expect(screenViewSource).not.toMatch(/Math\.(floor|round|ceil|min|max)\(/)
+  })
+
+  it('branches on the selector and declares only the typed public projection as its input', () => {
+    expect(screenViewSource).toMatch(/isDutchAuction\(item\.auctionType\)/)
+    // The arm's props are the public types `reduceView` hands every role — no
+    // raw frame and no admin/screen-only block is within its reach.
+    expect(screenViewSource).toMatch(
+      /function DutchWells\(\{ item, live \}: \{ item: PublicItem; live: LiveOverlay \}\)/,
+    )
+  })
+
+  it('renders its Dutch-only cells from the shared predicate and approved copy', () => {
+    expect(screenViewSource).toMatch(/atFloor\(/)
+    expect(screenViewSource).toMatch(/t\('dutch\.floorLabel'\)/)
+    expect(screenViewSource).toMatch(/t\('dutch\.atFloor'\)/)
+  })
+
+  it('gates the bidder row and the feed on the English type, so a Dutch run renders neither', () => {
+    expect(
+      screenViewSource.match(/liveArm && isEnglishAuction\(item\.auctionType\)/g),
+    ).toHaveLength(2)
+  })
+
+  it("adds no second clock: the countdown stays the route's only timer role", () => {
+    expect(screenViewSource.match(/role="timer"/g)).toHaveLength(1)
+  })
+
+  it('invents no reconnect affordance, keeping the lost-socket recovery the presenter reload', () => {
+    expect(screenViewSource).not.toMatch(/reconnect|retry|backoff/i)
   })
 })
