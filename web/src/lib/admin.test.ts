@@ -98,11 +98,14 @@ describe('the item draft (D-82b)', () => {
   })
 
   it('validates the fields the current type shows, and only those', () => {
+    // min_increment/duration_ms are english-only, so the same blanks that fail
+    // an english draft are simply not in the dutch draft's matrix.
     const dutch = filled({ auctionType: 'dutch', minIncrement: '', durationMs: '' })
-    // min_increment/duration_ms are english-only, so their blanks are not
-    // errors; the dutch-only fields are optional on the wire (D-66).
-    expect(Object.keys(validateDraft(dutch)).sort()).toEqual(['name', 'startPrice', 'truthValue'])
+    expect(validateDraft(dutch)).toEqual({})
     expect(draftValid(dutch)).toBe(true)
+    expect(
+      Object.keys(validateDraft(filled({ minIncrement: '', durationMs: '' }))).sort(),
+    ).toEqual(['durationMs', 'minIncrement'])
   })
 
   it('refuses a value that is grouped, fractional or negative', () => {

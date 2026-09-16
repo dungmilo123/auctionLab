@@ -14,6 +14,12 @@
  * mechanism, for the small closed set of templates that carry `{token}`
  * placeholders (`LIVE_PARAM_KEYS`).
  *
+ * Phase 4 adds the remaining 42 keys the control room and the projector need
+ * (one of them, `screen.qrTitle`, landed in 04-06), rewording
+ * `admin.notAuthorized` to name its own fix and deleting the now-unreachable
+ * `admin.noKeyNote`: the table ends the phase at the 171 approved keys
+ * `i18n.test.ts` asserts.
+ *
  * This module also owns the language context and the `auctionlab.lang` storage
  * key. It is plain TypeScript (no JSX) because the UI-SPEC's file list puts the
  * dictionary in `lib/`; the provider therefore builds its element with
@@ -169,10 +175,6 @@ export const COPY = {
 
   // ---- Phase 3 admin (54) ----
   'admin.h1': { en: 'Admin', vi: 'Quản trị' },
-  'admin.noKeyNote': {
-    en: 'No admin key yet — Phase 4 adds it. Anyone on this network can open this page.',
-    vi: 'Chưa có khoá quản trị — Phase 4 sẽ thêm. Ai trong mạng cũng mở được trang này.',
-  },
   'admin.controlHeading': { en: 'Control', vi: 'Điều khiển' },
   'admin.phaseLabel': { en: 'Phase', vi: 'Giai đoạn' },
   'admin.currentItemLabel': { en: 'Current item', vi: 'Item hiện tại' },
@@ -235,7 +237,10 @@ export const COPY = {
     en: 'The server refused that — check the values and try again.',
     vi: 'Máy chủ từ chối — kiểm tra lại giá trị rồi thử lại.',
   },
-  'admin.notAuthorized': { en: "This connection isn't authorized.", vi: 'Kết nối này không có quyền.' },
+  'admin.notAuthorized': {
+    en: "This connection isn't authorized — reopen the admin link from the server log.",
+    vi: 'Kết nối này không có quyền — mở lại link quản trị trong log máy chủ.',
+  },
   'admin.err.name': { en: 'Enter 1 to 80 characters.', vi: 'Nhập từ 1 đến 80 ký tự.' },
   'admin.err.notNegative': { en: 'Enter a whole number of 0 or more.', vi: 'Nhập số nguyên từ 0 trở lên.' },
   'admin.err.positive': { en: 'Enter a whole number of 1 or more.', vi: 'Nhập số nguyên từ 1 trở lên.' },
@@ -244,10 +249,91 @@ export const COPY = {
     vi: 'Gợi ý thấp nhất không được lớn hơn gợi ý cao nhất.',
   },
 
-  // ---- Phase 4: the shared QR component (04-06, D-85) ----
-  // The QR SVG's accessible name — the only string QrPanel invents; every other
-  // string on the projector comes from the carried Phase-2/3 keys (04-08).
+  // ---- Phase 4: admin tabs, Setup and Players (04-07, D-79..D-86) ----
+  // The control room's own copy. `admin.controlHeading` (carried) is the Control
+  // tab's segment, so only Setup and Players add a segment label here.
+  'admin.tabsLabel': { en: 'Admin sections', vi: 'Mục quản trị' },
+  'admin.tab.setup': { en: 'Setup', vi: 'Thiết lập' },
+  'admin.playersHeading': { en: 'Players', vi: 'Người chơi' },
+  'admin.setupHeading': { en: 'Game setup', vi: 'Thiết lập ván' },
+  'admin.field.startingBudget': { en: 'Starting budget', vi: 'Ngân sách khởi điểm' },
+  'admin.saveBudget': { en: 'Save budget', vi: 'Lưu ngân sách' },
+  'admin.budgetNote': {
+    en: "Applies to new players and to a reset game — a budget already in play doesn't change.",
+    vi: 'Áp dụng cho người chơi mới và khi đặt lại ván — ngân sách đang chơi không đổi.',
+  },
+  'admin.qrHeading': { en: 'Join QR', vi: 'Mã QR vào phòng' },
+  'admin.qrNote': {
+    en: 'Scan with a phone camera to join.',
+    vi: 'Quét bằng camera điện thoại để vào phòng.',
+  },
+  'admin.qrNoUrl': {
+    en: 'No URL selected yet — pick one in Join URLs below.',
+    vi: 'Chưa chọn URL nào — chọn một trong Địa chỉ vào phòng bên dưới.',
+  },
+  'admin.joinUrlsHeading': { en: 'Join URLs', vi: 'Địa chỉ vào phòng' },
+  'admin.urlNote': {
+    en: 'The projector QR uses the URL selected here.',
+    vi: 'QR trên màn chiếu dùng URL được chọn ở đây.',
+  },
+  'admin.urlThisPage': { en: "This page's URL", vi: 'URL của trang này' },
+  'admin.urlSelected': { en: 'On the screen now', vi: 'Đang chiếu' },
+  'admin.playersEmpty': {
+    en: 'No players yet — share the join QR.',
+    vi: 'Chưa có người chơi — chia sẻ mã QR để vào phòng.',
+  },
+  'admin.playerBudget': { en: 'Budget', vi: 'Ngân sách' },
+  'admin.playerValue': { en: 'Total value', vi: 'Tổng giá trị' },
+  'admin.playerJoined': { en: 'Joined', vi: 'Vào lúc' },
+  'admin.playerLastSeen': { en: 'Last seen', vi: 'Thấy lúc' },
+  'admin.releaseSession': { en: 'Release session', vi: 'Giải phóng phiên' },
+  'admin.releaseConfirm': {
+    en: "Release {name}'s session? Their phone goes back to the join screen, and they can rejoin with the same nickname and budget.",
+    vi: 'Giải phóng phiên của {name}? Điện thoại của họ quay về màn hình vào phòng và có thể vào lại bằng đúng nickname và ngân sách cũ.',
+  },
+  'admin.keepSession': { en: 'Keep session', vi: 'Giữ phiên' },
+
+  // ---- Phase 4: the Control tab's reset, offline note and presenter card ----
+  'admin.resetHeading': { en: 'Reset', vi: 'Đặt lại' },
+  'admin.resetNote': {
+    en: 'A reset returns the game to the lobby and deletes every bid. Item setup is never deleted.',
+    vi: 'Đặt lại đưa ván về phòng chờ và xoá toàn bộ lượt đặt giá. Cấu hình item không bao giờ bị xoá.',
+  },
+  'admin.resetKeep': { en: 'Reset (keep players)', vi: 'Đặt lại (giữ người chơi)' },
+  'admin.resetClear': { en: 'Reset (clear players)', vi: 'Đặt lại (xoá người chơi)' },
+  'admin.resetKeepConfirm': {
+    en: 'Reset the game and keep the players? Every bid is deleted, budgets go back to the starting budget, and the game returns to the lobby. Item setup is kept.',
+    vi: 'Đặt lại ván và giữ người chơi? Toàn bộ lượt đặt giá bị xoá, ngân sách về mức khởi điểm, ván về phòng chờ. Cấu hình item được giữ nguyên.',
+  },
+  'admin.resetClearConfirm': {
+    en: 'Reset the game and remove every player? Every bid is deleted, item setup is kept, and each phone goes back to the join screen.',
+    vi: 'Đặt lại ván và xoá toàn bộ người chơi? Toàn bộ lượt đặt giá bị xoá, cấu hình item được giữ nguyên, mỗi điện thoại quay về màn hình vào phòng.',
+  },
+  // One action, two per-mode sentences: the two reset strips share this pair.
+  'admin.resetConfirm': { en: 'Reset game', vi: 'Đặt lại ván' },
+  'admin.resetCancel': { en: 'Keep playing', vi: 'Tiếp tục chơi' },
+  'admin.offlineNote': {
+    en: "Controls are off while the connection is down — reload the page when it's back.",
+    vi: 'Điều khiển tạm tắt khi mất kết nối — tải lại trang khi kết nối trở lại.',
+  },
+  'admin.winnerBudgetLabel': { en: "Winner's budget now", vi: 'Ngân sách người thắng hiện tại' },
+
+  // ---- Phase 4: the projector (04-08 consumes these; the QR title is 04-06's) ----
+  'screen.brand': { en: 'AuctionLab', vi: 'AuctionLab' },
+  'screen.scanNote': { en: 'Scan the QR code to join', vi: 'Quét mã QR để tham gia' },
+  'screen.noJoinUrl': {
+    en: 'No join URL yet — set one in the admin setup.',
+    vi: 'Chưa có URL vào phòng — chọn trong phần thiết lập quản trị.',
+  },
   'screen.qrTitle': { en: 'Join QR code', vi: 'Mã QR vào phòng' },
+  'screen.starting': { en: 'Starting up…', vi: 'Đang khởi động…' },
+  'screen.bidFeedHeading': { en: 'Latest bids', vi: 'Đặt giá gần đây' },
+  'screen.sealedProgress': { en: '{submitted}/{total} submitted', vi: '{submitted}/{total} đã nộp' },
+  'screen.standingsHeading': { en: 'Standings', vi: 'Bảng xếp hạng' },
+
+  // ---- Phase 4: the player's finale body (04-08 replaces the placeholder) ----
+  'finale.podiumHeading': { en: 'Top 3', vi: 'Ba người dẫn đầu' },
+  'finale.yourRank': { en: 'Your rank: {rank} of {total}', vi: 'Hạng của bạn: {rank}/{total}' },
 } as const satisfies Record<string, Copy>
 
 export type CopyKey = keyof typeof COPY
@@ -290,6 +376,10 @@ export const LIVE_PARAM_KEYS = {
   'admin.editLabel': ['name'],
   'admin.deleteLabel': ['name'],
   'admin.deleteConfirm': ['name'],
+  // Phase 4: the release confirm, the sealed counter and the player's own rank.
+  'admin.releaseConfirm': ['name'],
+  'screen.sealedProgress': ['submitted', 'total'],
+  'finale.yourRank': ['rank', 'total'],
 } as const satisfies Partial<Record<CopyKey, readonly string[]>>
 
 /** The keys whose copy is a template (derived, so the two can never drift). */

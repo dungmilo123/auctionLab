@@ -1,35 +1,58 @@
 import { useEffect, useRef, useState } from 'react'
+import { cn } from 'cn'
 import LanguageControl, { SegmentedChoice } from '@/components/LanguageControl'
+import { QrPanel } from '@/components/QrPanel'
 import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatVND } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
-import { openAdminSocket, type AdminConnection } from '@/ws/admin'
-import { parseBidAmount } from '@/lib/bid'
+import { openAdminSocket, type AdminCommand, type AdminConnection } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
-import type { AdminItem, Phase } from '@/ws/protocol'
+import type { Phase } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
+import {
+  FIELD_IDS,
+  STARTING_BUDGET_FIELD_ID,
+  blankDraft,
+  configFrame,
+  draftFromItem,
+  draftPayload,
+  draftValid,
+  mutationsEnabled,
+  urlCandidates,
+  validateDraft,
+  validateStartingBudget,
+  visibleFields,
+  type DraftFields,
+  type EditorDraft,
+} from '@/lib/admin'
 
-// The minimal, deliberately UNPROTECTED admin page (D-64, ADMN-01/02).
+// The protected control room (ADMN-01..07, D-64/H17).
 //
-// Three `Card` panels in a fixed order — Control, Items, then a conditional
-// Editor — and nothing else: no tabs, no ADMIN_KEY, no reset, no players list,
-// no QR/LAN panel, no screen work (ADMN-04..07 are Phase 4, and this page says
-// so in its own caption rather than pretending otherwise).
-//
-// Two rules shape the whole file:
+// Three tabs over one authenticated socket — Setup, Control, Players — in the
+// fixed order 04-UI-SPEC §Admin Route & Interaction Contract declares. Three
+// rules shape the whole file:
 //
 //   1. The SERVER is the single source of truth (contract #1). Every panel
 //      renders `ViewState`, which only a snapshot replaces. Nothing here mutates
-//      the catalog optimistically: a reorder is a frame, and the row that moves
-//      is the row the next snapshot returns.
-//   2. Every "in flight" flag is DERIVED from the catalog generation rather than
-//      cleared by an effect: a snapshot rebuilds `items` (the events keep the
+//      the catalog or the config optimistically: a reorder is a frame, a URL
+//      choice is a frame, and the row that lights up is the row the next
+//      snapshot returns.
+//   2. Every "in flight" flag is DERIVED from the snapshot generation rather
+//      than cleared by an effect: a snapshot rebuilds `items` (events keep the
 //      same array), so "the list re-rendered" is a render-time fact. That is
-//      what makes the snapshot the confirmation, and what keeps a rejected frame
-//      from leaving a form permanently disabled.
+//      what makes the snapshot the confirmation, and what keeps a rejected
+//      frame from leaving a control permanently disabled.
+//   3. Only the active tab's panel is mounted. Switching tabs unmounts the
+//      previous one, which is what makes "the armed confirm cancels on a tab
+//      change" (D-79) structural rather than an effect — and the same fact
+//      discards an open item draft.
+//
+// The page's pure rules (validation, the socket gate, the candidate rows) live
+// in `lib/admin.ts`, where Vitest pins them; this file renders them.
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
   connecting: 'status.connecting',
@@ -81,232 +104,39 @@ const LOCKED_STATUSES = ['live', 'settled']
  */
 const CONFIRM_FILL = 'bg-destructive text-primary-foreground hover:bg-destructive'
 
-const MAX_ITEM_NAME_RUNES = 80
+/** The three tabs, in the UI-SPEC's fixed order. Control is the default (the presenter's hand). */
+type AdminTab = 'setup' | 'control' | 'players'
 
-const FIELD_IDS = {
-  name: 'admin-field-name',
-  truthValue: 'admin-field-truth-value',
-  hintMin: 'admin-field-hint-min',
-  hintMax: 'admin-field-hint-max',
-  startPrice: 'admin-field-start-price',
-  minIncrement: 'admin-field-min-increment',
-  durationMs: 'admin-field-duration-ms',
-  antiSnipeWindowMs: 'admin-field-anti-snipe-window-ms',
-  maxExtensions: 'admin-field-max-extensions',
-  floorPrice: 'admin-field-floor-price',
-  decrementStep: 'admin-field-decrement-step',
-  decrementIntervalMs: 'admin-field-decrement-interval-ms',
-} as const
+const TABS: readonly AdminTab[] = ['setup', 'control', 'players']
 
-type NumberField = Exclude<keyof typeof FIELD_IDS, 'name'>
-
-/** The whole editor draft: strings as typed, plus the fields the form never shows. */
-type DraftFields = {
-  name: string
-  auctionType: string
-  antiSnipeMode: string
-  truthValue: string
-  hintMin: string
-  hintMax: string
-  startPrice: string
-  minIncrement: string
-  durationMs: string
-  antiSnipeWindowMs: string
-  maxExtensions: string
-  floorPrice: string
-  decrementStep: string
-  decrementIntervalMs: string
+const TAB_KEYS: Record<AdminTab, CopyKey> = {
+  setup: 'admin.tab.setup',
+  control: 'admin.controlHeading',
+  players: 'admin.playersHeading',
 }
+
+const DEFAULT_TAB: AdminTab = 'control'
 
 /**
- * The editor's own object. `description` and `imageUrl` are NOT fields in Phase
- * 3 (CNT-01 is v2): they are carried so the form echoes the loaded item's values
- * back unchanged, and they are empty strings on create.
+ * The in-flight signals the Setup panel reads, one per action that waits for a
+ * snapshot. `saveLanded` is the same signal one step later, and it is what
+ * closes the editor: the row appearing in the list IS the confirmation.
  */
-type EditorDraft = {
-  /** '' means "create with a server-minted id" (H14) */
-  id: string
-  description: string
-  imageUrl: string
-  fields: DraftFields
+type FlightFlags = {
+  saving: boolean
+  saveLanded: boolean
+  reordering: boolean
+  budgetSaving: boolean
+  urlChoosing: boolean
 }
 
-type DraftErrors = Partial<Record<keyof DraftFields, CopyKey>>
-
-/** Which fields the matrix shows for this type — and therefore which are validated. */
-function visibleFields(type: string, antiSnipeMode: string): Record<keyof DraftFields, boolean> {
-  const english = type === 'english'
-  const dutch = type === 'dutch'
-  const timed = english || type === 'sealed_first' || type === 'vickrey'
-  return {
-    name: true,
-    auctionType: true,
-    antiSnipeMode: english,
-    truthValue: true,
-    hintMin: true,
-    hintMax: true,
-    startPrice: true,
-    minIncrement: english,
-    durationMs: timed,
-    antiSnipeWindowMs: english && antiSnipeMode === 'extend',
-    maxExtensions: english,
-    floorPrice: dutch,
-    decrementStep: dutch,
-    decrementIntervalMs: dutch,
-  }
-}
-
-/** A required field is one the server's own validation would refuse as absent. */
-function isRequired(key: NumberField, fields: DraftFields): boolean {
-  switch (key) {
-    case 'truthValue':
-    case 'startPrice':
-      return true
-    case 'minIncrement':
-    case 'durationMs':
-      return fields.auctionType === 'english'
-    case 'antiSnipeWindowMs':
-      return fields.auctionType === 'english' && fields.antiSnipeMode === 'extend'
-    default:
-      return false
-  }
-}
-
-/**
- * The UI-SPEC's validation table, applied to the VISIBLE fields only. The server
- * stays the authority (D-66): the client mirrors the same rules so the presenter
- * has a field to fix, because the server's refusal carries only the frozen
- * `bad_message` code and its `message` is log-only.
- */
-function validateDraft(draft: EditorDraft): DraftErrors {
-  const fields = draft.fields
-  const visible = visibleFields(fields.auctionType, fields.antiSnipeMode)
-  const errors: DraftErrors = {}
-
-  const name = fields.name.trim()
-  if (name.length === 0 || [...name].length > MAX_ITEM_NAME_RUNES) errors.name = 'admin.err.name'
-
-  const check = (key: NumberField, floor: 0 | 1) => {
-    if (!visible[key]) return
-    const raw = fields[key]
-    if (raw === '') {
-      if (isRequired(key, fields)) {
-        errors[key] = floor === 1 ? 'admin.err.positive' : 'admin.err.notNegative'
-      }
-      return
-    }
-    // One parse rule for both routes: a raw digit string, exactly what the bid
-    // field accepts (D-71). Grouped amounts are a display form only.
-    const parsed = parseBidAmount(raw)
-    if (parsed === null || parsed < floor) {
-      errors[key] = floor === 1 ? 'admin.err.positive' : 'admin.err.notNegative'
-    }
-  }
-
-  for (const key of ['truthValue', 'hintMin', 'hintMax'] as const) check(key, 0)
-  for (const key of [
-    'startPrice',
-    'minIncrement',
-    'durationMs',
-    'antiSnipeWindowMs',
-    'maxExtensions',
-    'floorPrice',
-    'decrementStep',
-    'decrementIntervalMs',
-  ] as const) {
-    check(key, 1)
-  }
-
-  const min = fields.hintMin === '' ? null : parseBidAmount(fields.hintMin)
-  const max = fields.hintMax === '' ? null : parseBidAmount(fields.hintMax)
-  if (min !== null && max !== null && min > max) errors.hintMin = 'admin.err.hintOrder'
-
-  return errors
-}
-
-/**
- * The `admin.item.upsert` payload (D-66): the FULL object, so the editor
- * round-trips exactly the row it was shown. Every numeric field is sent as the
- * integer its raw digit string parses to, or null when it is empty — including
- * the fields the current type hides, which keeps their loaded values instead of
- * discarding them when the presenter visits another type on the way to Save.
- */
-function draftPayload(draft: EditorDraft): Record<string, unknown> {
-  const fields = draft.fields
-  const num = (key: NumberField): number | null => {
-    const raw = fields[key]
-    return raw === '' ? null : parseBidAmount(raw)
-  }
-
-  return {
-    id: draft.id,
-    name: fields.name.trim(),
-    description: draft.description,
-    image_url: draft.imageUrl,
-    auction_type: fields.auctionType,
-    truth_value: num('truthValue') ?? 0,
-    hint_min: num('hintMin'),
-    hint_max: num('hintMax'),
-    start_price: num('startPrice') ?? 0,
-    min_increment: num('minIncrement'),
-    floor_price: num('floorPrice'),
-    decrement_step: num('decrementStep'),
-    decrement_interval_ms: num('decrementIntervalMs'),
-    duration_ms: num('durationMs'),
-    anti_snipe_mode: fields.antiSnipeMode,
-    anti_snipe_window_ms: num('antiSnipeWindowMs'),
-    max_extensions: num('maxExtensions'),
-  }
-}
-
-function blankDraft(): EditorDraft {
-  return {
-    id: '',
-    description: '',
-    imageUrl: '',
-    fields: {
-      name: '',
-      auctionType: 'english',
-      antiSnipeMode: 'disabled',
-      truthValue: '',
-      hintMin: '',
-      hintMax: '',
-      startPrice: '',
-      minIncrement: '',
-      durationMs: '',
-      antiSnipeWindowMs: '',
-      maxExtensions: '',
-      floorPrice: '',
-      decrementStep: '',
-      decrementIntervalMs: '',
-    },
-  }
-}
-
-/** Load one catalog row into the form, keeping every value it was shown. */
-function draftFromItem(item: AdminItem): EditorDraft {
-  const text = (value: number | null): string => (value === null ? '' : String(value))
-  return {
-    id: item.id,
-    description: item.description,
-    imageUrl: item.imageUrl,
-    fields: {
-      name: item.name,
-      auctionType: item.auctionType,
-      antiSnipeMode: item.antiSnipeMode === '' ? 'disabled' : item.antiSnipeMode,
-      truthValue: String(item.truthValue),
-      hintMin: text(item.hintMin),
-      hintMax: text(item.hintMax),
-      startPrice: String(item.startPrice),
-      minIncrement: text(item.minIncrement),
-      durationMs: text(item.durationMs),
-      antiSnipeWindowMs: text(item.antiSnipeWindowMs),
-      maxExtensions: text(item.maxExtensions),
-      floorPrice: text(item.floorPrice),
-      decrementStep: text(item.decrementStep),
-      decrementIntervalMs: text(item.decrementIntervalMs),
-    },
-  }
+/** The matching "this frame just went out" events, owned by the page. */
+type FlightMark = {
+  saved(): void
+  clearSaved(): void
+  reordered(): void
+  budget(): void
+  url(): void
 }
 
 /** `code` selects the copy; the server's `message` is never rendered (carried rule). */
@@ -416,82 +246,193 @@ function NumberFieldRow({
   )
 }
 
-function AdminView() {
+/**
+ * Card 1 of the Setup tab (D-81/D-82). The field is remounted by the snapshot's
+ * own budget — `key` is the server's number — so a save re-seeds it from the
+ * snapshot rather than from an optimistic write, while an unrelated snapshot
+ * (a join, a presence change) cannot disturb what the presenter is typing.
+ */
+function BudgetCard({
+  startingBudget,
+  online,
+  saving,
+  onSave,
+}: {
+  startingBudget: number | null
+  online: boolean
+  saving: boolean
+  onSave(value: number): void
+}) {
   const { t } = useLanguage()
-  const [status, setStatus] = useState<ConnectionStatus>('connecting')
-  const [view, setView] = useState<ViewState>(() => initialViewState())
-  // The catalog generation: bumped once per admin snapshot, and only per
-  // snapshot — an EVENT keeps the same `items` array, so its reference is the
-  // marker that tells the two apart without a second decoder.
-  const [catalogSeq, setCatalogSeq] = useState(0)
-  const seqRef = useRef(0)
-  const lastItemsRef = useRef<ViewState['items'] | null>(null)
-  const [errorAt, setErrorAt] = useState<{ code: string; seq: number } | null>(null)
+  const [raw, setRaw] = useState(() => (startingBudget === null ? '' : String(startingBudget)))
+  const error = validateStartingBudget(raw)
 
-  const [armedForceEnd, setArmedForceEnd] = useState<Phase | null>(null)
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('admin.setupHeading')}
+      </h2>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={STARTING_BUDGET_FIELD_ID}>{t('admin.field.startingBudget')}</Label>
+        <Input
+          id={STARTING_BUDGET_FIELD_ID}
+          className="bg-input"
+          // Raw digits, no grouping dots, no maxLength (D-71/FRMT-01): the
+          // value the server parses is the value on screen.
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={raw}
+          disabled={saving}
+          aria-invalid={error !== undefined}
+          aria-describedby={error === undefined ? undefined : `${STARTING_BUDGET_FIELD_ID}-error`}
+          onChange={(event) => setRaw(event.target.value)}
+        />
+        <FieldError id={STARTING_BUDGET_FIELD_ID} errorKey={error} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          // D-82a + D-82's own rule: an invalid budget or a dead socket must not
+          // look saveable, and the field's message is the reason.
+          disabled={!online || saving || error !== undefined}
+          onClick={() => {
+            const value = Number(raw)
+            if (error !== undefined) return
+            onSave(value)
+          }}
+        >
+          {saving ? t('admin.saving') : t('admin.saveBudget')}
+        </Button>
+      </div>
+
+      <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.budgetNote')}</p>
+    </Card>
+  )
+}
+
+/**
+ * Card 2 of the Setup tab (D-85/D-86): the QR the room will scan. The selected
+ * URL is real snapshot state — the empty case names its own fix instead of
+ * showing a QR that encodes nothing.
+ */
+function JoinQrCard({ joinUrl }: { joinUrl: string }) {
+  const { t } = useLanguage()
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">{t('admin.qrHeading')}</h2>
+
+      {joinUrl === '' ? (
+        // No plate, no placeholder square, and no "scan to join" caption above
+        // an absent QR — the one sentence names the state and the next step.
+        <p className="text-base leading-[1.5]">{t('admin.qrNoUrl')}</p>
+      ) : (
+        <>
+          <div className="flex justify-center">
+            <QrPanel url={joinUrl} size={176} />
+          </div>
+          {/* Selectable text, never a clipboard button: `navigator.clipboard`
+              does not exist on the plain-http LAN origin this page is served
+              from, so a copy control would silently do nothing on stage. */}
+          <p className="break-all font-mono text-base leading-[1.5]">{joinUrl}</p>
+          <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.qrNote')}</p>
+        </>
+      )}
+    </Card>
+  )
+}
+
+/** Card 3 of the Setup tab (D-83/D-84/D-86): the candidate rows. */
+function JoinUrlsCard({
+  joinUrls,
+  selected,
+  pageOrigin,
+  online,
+  choosing,
+  onChoose,
+}: {
+  joinUrls: string[]
+  selected: string
+  pageOrigin: string
+  online: boolean
+  choosing: boolean
+  onChoose(url: string): void
+}) {
+  const { t } = useLanguage()
+  const rows = urlCandidates(joinUrls, pageOrigin)
+
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('admin.joinUrlsHeading')}
+      </h2>
+      <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.urlNote')}</p>
+
+      {/* Never empty by construction: `urlCandidates` appends this page's own
+          origin when the server's boot-time enumeration did not list it, so
+          there is no blank state to invent copy for (D-86). */}
+      <ul className="flex flex-col">
+        {rows.map((url) => {
+          const isSelected = url === selected
+          return (
+            <li key={url}>
+              <button
+                type="button"
+                aria-pressed={isSelected}
+                disabled={!online || choosing}
+                onClick={() => onChoose(url)}
+                className={cn(
+                  buttonVariants({ variant: 'outline' }),
+                  'flex min-h-11 w-full flex-wrap items-center justify-start gap-2 px-2 py-2 text-left',
+                  // The 2px accent left stripe is the carried "this is the
+                  // marked row" marker — and it never carries the state alone:
+                  // the selected row also shows the word.
+                  isSelected ? 'border-l-primary' : 'border-l-transparent',
+                )}
+              >
+                <span className="min-w-0 flex-1 break-all font-mono text-base leading-[1.5]">
+                  {url}
+                </span>
+                {isSelected && (
+                  <span className="text-sm leading-[1.5] font-bold">{t('admin.urlSelected')}</span>
+                )}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
+
+/** The whole Setup tab, in the UI-SPEC's fixed card order. */
+function SetupPanel({
+  view,
+  online,
+  send,
+  flags,
+  mark,
+}: {
+  view: ViewState
+  online: boolean
+  send(frame: AdminCommand): void
+  flags: FlightFlags
+  mark: FlightMark
+}) {
+  const { t } = useLanguage()
   const [armedDelete, setArmedDelete] = useState<string | null>(null)
   const [draft, setDraft] = useState<EditorDraft | null>(null)
-  const [savedAt, setSavedAt] = useState<number | null>(null)
-  const [reorderAt, setReorderAt] = useState<number | null>(null)
   const editorRef = useRef<HTMLDivElement | null>(null)
-  const connectionRef = useRef<AdminConnection | null>(null)
-
-  // The socket is created INSIDE this effect and closed in its cleanup, so a
-  // StrictMode double-invoke cannot leave two admin connections behind.
-  useEffect(() => {
-    const connection = openAdminSocket({
-      onStatus: setStatus,
-      onView: (next) => {
-        setView(next)
-        if (next.items !== lastItemsRef.current) {
-          lastItemsRef.current = next.items
-          seqRef.current += 1
-          setCatalogSeq(seqRef.current)
-        }
-      },
-      onError: (error) => {
-        // A refusal is not a snapshot: the in-flight flags are released so the
-        // form is usable again, and the row renders the mapped copy.
-        setErrorAt({ code: error.code, seq: seqRef.current })
-        setSavedAt(null)
-        setReorderAt(null)
-      },
-    })
-    connectionRef.current = connection
-
-    return () => {
-      connectionRef.current = null
-      connection.close()
-    }
-  }, [])
 
   const items = [...view.items].sort((a, b) => a.orderIndex - b.orderIndex)
-  const currentItem = view.item
-  const phase = view.phase
-  const firstPending = items.find((item) => item.status === 'pending') ?? null
 
-  // D-65's start target: the CURRENT item while it is on stage, otherwise the
-  // first pending one in order. No target means nothing to start — which is a
-  // caption, not a silent dead button.
-  const startId = phase === 'ITEM_INTRO' && currentItem !== null ? currentItem.id : firstPending?.id ?? null
-  const startEnabled =
-    (phase === 'LOBBY' || phase === 'ITEM_INTRO' || phase === 'FINALE') && startId !== null
-  const forceEndEnabled = phase === 'LIVE'
-  const nextEnabled = phase === 'ITEM_INTRO' || phase === 'SETTLED'
-
-  // Every in-flight flag clears itself when the next snapshot lands.
-  const saving = savedAt !== null && catalogSeq <= savedAt
-  const reordering = reorderAt !== null && catalogSeq <= reorderAt
-  // The armed strips are phase/item-derived too: a force-end that moves the
-  // phase, or a delete that removes the row, dismisses its own strip.
-  const forceEndArmed = armedForceEnd !== null && armedForceEnd === phase
-  const deleteArmedId =
-    armedDelete !== null && items.some((item) => item.id === armedDelete) ? armedDelete : null
   // The editor closes when the save's own snapshot arrives: the row appearing
   // (or changing) in the list IS the confirmation, so no toast exists or is
-  // added. A fresh draft clears `savedAt`, so opening the editor again works.
-  const editor =
-    draft !== null && !(savedAt !== null && catalogSeq > savedAt) ? draft : null
+  // added. A fresh draft clears the signal, so opening the editor again works.
+  const editor = draft !== null && !flags.saveLanded ? draft : null
   const editorKey = editor === null ? null : editor.id === '' ? 'new' : editor.id
   const errors = editor === null ? {} : validateDraft(editor)
   // The matrix, evaluated once per render: which fields this draft's type shows
@@ -500,7 +441,11 @@ function AdminView() {
     editor?.fields.auctionType ?? 'english',
     editor?.fields.antiSnipeMode ?? 'disabled',
   )
-  const errorCode = errorAt !== null && catalogSeq <= errorAt.seq ? errorAt.code : null
+  // D-82b: the button's `disabled` prop and the messages come from ONE call.
+  const saveable = editor !== null && draftValid(editor)
+
+  const deleteArmedId =
+    armedDelete !== null && items.some((item) => item.id === armedDelete) ? armedDelete : null
 
   // `scrollIntoView` is the one external effect this page has: opening the
   // editor brings the card into view INSTANTLY (`block: 'nearest'`, never
@@ -510,12 +455,8 @@ function AdminView() {
     editorRef.current?.scrollIntoView({ block: 'nearest' })
   }, [editorKey])
 
-  function send(frame: unknown) {
-    connectionRef.current?.send(frame)
-  }
-
   function openDraft(next: EditorDraft) {
-    setSavedAt(null)
+    mark.clearSaved()
     setArmedDelete(null)
     setDraft(next)
   }
@@ -539,7 +480,7 @@ function AdminView() {
       }
       return
     }
-    setSavedAt(catalogSeq)
+    mark.saved()
     send({ type: 'admin.item.upsert', item: draftPayload(editor) })
   }
 
@@ -551,132 +492,52 @@ function AdminView() {
     const next = [...ids]
     next.splice(from, 1)
     next.splice(to, 0, itemId)
-    setReorderAt(catalogSeq)
+    mark.reordered()
     // The COMPLETE permutation, in list order (D-66): the server validates it
     // as a full permutation and rejects without a partial write.
     send({ type: 'admin.item.reorder', ids: next })
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-12 md:px-8">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">{t('admin.h1')}</h1>
+    <>
+      <BudgetCard
+        key={view.config === null ? 'pending' : String(view.config.startingBudget)}
+        startingBudget={view.config === null ? null : view.config.startingBudget}
+        online={online}
+        saving={flags.budgetSaving}
+        onSave={(value) => {
+          mark.budget()
+          send(configFrame({ starting_budget: value }))
+        }}
+      />
 
-          <LanguageControl />
-        </div>
+      <JoinQrCard joinUrl={view.joinUrl} />
 
-        {/* The four-state line is what stops a presenter from clicking a control
-            on a dead socket and seeing nothing happen. `superseded` is
-            unreachable for this role, but the shared shape keeps the state. */}
-        <div role="status" aria-live="polite" className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`inline-block size-3 border-2 border-border ${STATUS_FILL[status]}`}
-          />
-          <p className="text-sm leading-[1.5] font-bold">{t(STATUS_COPY[status])}</p>
-        </div>
+      <JoinUrlsCard
+        joinUrls={view.joinUrls}
+        selected={view.joinUrl}
+        pageOrigin={window.location.origin}
+        online={online}
+        choosing={flags.urlChoosing}
+        onChoose={(url) => {
+          mark.url()
+          send(configFrame({ join_url: url }))
+        }}
+      />
 
-        {/* D-64 made this page reachable by anyone on the network, so it says so
-            rather than implying a protection it does not have (ADMN-04). */}
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.noKeyNote')}</p>
-
-        {errorCode !== null && (
-          <p role="alert" className="border-2 border-destructive px-2 py-2 text-base leading-[1.5]">
-            {t(adminErrorKey(errorCode))}
-          </p>
-        )}
-      </div>
-
-      {/* Panel 1 — Control */}
-      <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
-        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
-          {t('admin.controlHeading')}
-        </h2>
-
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <p className="text-sm leading-[1.5] font-bold">{t('admin.phaseLabel')}</p>
-          <p className="text-base leading-[1.5]">{t(PHASE_KEYS[phase])}</p>
-          <span aria-hidden="true">·</span>
-          <p className="text-sm leading-[1.5] font-bold">{t('admin.currentItemLabel')}</p>
-          {currentItem === null ? (
-            <p className="text-base leading-[1.5]">{t('admin.noCurrentItem')}</p>
-          ) : (
-            <>
-              <p className="min-w-0 break-words text-base leading-[1.5]">{currentItem.name}</p>
-              <p className="text-sm leading-[1.5] font-bold">{statusName(currentItem.status, t)}</p>
-            </>
-          )}
-        </div>
-
-        {forceEndArmed ? (
-          <div className="flex flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
-            <p className="text-base leading-[1.5]">{t('admin.forceEndConfirm')}</p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="default"
-                className={CONFIRM_FILL}
-                onClick={() => {
-                  setArmedForceEnd(null)
-                  send({ type: 'admin.item.force_end' })
-                }}
-              >
-                {t('admin.forceEnd')}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setArmedForceEnd(null)}>
-                {t('admin.dontEnd')}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {/* Fixed positions, never appearing or disappearing: the presenter's
-                hand learns one layout. Exactly one of these can carry the accent
-                and `Force end` never does — it is irreversible. */}
-            <Button
-              type="button"
-              variant={startEnabled ? 'default' : 'outline'}
-              disabled={!startEnabled}
-              onClick={() => {
-                if (startId !== null) send({ type: 'admin.item.start', id: startId })
-              }}
-            >
-              {t('admin.start')}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!forceEndEnabled}
-              onClick={() => setArmedForceEnd(phase)}
-            >
-              {t('admin.forceEnd')}
-            </Button>
-
-            <Button
-              type="button"
-              variant={nextEnabled && phase === 'SETTLED' ? 'default' : 'outline'}
-              disabled={!nextEnabled}
-              onClick={() => send({ type: 'admin.item.next' })}
-            >
-              {phase === 'ITEM_INTRO' ? t('admin.skipItem') : t('admin.next')}
-            </Button>
-          </div>
-        )}
-
-        {(phase === 'LOBBY' || phase === 'FINALE') && startId === null && (
-          <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.noPendingItem')}</p>
-        )}
-      </Card>
-
-      {/* Panel 2 — Items */}
+      {/* Card 4 — Items, carried verbatim from Phase 3 (one behaviour change:
+          D-82b's immediate validation above). */}
       <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
             {t('admin.itemsHeading')}
           </h2>
-          <Button type="button" variant="outline" onClick={() => openDraft(blankDraft())}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!online}
+            onClick={() => openDraft(blankDraft())}
+          >
             {t('admin.newItem')}
           </Button>
           {/* One caption for the whole list: the bare numbers below are all VND. */}
@@ -724,6 +585,7 @@ function AdminView() {
                           type="button"
                           variant="default"
                           className={CONFIRM_FILL}
+                          disabled={!online}
                           onClick={() => {
                             setArmedDelete(null)
                             send({ type: 'admin.item.delete', id: item.id })
@@ -749,7 +611,7 @@ function AdminView() {
                         type="button"
                         variant="outline"
                         aria-label={fill(t('admin.moveUpLabel'), { name: item.name })}
-                        disabled={index === 0 || reordering}
+                        disabled={!online || index === 0 || flags.reordering}
                         onClick={() => move(item.id, -1)}
                       >
                         {t('admin.moveUp')}
@@ -758,7 +620,7 @@ function AdminView() {
                         type="button"
                         variant="outline"
                         aria-label={fill(t('admin.moveDownLabel'), { name: item.name })}
-                        disabled={index === items.length - 1 || reordering}
+                        disabled={!online || index === items.length - 1 || flags.reordering}
                         onClick={() => move(item.id, 1)}
                       >
                         {t('admin.moveDown')}
@@ -776,7 +638,7 @@ function AdminView() {
                         type="button"
                         variant="outline"
                         aria-label={fill(t('admin.deleteLabel'), { name: item.name })}
-                        disabled={locked}
+                        disabled={locked || !online}
                         onClick={() => setArmedDelete(item.id)}
                       >
                         {t('admin.delete')}
@@ -792,7 +654,7 @@ function AdminView() {
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.lockedNote')}</p>
       </Card>
 
-      {/* Panel 3 — Editor, rendered only while a draft is open */}
+      {/* The editor, rendered only while a draft is open */}
       {editor !== null && (
         <Card ref={editorRef} className="gap-4 px-6 py-6 md:px-8 md:py-8">
           <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
@@ -804,7 +666,7 @@ function AdminView() {
             labelKey="admin.field.name"
             value={editor.fields.name}
             errorKey={errors.name}
-            disabled={saving}
+            disabled={flags.saving}
             onChange={(value) => editField('name', value)}
           />
 
@@ -831,7 +693,7 @@ function AdminView() {
               labelKey="admin.field.truthValue"
               value={editor.fields.truthValue}
               errorKey={errors.truthValue}
-              disabled={saving}
+              disabled={flags.saving}
               onChange={(value) => editField('truthValue', value)}
             />
             <NumberFieldRow
@@ -839,7 +701,7 @@ function AdminView() {
               labelKey="admin.field.startPrice"
               value={editor.fields.startPrice}
               errorKey={errors.startPrice}
-              disabled={saving}
+              disabled={flags.saving}
               onChange={(value) => editField('startPrice', value)}
             />
             <NumberFieldRow
@@ -847,7 +709,7 @@ function AdminView() {
               labelKey="admin.field.hintMin"
               value={editor.fields.hintMin}
               errorKey={errors.hintMin}
-              disabled={saving}
+              disabled={flags.saving}
               onChange={(value) => editField('hintMin', value)}
             />
             <NumberFieldRow
@@ -855,7 +717,7 @@ function AdminView() {
               labelKey="admin.field.hintMax"
               value={editor.fields.hintMax}
               errorKey={errors.hintMax}
-              disabled={saving}
+              disabled={flags.saving}
               onChange={(value) => editField('hintMax', value)}
             />
 
@@ -865,7 +727,7 @@ function AdminView() {
                 labelKey="admin.field.minIncrement"
                 value={editor.fields.minIncrement}
                 errorKey={errors.minIncrement}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('minIncrement', value)}
               />
             )}
@@ -875,7 +737,7 @@ function AdminView() {
                 labelKey="admin.field.durationMs"
                 value={editor.fields.durationMs}
                 errorKey={errors.durationMs}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('durationMs', value)}
               />
             )}
@@ -885,7 +747,7 @@ function AdminView() {
                 labelKey="admin.field.antiSnipeWindowMs"
                 value={editor.fields.antiSnipeWindowMs}
                 errorKey={errors.antiSnipeWindowMs}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('antiSnipeWindowMs', value)}
               />
             )}
@@ -895,7 +757,7 @@ function AdminView() {
                 labelKey="admin.field.maxExtensions"
                 value={editor.fields.maxExtensions}
                 errorKey={errors.maxExtensions}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('maxExtensions', value)}
               />
             )}
@@ -905,7 +767,7 @@ function AdminView() {
                 labelKey="admin.field.floorPrice"
                 value={editor.fields.floorPrice}
                 errorKey={errors.floorPrice}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('floorPrice', value)}
               />
             )}
@@ -915,18 +777,17 @@ function AdminView() {
                 labelKey="admin.field.decrementStep"
                 value={editor.fields.decrementStep}
                 errorKey={errors.decrementStep}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('decrementStep', value)}
               />
             )}
-            {visible
-              .decrementIntervalMs && (
+            {visible.decrementIntervalMs && (
               <NumberFieldRow
                 id={FIELD_IDS.decrementIntervalMs}
                 labelKey="admin.field.decrementIntervalMs"
                 value={editor.fields.decrementIntervalMs}
                 errorKey={errors.decrementIntervalMs}
-                disabled={saving}
+                disabled={flags.saving}
                 onChange={(value) => editField('decrementIntervalMs', value)}
               />
             )}
@@ -953,20 +814,284 @@ function AdminView() {
             <Button
               type="button"
               variant="outline"
-              disabled={saving}
+              disabled={flags.saving}
               onClick={() => {
                 setDraft(null)
-                setSavedAt(null)
+                mark.clearSaved()
               }}
             >
               {t('admin.discardEdits')}
             </Button>
-            <Button type="button" variant="outline" disabled={saving} onClick={save}>
-              {saving ? t('admin.saving') : t('admin.save')}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={flags.saving || !saveable}
+              onClick={save}
+            >
+              {flags.saving ? t('admin.saving') : t('admin.save')}
             </Button>
           </div>
         </Card>
       )}
+    </>
+  )
+}
+
+/** The Control tab (ADMN-02, ADMN-03, ADMN-07) — the presenter's live hand. */
+function ControlPanel({ view, online, send }: { view: ViewState; online: boolean; send(frame: AdminCommand): void }) {
+  const { t } = useLanguage()
+  const [armedForceEnd, setArmedForceEnd] = useState<Phase | null>(null)
+
+  const items = [...view.items].sort((a, b) => a.orderIndex - b.orderIndex)
+  const currentItem = view.item
+  const phase = view.phase
+  const firstPending = items.find((item) => item.status === 'pending') ?? null
+
+  // D-65's start target: the CURRENT item while it is on stage, otherwise the
+  // first pending one in order. No target means nothing to start — which is a
+  // caption, not a silent dead button.
+  const startId = phase === 'ITEM_INTRO' && currentItem !== null ? currentItem.id : firstPending?.id ?? null
+  // D-82a: the phase's own enablement AND an open socket. Every button in the
+  // row derives its `disabled` prop from this pair, so a lost socket can never
+  // leave a control that looks available.
+  const startEnabled =
+    online && (phase === 'LOBBY' || phase === 'ITEM_INTRO' || phase === 'FINALE') && startId !== null
+  const forceEndEnabled = online && phase === 'LIVE'
+  const nextEnabled = online && (phase === 'ITEM_INTRO' || phase === 'SETTLED')
+
+  // The armed strip is phase-derived: a force-end that moves the phase
+  // dismisses its own strip.
+  const forceEndArmed = armedForceEnd !== null && armedForceEnd === phase
+
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('admin.controlHeading')}
+      </h2>
+
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <p className="text-sm leading-[1.5] font-bold">{t('admin.phaseLabel')}</p>
+        <p className="text-base leading-[1.5]">{t(PHASE_KEYS[phase])}</p>
+        <span aria-hidden="true">·</span>
+        <p className="text-sm leading-[1.5] font-bold">{t('admin.currentItemLabel')}</p>
+        {currentItem === null ? (
+          <p className="text-base leading-[1.5]">{t('admin.noCurrentItem')}</p>
+        ) : (
+          <>
+            <p className="min-w-0 break-words text-base leading-[1.5]">{currentItem.name}</p>
+            <p className="text-sm leading-[1.5] font-bold">{statusName(currentItem.status, t)}</p>
+          </>
+        )}
+      </div>
+
+      {forceEndArmed ? (
+        <div className="flex flex-col gap-2 border-2 border-destructive bg-card px-2 py-2">
+          <p className="text-base leading-[1.5]">{t('admin.forceEndConfirm')}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="default"
+              className={CONFIRM_FILL}
+              disabled={!online}
+              onClick={() => {
+                setArmedForceEnd(null)
+                send({ type: 'admin.item.force_end' })
+              }}
+            >
+              {t('admin.forceEnd')}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setArmedForceEnd(null)}>
+              {t('admin.dontEnd')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {/* Fixed positions, never appearing or disappearing: the presenter's
+              hand learns one layout. Exactly one of these can carry the accent
+              and `Force end` never does — it is irreversible. */}
+          <Button
+            type="button"
+            variant={startEnabled ? 'default' : 'outline'}
+            disabled={!startEnabled}
+            onClick={() => {
+              if (startId !== null) send({ type: 'admin.item.start', id: startId })
+            }}
+          >
+            {t('admin.start')}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!forceEndEnabled}
+            onClick={() => setArmedForceEnd(phase)}
+          >
+            {t('admin.forceEnd')}
+          </Button>
+
+          <Button
+            type="button"
+            variant={nextEnabled && phase === 'SETTLED' ? 'default' : 'outline'}
+            disabled={!nextEnabled}
+            onClick={() => send({ type: 'admin.item.next' })}
+          >
+            {phase === 'ITEM_INTRO' ? t('admin.skipItem') : t('admin.next')}
+          </Button>
+        </div>
+      )}
+
+      {(phase === 'LOBBY' || phase === 'FINALE') && startId === null && (
+        <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.noPendingItem')}</p>
+      )}
+    </Card>
+  )
+}
+
+/** The Players tab (ADMN-05, D-80). */
+function PlayersPanel({ view }: { view: ViewState }) {
+  const { t, count } = useLanguage()
+
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+          {t('admin.playersHeading')}
+        </h2>
+        <p className="text-base leading-[1.5]">{count(view.players.length)}</p>
+      </div>
+
+      {view.players.length === 0 && (
+        <p className="text-base leading-[1.5]">{t('admin.playersEmpty')}</p>
+      )}
+    </Card>
+  )
+}
+
+function AdminView() {
+  const { t } = useLanguage()
+  const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [view, setView] = useState<ViewState>(() => initialViewState())
+  // The catalog generation: bumped once per admin snapshot, and only per
+  // snapshot — an EVENT keeps the same `items` array, so its reference is the
+  // marker that tells the two apart without a second decoder.
+  const [catalogSeq, setCatalogSeq] = useState(0)
+  const seqRef = useRef(0)
+  const lastItemsRef = useRef<ViewState['items'] | null>(null)
+  const [errorAt, setErrorAt] = useState<{ code: string; seq: number } | null>(null)
+  const [tab, setTab] = useState<AdminTab>(DEFAULT_TAB)
+
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [reorderAt, setReorderAt] = useState<number | null>(null)
+  const [budgetAt, setBudgetAt] = useState<number | null>(null)
+  const [urlAt, setUrlAt] = useState<number | null>(null)
+  const connectionRef = useRef<AdminConnection | null>(null)
+
+  // The socket is created INSIDE this effect and closed in its cleanup, so a
+  // StrictMode double-invoke cannot leave two admin connections behind.
+  useEffect(() => {
+    const connection = openAdminSocket({
+      onStatus: setStatus,
+      onView: (next) => {
+        setView(next)
+        if (next.items !== lastItemsRef.current) {
+          lastItemsRef.current = next.items
+          seqRef.current += 1
+          setCatalogSeq(seqRef.current)
+        }
+      },
+      onError: (error) => {
+        // A refusal is not a snapshot: the in-flight flags are released so the
+        // form is usable again, and the row renders the mapped copy.
+        setErrorAt({ code: error.code, seq: seqRef.current })
+        setSavedAt(null)
+        setReorderAt(null)
+        setBudgetAt(null)
+        setUrlAt(null)
+      },
+    })
+    connectionRef.current = connection
+
+    return () => {
+      connectionRef.current = null
+      connection.close()
+    }
+  }, [])
+
+  const online = mutationsEnabled(status)
+  // Every in-flight flag clears itself when the next snapshot lands.
+  const flags: FlightFlags = {
+    saving: savedAt !== null && catalogSeq <= savedAt,
+    saveLanded: savedAt !== null && catalogSeq > savedAt,
+    reordering: reorderAt !== null && catalogSeq <= reorderAt,
+    budgetSaving: budgetAt !== null && catalogSeq <= budgetAt,
+    urlChoosing: urlAt !== null && catalogSeq <= urlAt,
+  }
+  const mark: FlightMark = {
+    saved: () => setSavedAt(catalogSeq),
+    clearSaved: () => setSavedAt(null),
+    reordered: () => setReorderAt(catalogSeq),
+    budget: () => setBudgetAt(catalogSeq),
+    url: () => setUrlAt(catalogSeq),
+  }
+  const errorCode = errorAt !== null && catalogSeq <= errorAt.seq ? errorAt.code : null
+
+  function send(frame: AdminCommand) {
+    connectionRef.current?.send(frame)
+  }
+
+  return (
+    <main className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-12 md:px-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">{t('admin.h1')}</h1>
+
+          <LanguageControl />
+        </div>
+
+        {/* The four-state line is what stops a presenter from clicking a control
+            on a dead socket and seeing nothing happen. `superseded` is
+            unreachable for this role, but the shared shape keeps the state. */}
+        <div role="status" aria-live="polite" className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={`inline-block size-3 border-2 border-border ${STATUS_FILL[status]}`}
+          />
+          <p className="text-sm leading-[1.5] font-bold">{t(STATUS_COPY[status])}</p>
+        </div>
+
+        {/* Every mutating control on every tab is disabled while the socket is
+            down (D-82a); the note names the recovery rather than implying the
+            page still works. */}
+        {status === 'lost' && (
+          <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.offlineNote')}</p>
+        )}
+
+        {errorCode !== null && (
+          <p role="alert" className="border-2 border-destructive px-2 py-2 text-base leading-[1.5]">
+            {t(adminErrorKey(errorCode))}
+          </p>
+        )}
+
+        {/* The tab row scrolls with the page — the presenter spends the show on
+            Control, whose panel is short by construction. It is the shipped
+            segmented control (a `role="group"` of pressed buttons), not an ARIA
+            tablist: no second keyboard pattern enters the codebase. */}
+        <SegmentedChoice<AdminTab>
+          label={t('admin.tabsLabel')}
+          selected={tab}
+          segments={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))}
+          onSelect={setTab}
+        />
+      </div>
+
+      {/* Only the active panel is mounted: switching tabs unmounts the previous
+          one, which is what cancels an armed confirm (D-79) structurally. */}
+      {tab === 'setup' && (
+        <SetupPanel view={view} online={online} send={send} flags={flags} mark={mark} />
+      )}
+      {tab === 'control' && <ControlPanel view={view} online={online} send={send} />}
+      {tab === 'players' && <PlayersPanel view={view} />}
     </main>
   )
 }

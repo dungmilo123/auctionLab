@@ -10,13 +10,13 @@ import {
   type CopyKey,
 } from './i18n'
 
-// The approved copy table, transcribed by hand from 03-UI-SPEC.md §Copywriting
+// The approved copy table, transcribed by hand from 04-UI-SPEC.md §Copywriting
 // Contract (Phase 2's rows carried verbatim, Phase 3's 105 appended, Phase 4's
-// one QR accessible name added by 04-06) — NOT imported from the module — so a
-// reworded string fails here instead of shipping to a classroom. Typing it as a
-// full Record<CopyKey, …> means a new dictionary key is a compile error until
-// its copy is approved here too, which is the same guarantee the typed
-// dictionary gives on the other side.
+// 42 added and `admin.noKeyNote` deleted by 04-07) — NOT imported from the
+// module — so a reworded string fails here instead of shipping to a classroom.
+// Typing it as a full Record<CopyKey, …> means a new dictionary key is a
+// compile error until its copy is approved here too, which is the same
+// guarantee the typed dictionary gives on the other side.
 const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   h1: { en: 'Player', vi: 'Người chơi' },
   'cta.join': { en: 'Join', vi: 'Tham gia' },
@@ -145,10 +145,6 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
 
   // Phase 3 — admin
   'admin.h1': { en: 'Admin', vi: 'Quản trị' },
-  'admin.noKeyNote': {
-    en: 'No admin key yet — Phase 4 adds it. Anyone on this network can open this page.',
-    vi: 'Chưa có khoá quản trị — Phase 4 sẽ thêm. Ai trong mạng cũng mở được trang này.',
-  },
   'admin.controlHeading': { en: 'Control', vi: 'Điều khiển' },
   'admin.phaseLabel': { en: 'Phase', vi: 'Giai đoạn' },
   'admin.currentItemLabel': { en: 'Current item', vi: 'Item hiện tại' },
@@ -223,8 +219,88 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     vi: 'Gợi ý thấp nhất không được lớn hơn gợi ý cao nhất.',
   },
 
-  // Phase 4 — the shared QR component's accessible name (04-06)
+  // Phase 4 — admin tabs, Setup and Players (04-07)
+  'admin.tabsLabel': { en: 'Admin sections', vi: 'Mục quản trị' },
+  'admin.tab.setup': { en: 'Setup', vi: 'Thiết lập' },
+  'admin.playersHeading': { en: 'Players', vi: 'Người chơi' },
+  'admin.setupHeading': { en: 'Game setup', vi: 'Thiết lập ván' },
+  'admin.field.startingBudget': { en: 'Starting budget', vi: 'Ngân sách khởi điểm' },
+  'admin.saveBudget': { en: 'Save budget', vi: 'Lưu ngân sách' },
+  'admin.budgetNote': {
+    en: "Applies to new players and to a reset game — a budget already in play doesn't change.",
+    vi: 'Áp dụng cho người chơi mới và khi đặt lại ván — ngân sách đang chơi không đổi.',
+  },
+  'admin.qrHeading': { en: 'Join QR', vi: 'Mã QR vào phòng' },
+  'admin.qrNote': {
+    en: 'Scan with a phone camera to join.',
+    vi: 'Quét bằng camera điện thoại để vào phòng.',
+  },
+  'admin.qrNoUrl': {
+    en: 'No URL selected yet — pick one in Join URLs below.',
+    vi: 'Chưa chọn URL nào — chọn một trong Địa chỉ vào phòng bên dưới.',
+  },
+  'admin.joinUrlsHeading': { en: 'Join URLs', vi: 'Địa chỉ vào phòng' },
+  'admin.urlNote': {
+    en: 'The projector QR uses the URL selected here.',
+    vi: 'QR trên màn chiếu dùng URL được chọn ở đây.',
+  },
+  'admin.urlThisPage': { en: "This page's URL", vi: 'URL của trang này' },
+  'admin.urlSelected': { en: 'On the screen now', vi: 'Đang chiếu' },
+  'admin.playersEmpty': {
+    en: 'No players yet — share the join QR.',
+    vi: 'Chưa có người chơi — chia sẻ mã QR để vào phòng.',
+  },
+  'admin.playerBudget': { en: 'Budget', vi: 'Ngân sách' },
+  'admin.playerValue': { en: 'Total value', vi: 'Tổng giá trị' },
+  'admin.playerJoined': { en: 'Joined', vi: 'Vào lúc' },
+  'admin.playerLastSeen': { en: 'Last seen', vi: 'Thấy lúc' },
+  'admin.releaseSession': { en: 'Release session', vi: 'Giải phóng phiên' },
+  'admin.releaseConfirm': {
+    en: "Release {name}'s session? Their phone goes back to the join screen, and they can rejoin with the same nickname and budget.",
+    vi: 'Giải phóng phiên của {name}? Điện thoại của họ quay về màn hình vào phòng và có thể vào lại bằng đúng nickname và ngân sách cũ.',
+  },
+  'admin.keepSession': { en: 'Keep session', vi: 'Giữ phiên' },
+
+  // Phase 4 — the Control tab's reset, offline note and presenter card
+  'admin.resetHeading': { en: 'Reset', vi: 'Đặt lại' },
+  'admin.resetNote': {
+    en: 'A reset returns the game to the lobby and deletes every bid. Item setup is never deleted.',
+    vi: 'Đặt lại đưa ván về phòng chờ và xoá toàn bộ lượt đặt giá. Cấu hình item không bao giờ bị xoá.',
+  },
+  'admin.resetKeep': { en: 'Reset (keep players)', vi: 'Đặt lại (giữ người chơi)' },
+  'admin.resetClear': { en: 'Reset (clear players)', vi: 'Đặt lại (xoá người chơi)' },
+  'admin.resetKeepConfirm': {
+    en: 'Reset the game and keep the players? Every bid is deleted, budgets go back to the starting budget, and the game returns to the lobby. Item setup is kept.',
+    vi: 'Đặt lại ván và giữ người chơi? Toàn bộ lượt đặt giá bị xoá, ngân sách về mức khởi điểm, ván về phòng chờ. Cấu hình item được giữ nguyên.',
+  },
+  'admin.resetClearConfirm': {
+    en: 'Reset the game and remove every player? Every bid is deleted, item setup is kept, and each phone goes back to the join screen.',
+    vi: 'Đặt lại ván và xoá toàn bộ người chơi? Toàn bộ lượt đặt giá bị xoá, cấu hình item được giữ nguyên, mỗi điện thoại quay về màn hình vào phòng.',
+  },
+  'admin.resetConfirm': { en: 'Reset game', vi: 'Đặt lại ván' },
+  'admin.resetCancel': { en: 'Keep playing', vi: 'Tiếp tục chơi' },
+  'admin.offlineNote': {
+    en: "Controls are off while the connection is down — reload the page when it's back.",
+    vi: 'Điều khiển tạm tắt khi mất kết nối — tải lại trang khi kết nối trở lại.',
+  },
+  'admin.winnerBudgetLabel': { en: "Winner's budget now", vi: 'Ngân sách người thắng hiện tại' },
+
+  // Phase 4 — the projector (04-08 consumes these; screen.qrTitle is 04-06's)
+  'screen.brand': { en: 'AuctionLab', vi: 'AuctionLab' },
+  'screen.scanNote': { en: 'Scan the QR code to join', vi: 'Quét mã QR để tham gia' },
+  'screen.noJoinUrl': {
+    en: 'No join URL yet — set one in the admin setup.',
+    vi: 'Chưa có URL vào phòng — chọn trong phần thiết lập quản trị.',
+  },
   'screen.qrTitle': { en: 'Join QR code', vi: 'Mã QR vào phòng' },
+  'screen.starting': { en: 'Starting up…', vi: 'Đang khởi động…' },
+  'screen.bidFeedHeading': { en: 'Latest bids', vi: 'Đặt giá gần đây' },
+  'screen.sealedProgress': { en: '{submitted}/{total} submitted', vi: '{submitted}/{total} đã nộp' },
+  'screen.standingsHeading': { en: 'Standings', vi: 'Bảng xếp hạng' },
+
+  // Phase 4 — the player's finale body (04-08 replaces the placeholder)
+  'finale.podiumHeading': { en: 'Top 3', vi: 'Ba người dẫn đầu' },
+  'finale.yourRank': { en: 'Your rank: {rank} of {total}', vi: 'Hạng của bạn: {rank}/{total}' },
 }
 
 const KEYS = Object.keys(APPROVED) as CopyKey[]
@@ -241,6 +317,9 @@ const DOCUMENTED_VALUES: Record<keyof typeof LIVE_PARAM_KEYS, Record<string, str
   'admin.editLabel': { name: 'Đèn bàn' },
   'admin.deleteLabel': { name: 'Đèn bàn' },
   'admin.deleteConfirm': { name: 'Đèn bàn' },
+  'admin.releaseConfirm': { name: 'Đèn bàn' },
+  'screen.sealedProgress': { submitted: '3', total: '7' },
+  'finale.yourRank': { rank: '2', total: '12' },
 }
 
 describe('the approved copy table', () => {
