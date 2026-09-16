@@ -100,11 +100,12 @@ func writeGatePage(w http.ResponseWriter, wrong bool) {
 	_, _ = w.Write([]byte(gateDocument(wrong)))
 }
 
-// The gate page's five strings (UI-SPEC §Admin Gate Page). They are Go constants
-// rather than dictionary keys because this page cannot reach the SPA bundle —
-// the one sanctioned string set outside web/src/lib/i18n.ts. EN is the default
-// and comes first; each VI run is marked lang="vi" so a screen reader pronounces
-// it with the right voice.
+// The gate page's bilingual strings (UI-SPEC §Admin Gate Page): five constant
+// pairs rendering six strings — the document <title> reuses the h1's pair. They
+// are Go constants rather than dictionary keys because this page cannot reach
+// the SPA bundle — the one sanctioned string set outside web/src/lib/i18n.ts. EN
+// is the default and comes first; each VI run is marked lang="vi" so a screen
+// reader pronounces it with the right voice.
 const (
 	gateTitleEN  = "Admin"
 	gateTitleVI  = "Quản trị"
@@ -138,8 +139,13 @@ const gateDocumentHead = `<!doctype html>
 <title>` + gateTitleEN + ` · ` + gateTitleVI + `</title>
 <style>
 * { box-sizing: border-box; }
+/* §Typography's two declared line heights, applied to this document too: the
+   gate page is a row in the UI-SPEC's type table, and "Body 1.5 / heading 1.2
+   apply to every text node in it" (UI-review finding 5). Body-level 1.5 is
+   inherited by everything except the submit button, whose UA line-height would
+   otherwise win — so the button states it again at its own Label role. */
 body {
-  margin: 0; background: #FFFBF0; color: #111111;
+  margin: 0; background: #FFFBF0; color: #111111; line-height: 1.5;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 main { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
@@ -148,7 +154,7 @@ form {
   background: #F2E9D5; border: 2px solid #111111; border-radius: 0;
   box-shadow: 4px 4px 0 0 #111111; padding: 24px;
 }
-h1 { margin: 0; font-size: 32px; font-weight: 700; }
+h1 { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.2; }
 p { margin: 0; font-size: 14px; }
 .vi { color: #5C5344; }
 label { font-size: 14px; font-weight: 700; }
@@ -160,7 +166,7 @@ input[aria-invalid="true"] { border-color: #E5484D; }
 .error { border: 2px solid #E5484D; padding: 8px; font-size: 16px; color: #111111; }
 button {
   min-height: 44px; padding: 0 16px; border: 2px solid #111111; background: #FF6B00;
-  color: #111111; font-weight: 700; font-size: 14px; border-radius: 0;
+  color: #111111; font-weight: 700; font-size: 14px; line-height: 1.5; border-radius: 0;
   box-shadow: 4px 4px 0 0 #111111; font-family: inherit; cursor: pointer;
   transition: transform 80ms ease, box-shadow 80ms ease;
 }

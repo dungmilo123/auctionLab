@@ -52,7 +52,12 @@ export function SegmentedChoice<T extends string>({
           onClick={() => onSelect(segment.value)}
           className={cn(
             buttonVariants({ variant: 'outline' }),
-            'min-h-11 min-w-11 border-0 shadow-none',
+            // Call-site overrides for the primitive's own `shrink-0` and
+            // `whitespace-nowrap`, which `cn`'s merge resolves in this order:
+            // a long VI label wraps inside its segment instead of pushing the
+            // group past a 320px viewport (UI-review finding 3). `min-w-11`
+            // keeps every segment at the 44px hit target while it shrinks.
+            'min-h-11 min-w-11 shrink border-0 shadow-none whitespace-normal',
             selected === segment.value
               ? 'bg-background text-foreground'
               : 'bg-card text-muted-foreground',
