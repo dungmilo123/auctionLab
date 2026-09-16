@@ -551,7 +551,7 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 						}
 					} else {
 						me := asObject(t, doc["me"], "me")
-						assertKeySet(t, "me", me, "id", "nickname", "budget", "total_value", "connected", "is_top_bidder")
+						assertKeySet(t, "me", me, "id", "nickname", "budget", "total_value", "connected", "is_top_bidder", "rank")
 						if me["is_top_bidder"] != false {
 							t.Errorf("a never-bid late joiner shows is_top_bidder = %#v, want an explicit false", me["is_top_bidder"])
 						}
@@ -856,4 +856,274 @@ func TestProjectionsCarryJoinURLByRole(t *testing.T) {
 	if got := screenDoc["join_url"]; got != selected {
 		t.Errorf("screen join_url = %#v, want the selected %q: every projector renders the admin's choice", got, selected)
 	}
+}
+
+// screenFixture is populatedState() wired to one LIVE English run with an empty
+// bid trail: D-88's screen extras (the feed, the sealed counter) are then added
+// by the case that needs them, so each assertion below is about one rule.
+func screenFixture() *state {
+	s := populatedState()
+	it := s.items["it-1"]
+	it.minIncrement = 10_000
+	it.durationMS = 30_000
+	it.status = "live"
+	s.phase = PhaseLive
+	startedAt := testStart.UnixMilli()
+	s.currentAuction = &auctionRun{itemID: "it-1", startedAt: startedAt, deadlineAt: startedAt + 30_000}
+	// D-83's enumeration is a BOOT input the engine holds, not a state row, so a
+	// synthetic fixture has to carry it for join_url to mean anything.
+	s.joinURLCandidates = configCandidates
+	return s
+}
+
+// TestScreenLeak is D-88's contract on the marshaled wire (the file's rule: the
+// type boundary is the mechanism, the bytes are what a projector can read):
+// ScreenView keeps the 04-04 selected join URL, adds a NEWEST-FIRST feed capped
+// at five entries with the sixth-oldest bid evicted and equal timestamps left in
+// insertion order, reports the start price with no bidder when nobody has bid,
+// carries a count-only sealed counter for a sealed type (and an explicit null
+// otherwise), and — the half D-26 has owned since Phase 2 — still carries no
+// truth_value and no settle object before SETTLED, while the admin projection
+// keeps its positive control.
+func TestScreenLeak(t *testing.T) {
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+
+	// Six accepted bids on the one live run, the fourth sharing the third's
+	// timestamp: five must travel (newest first, the later insertion first among
+	// equals) and the 100 000 bid — the sixth oldest — must not.
+	startedAt := testStart.UnixMilli()
+	live := screenFixture()
+	live.bids = []bid{
+		{itemID: "it-1", playerID: "p-an", amount: 100_000, createdAt: startedAt + 1_000},
+		{itemID: "it-1", playerID: "p-binh", amount: 110_000, createdAt: startedAt + 2_000},
+		{itemID: "it-1", playerID: "p-an", amount: 120_000, createdAt: startedAt + 3_000},
+		{itemID: "it-1", playerID: "p-binh", amount: 130_000, createdAt: startedAt + 3_000},
+		{itemID: "it-1", playerID: "p-an", amount: 140_000, createdAt: startedAt + 4_000},
+		{itemID: "it-1", playerID: "p-binh", amount: 150_000, createdAt: startedAt + 5_000},
+	}
+	env.installState(live)
+
+	screen := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	assertNoSecrets(t, "screen", screen)
+
+	t.Run("the selected join URL still travels with the projector's snapshot", func(t *testing.T) {
+		if got := screen["join_url"]; got != configCandidates[0] {
+			t.Errorf("screen join_url = %#v, want the selected %q (D-84 retained)", got, configCandidates[0])
+		}
+	})
+
+	t.Run("the feed is the newest five bids, newest first", func(t *testing.T) {
+		bids := asArray(t, screen["recent_bids"], "recent_bids")
+		if len(bids) != 5 {
+			t.Fatalf("recent_bids has %d entries, want the five newest (D-88)", len(bids))
+		}
+		want := []float64{150_000, 140_000, 130_000, 120_000, 110_000}
+		wantTS := []float64{
+			float64(startedAt + 5_000), float64(startedAt + 4_000), float64(startedAt + 3_000),
+			float64(startedAt + 3_000), float64(startedAt + 2_000),
+		}
+		for i, entry := range bids {
+			row := asObject(t, entry, "recent_bids entry")
+			assertKeySet(t, "recent_bids entry", row, "nickname", "amount", "ts")
+			if row["amount"] != want[i] {
+				t.Errorf("recent_bids[%d].amount = %#v, want %v (newest first)", i, row["amount"], want[i])
+			}
+			if row["ts"] != wantTS[i] {
+				t.Errorf("recent_bids[%d].ts = %#v, want %v (equal timestamps keep insertion order)", i, row["ts"], wantTS[i])
+			}
+		}
+		// The eviction rule, stated as the absence it is: the sixth-oldest bid
+		// never reaches the projector.
+		for i, entry := range bids {
+			if asObject(t, entry, "recent_bids entry")["amount"] == float64(100_000) {
+				t.Errorf("recent_bids[%d] carries the sixth-oldest bid: the feed is capped at five", i)
+			}
+		}
+	})
+
+	t.Run("an empty trail shows the start price and no bidder", func(t *testing.T) {
+		quiet := screenFixture()
+		env.installState(quiet)
+		doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+		assertNoSecrets(t, "screen with no bids", doc)
+
+		if got := len(asArray(t, doc["recent_bids"], "recent_bids")); got != 0 {
+			t.Errorf("recent_bids carries %d entries before any bid, want an empty feed", got)
+		}
+		item := asObject(t, doc["item"], "item")
+		if item["current_price"] != float64(100_000) {
+			t.Errorf("current_price = %#v, want the start price 100000 before any bid", item["current_price"])
+		}
+		if _, hasBidder := item["top_bidder"]; hasBidder {
+			t.Errorf("item carries top_bidder before any bid: %#v", item)
+		}
+	})
+
+	t.Run("sealed_progress is a count-only object for a sealed type and null otherwise", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			typ    string
+			sealed bool
+		}{
+			{name: "sealed_first", typ: "sealed_first", sealed: true},
+			{name: "vickrey", typ: "vickrey", sealed: true},
+			{name: "english", typ: "english"},
+			{name: "dutch", typ: "dutch"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				fixture := screenFixture()
+				fixture.items["it-1"].auctionType = tc.typ
+				env.installState(fixture)
+				doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+				assertNoSecrets(t, "screen "+tc.typ, doc)
+
+				raw, present := doc["sealed_progress"]
+				if !present {
+					t.Fatalf("the screen snapshot has no sealed_progress key: the UI shell cannot tell 'not sealed' from a missing field (D-88)")
+				}
+				if !tc.sealed {
+					if raw != nil {
+						t.Fatalf("sealed_progress = %#v for a %s item, want an explicit null", raw, tc.typ)
+					}
+					return
+				}
+				progress := asObject(t, raw, "sealed_progress")
+				assertKeySet(t, "sealed_progress", progress, "submitted", "total")
+				if progress["submitted"] != float64(1) {
+					t.Errorf("sealed_progress.submitted = %#v, want the one sealed row on this item", progress["submitted"])
+				}
+				if progress["total"] != float64(2) {
+					t.Errorf("sealed_progress.total = %#v, want the player count 2", progress["total"])
+				}
+			})
+		}
+	})
+
+	t.Run("no truth_value and no settle before SETTLED, while the admin keeps its positive control", func(t *testing.T) {
+		for _, phase := range []Phase{PhaseItemIntro, PhaseLive} {
+			t.Run(string(phase), func(t *testing.T) {
+				env.installState(auctionFixture(phase))
+				screenPayload := env.engine.Snapshot(RoleScreen, "")
+				doc := decodeObject(t, screenPayload)
+				assertNoSecrets(t, "screen "+string(phase), doc)
+				walkKeysAt(doc, nil, func(path []string, key string) {
+					if key == "settle" {
+						t.Errorf("the screen carries a settle key at %v before SETTLED (D-67)", path)
+					}
+				})
+
+				raw, err := json.Marshal(screenPayload)
+				if err != nil {
+					t.Fatalf("marshaling the screen view: %v", err)
+				}
+				for _, forbidden := range []string{"truth_value", "350000"} {
+					if strings.Contains(string(raw), forbidden) {
+						t.Errorf("the %s screen payload carries %q: the boundary is the type, not the field\n%s", phase, forbidden, raw)
+					}
+				}
+
+				adminRaw, err := json.Marshal(env.engine.Snapshot(RoleAdmin, ""))
+				if err != nil {
+					t.Fatalf("marshaling the admin view: %v", err)
+				}
+				if !strings.Contains(string(adminRaw), `"truth_value":350000`) {
+					t.Errorf("the admin view lost its truth value at %s: the leak assertion above would be vacuous (D-26)", phase)
+				}
+			})
+		}
+	})
+}
+
+// rankFixture is six players whose keys walk ECON-05's whole sort chain, and
+// whose ids are deliberately NOT in join order: the three players sharing budget
+// AND total value AND joined_at can only be separated by the id rung, and a
+// sort that fell back on the insertion order would put them in the wrong order.
+func rankFixture() *state {
+	base := testStart.UnixMilli()
+	return &state{
+		phase:    PhaseFinale,
+		revision: 11,
+		config:   engineConfig{StartingBudget: 1_000_000, Currency: "VND"},
+		players: map[string]*player{
+			"p-d": {id: "p-d", nickname: "Dung", budget: 1_000_000, joinedAt: base + 4_000, lastSeenAt: base + 4_000},
+			"p-a": {id: "p-a", nickname: "An", budget: 900_000, totalValue: 500_000, joinedAt: base + 3_000, lastSeenAt: base + 3_000},
+			"p-b": {id: "p-b", nickname: "Bình", budget: 900_000, totalValue: 500_000, joinedAt: base + 7_000, lastSeenAt: base + 7_000},
+			"p-c": {id: "p-c", nickname: "Cường", budget: 900_000, totalValue: 400_000, joinedAt: base + 1_000, lastSeenAt: base + 1_000},
+			"p-e": {id: "p-e", nickname: "Giang", budget: 900_000, totalValue: 400_000, joinedAt: base + 1_000, lastSeenAt: base + 1_000},
+			"p-f": {id: "p-f", nickname: "Hạnh", budget: 900_000, totalValue: 400_000, joinedAt: base + 1_000, lastSeenAt: base + 1_000},
+		},
+		order:     []string{"p-f", "p-e", "p-c", "p-b", "p-a", "p-d"},
+		connected: map[string]bool{"p-a": true, "p-d": true},
+		items:     map[string]*item{},
+	}
+}
+
+// TestLeaderboardTieBreak is ECON-05's ordering contract, asserted on the wire
+// the projector and the player read: budget DESC, total_value DESC, joined_at
+// ASC and finally player id ASC — the last rung is what makes the order total,
+// so the podium a screen derives from the leaderboard can never depend on the
+// order the rows happened to arrive in. It also pins the personal half D-89
+// needs: `me.rank` is computed by the SERVER from that same order, so no client
+// has to match an identity against a public list.
+func TestLeaderboardTieBreak(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	env.installState(rankFixture())
+
+	screen := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	assertNoSecrets(t, "screen", screen)
+
+	wantOrder := []string{"Dung", "An", "Bình", "Cường", "Giang", "Hạnh"}
+	board := asArray(t, screen["leaderboard"], "leaderboard")
+	if len(board) != len(wantOrder) {
+		t.Fatalf("leaderboard has %d entries, want %d", len(board), len(wantOrder))
+	}
+	for i, entry := range board {
+		row := asObject(t, entry, "leaderboard entry")
+		if row["nickname"] != wantOrder[i] {
+			t.Errorf("leaderboard[%d] = %#v, want %q (budget → total_value → joined_at → id)", i, row["nickname"], wantOrder[i])
+		}
+		if row["rank"] != float64(i+1) {
+			t.Errorf("leaderboard[%d].rank = %#v, want %d", i, row["rank"], i+1)
+		}
+	}
+
+	// Every player is ranked by the server, and the rank agrees with the
+	// standing the projector shows.
+	for i, id := range []string{"p-d", "p-a", "p-b", "p-c", "p-e", "p-f"} {
+		doc := decodeObject(t, env.engine.Snapshot(RolePlayer, id))
+		assertNoSecrets(t, "player "+id, doc)
+		me := asObject(t, doc["me"], "me")
+		if me["rank"] != float64(i+1) {
+			t.Errorf("%s's me.rank = %#v, want %d (server-computed, ECON-05)", id, me["rank"], i+1)
+		}
+	}
+
+	// An identity the engine does not know carries the zero rank: the finale body
+	// omits the block instead of printing "rank 0" (D-89).
+	unknown := asObject(t, decodeObject(t, env.engine.Snapshot(RolePlayer, "p-nobody"))["me"], "me")
+	if unknown["rank"] != float64(0) {
+		t.Errorf("an unknown player's me.rank = %#v, want 0", unknown["rank"])
+	}
+
+	// A real join through the mutation path lands in the same standing: the rank
+	// is derived from committed state, never from a client's own bookkeeping.
+	t.Run("a real join's rank comes from the committed standing", func(t *testing.T) {
+		live := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, live, "An")
+		live.clock.t = testStart.Add(2 * time.Second)
+		binh := mustJoin(t, live, "Bình")
+
+		for _, tc := range []struct {
+			playerID string
+			want     float64
+		}{
+			{playerID: an.PlayerID, want: 1},
+			{playerID: binh.PlayerID, want: 2},
+		} {
+			me := asObject(t, decodeObject(t, live.engine.Snapshot(RolePlayer, tc.playerID))["me"], "me")
+			if me["rank"] != tc.want {
+				t.Errorf("%s's me.rank = %#v, want %v — equal budgets are separated by joined_at (ECON-05)", tc.playerID, me["rank"], tc.want)
+			}
+		}
+	})
 }
