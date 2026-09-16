@@ -634,4 +634,76 @@ func TestServerConfig(t *testing.T) {
 			t.Errorf("error = %v, want it to name the row that could not be written", err)
 		}
 	})
+
+	// D-75's browser story is "a correct ?k= sets the capability cookie, then the
+	// cookie is the capability". net/http DROPS the invalid bytes `"`, `;`, `\`,
+	// every control byte and every non-ASCII byte from a cookie value (and quotes
+	// a value with a space or comma), so a key carrying one sets a mutated cookie
+	// and the gate can never open again — silently, because the ?k= was correct.
+	// The boot must refuse such a key instead of printing a link that cannot work.
+	t.Run("an env pin the capability cookie cannot carry fails the boot", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		for _, pin := range []string{
+			"has;semicolon",
+			`has"quote`,
+			`has\backslash`,
+			"has,comma", // quoted by Set-Cookie; survival is browser-dependent
+			"has space", // the same, and outside the guaranteed byte set
+			"tab\tkey",
+			"khoá-non-ascii",
+			"newline\nkey",
+			strings.Repeat("x", adminKeyMaxLen+1),
+		} {
+			if _, err := st.ResolveAdminKey(func(string) string { return pin }, mintMustNotRun); err == nil {
+				t.Errorf("ResolveAdminKey served %q: its cookie value would be mutated or dropped, locking the presenter out", pin)
+			}
+		}
+	})
+
+	t.Run("a persisted row the capability cookie cannot carry fails the boot", func(t *testing.T) {
+		st, _ := newStore(t)
+		if err := st.SetServerConfig(adminKeyRow, "has;semicolon"); err != nil {
+			t.Fatalf("seeding the row: %v", err)
+		}
+
+		// The row outranks minting, so the failure has to name the row: the
+		// operator's fix is to delete it or pin a valid ADMIN_KEY.
+		_, err := st.ResolveAdminKey(noEnv, mintMustNotRun)
+		if err == nil {
+			t.Fatal("ResolveAdminKey served a persisted key whose cookie value net/http mutates")
+		}
+		if !strings.Contains(err.Error(), adminKeyRow) {
+			t.Errorf("error = %v, want it to name the %q row that has to go", err, adminKeyRow)
+		}
+	})
+
+	t.Run("a minted key the capability cookie cannot carry fails the boot", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		_, err := st.ResolveAdminKey(noEnv, func() (string, error) { return "minted;with-semicolon", nil })
+		if err == nil {
+			t.Fatal("ResolveAdminKey served a minted key whose cookie value net/http mutates")
+		}
+		if _, found, gerr := st.GetServerConfig(adminKeyRow); gerr != nil {
+			t.Fatalf("GetServerConfig: %v", gerr)
+		} else if found {
+			t.Error("a key the capability cookie cannot carry was persisted")
+		}
+	})
+
+	t.Run("a human-chosen pin inside the guaranteed byte set is served", func(t *testing.T) {
+		st, _ := newStore(t)
+
+		// The rule is transport, not strength: any printable-ASCII value without
+		// `"` `;` `\` `,` reaches the browser unchanged and must be served.
+		const pin = "venue-2026.secret~7"
+		key, err := st.ResolveAdminKey(func(string) string { return pin }, mintMustNotRun)
+		if err != nil {
+			t.Fatalf("ResolveAdminKey refused a cookie-safe pin: %v", err)
+		}
+		if key != pin {
+			t.Errorf("key = %q, want the pinned %q", key, pin)
+		}
+	})
 }

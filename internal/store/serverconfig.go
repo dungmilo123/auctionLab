@@ -58,6 +58,42 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value`
 	return nil
 }
 
+// adminKeyMaxLen bounds the capability's length. A browser silently drops a
+// cookie whose name+value exceeds its per-cookie budget (~4 KiB), which would
+// present as a gate page that never accepts the link the presenter is holding.
+const adminKeyMaxLen = 4096
+
+// validAdminKey reports whether a capability can survive a Set-Cookie round
+// trip byte for byte — the gate's whole browser story is "a correct ?k= sets the
+// capability cookie, then the cookie is the capability".
+//
+// net/http DROPS the bytes `"`, `;`, `\`, every control byte and every byte
+// outside ASCII (logging `invalid byte … in Cookie.Value; dropping invalid
+// bytes`), so Equal(cookie.Value, key) can never pass for a key carrying one:
+// `GET /admin?k=<key>` sets a mutated cookie, the 303 lands back on the gate
+// page, and the wrong-key 401 never fires because the ?k= itself was right — a
+// lockout with no diagnostic. It also QUOTES a value containing a space or a
+// comma; browsers unquote on storage, and whether the value survives that trip
+// is browser-dependent, so those two bytes are refused as well.
+//
+// The accepted set is therefore exactly the bytes guaranteed to be written
+// unquoted and parsed back identically: printable ASCII 0x21..0x7E except
+// `"`, `;`, `\` and `,`. It is a transport rule, not a strength rule — the
+// minted default (64 lowercase hex characters) and a human-chosen pin like
+// `venue-2026.secret` both pass.
+func validAdminKey(key string) bool {
+	if key == "" || len(key) > adminKeyMaxLen {
+		return false
+	}
+	for i := 0; i < len(key); i++ {
+		b := key[i]
+		if b <= 0x20 || b >= 0x7f || b == '"' || b == ';' || b == '\\' || b == ',' {
+			return false
+		}
+	}
+	return true
+}
+
 // ResolveAdminKey returns the admin capability this boot serves, in D-74's
 // precedence:
 //
@@ -74,11 +110,19 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value`
 // from the one on disk invalidates the link mid-show, which is the exact failure
 // this precedence exists to prevent.
 //
+// Each rung is checked with validAdminKey before it is served, for the same
+// reason: a key the capability cookie cannot carry is a boot that prints a link
+// which can never open the gate. Failing here is loud and fixable (pin another
+// key, or delete the row); serving it is a presenter locked out mid-show.
+//
 // getenv and mint are injected so the ladder is testable and so the entropy
 // source stays where the rest of the project's crypto/rand lives — the real boot
 // passes `os.Getenv` and `game.NewToken` (32 crypto/rand bytes, 64 hex chars).
 func (s *Store) ResolveAdminKey(getenv func(string) string, mint func() (string, error)) (string, error) {
 	if pin := strings.TrimSpace(getenv(adminKeyEnv)); pin != "" {
+		if !validAdminKey(pin) {
+			return "", fmt.Errorf("store: %s cannot be served: the capability cookie cannot carry this value (use 1..%d printable ASCII characters, none of them a double quote, semicolon, backslash or comma)", adminKeyEnv, adminKeyMaxLen)
+		}
 		return pin, nil
 	}
 
@@ -87,6 +131,9 @@ func (s *Store) ResolveAdminKey(getenv func(string) string, mint func() (string,
 		return "", err
 	}
 	if found && persisted != "" {
+		if !validAdminKey(persisted) {
+			return "", fmt.Errorf("store: the persisted admin key (server_config %q) cannot survive a capability-cookie round trip: delete the row or pin a valid %s", adminKeyRow, adminKeyEnv)
+		}
 		return persisted, nil
 	}
 
@@ -98,6 +145,11 @@ func (s *Store) ResolveAdminKey(getenv func(string) string, mint func() (string,
 		// An empty key would authorize an empty cookie (or empty ?k=) at the
 		// gate; refuse it here, where the cause is still visible.
 		return "", errors.New("store: the admin key minter returned an empty key")
+	}
+	if !validAdminKey(key) {
+		// The minted key is served to the browser ONLY, so a value the cookie
+		// cannot carry is never a capability at all.
+		return "", errors.New("store: the minted admin key cannot survive a capability-cookie round trip (printable ASCII, no double quote, semicolon, backslash or comma)")
 	}
 	if err := s.SetServerConfig(adminKeyRow, key); err != nil {
 		return "", err
