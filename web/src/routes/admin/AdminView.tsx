@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatTimeOfDay, formatVND } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
+import { isSealedAuction } from '@/lib/screen'
 import {
   openAdminSocket,
   type AdminCommand,
@@ -16,7 +17,7 @@ import {
   type ResetMode,
 } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
-import type { Phase } from '@/ws/protocol'
+import type { AdminSealedBid, Phase, SealedProgress } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
 import {
   FIELD_IDS,
@@ -919,6 +920,84 @@ function PresenterSettleCard({ card }: { card: PresenterSettle }) {
   )
 }
 
+/**
+ * The presenter's private sealed ledger (D-117, 06-UI-SPEC §Admin Route — the
+ * sealed-bids card). It renders the already-admin-only snapshot model and
+ * nothing else: `sealed_bids` scoped to the current item, plus the server's own
+ * `sealed_progress`. These amounts exist in exactly one client model — this
+ * role's — and never reach a player payload or the projector (D-118); nothing
+ * here may widen that boundary, and no other route may mirror this card.
+ *
+ * It is a READ-OUT: no control, no command, no in-flight state, no accent fill
+ * and no armed strip. The rows arrive in the server's order and the count is
+ * the server's own number — the browser filters, sorts and counts nothing
+ * (contract #1), so the presenter's number and the room's are the same number
+ * by construction and no "leader" marker can imply a ranking the settle would
+ * not produce.
+ */
+function SealedBidsCard({
+  bids,
+  progress,
+}: {
+  bids: readonly AdminSealedBid[]
+  progress: SealedProgress | null
+}) {
+  const { t } = useLanguage()
+
+  return (
+    <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
+      <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+        {t('admin.sealedBidsHeading')}
+      </h2>
+      {/* The privilege and its boundary, in one sentence. */}
+      <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.sealedBidsNote')}</p>
+
+      {/* The server's own count, never `bids.length`. A projection that carries
+          no counter renders no line rather than a fabricated one (the same rule
+          the player body follows). */}
+      {progress !== null && (
+        <p className="text-base leading-[1.5]">
+          {fill(t('screen.sealedProgress'), {
+            submitted: String(progress.submitted),
+            total: String(progress.total),
+          })}
+        </p>
+      )}
+
+      {/* Zero rows renders nothing: the count line above reads `0/{total}
+          submitted`, which is the whole story — the carried lobby rule, no
+          "no data" copy. One wrapping row layout serves every count, and the
+          page scrolls rather than the list. */}
+      <ul className="flex flex-col">
+        {bids.map((bid) => (
+          <li
+            key={bid.playerId}
+            className="flex min-h-11 flex-wrap items-center gap-2 border-t-2 border-t-border px-2 py-1 first:border-t-0"
+          >
+            {/* The name keeps a 10rem floor, so a crowded line breaks BELOW it:
+                the row drops the trailing values to the next line instead of
+                squeezing a 20-rune nickname to a sliver. */}
+            <span className="min-w-40 flex-1 break-words text-base leading-[1.5]">
+              {bid.nickname}
+            </span>
+            <span className="text-sm leading-[1.5] font-bold">{t('admin.sealedBidAmount')}</span>
+            <span className="text-base leading-[1.5]">{formatVND(bid.amount)}</span>
+            {/* `updated_at` is the one time fact on this card: a submit and an
+                edit commit the same mutation, but only an edit moves it — so it
+                is the only column that can show a player changing their mind.
+                The tie-break's `submitted_at` is deliberately not rendered
+                (VID-04 is v2). */}
+            <span className="text-sm leading-[1.5] font-bold">{t('admin.sealedBidTime')}</span>
+            <span className="font-mono text-sm leading-[1.5] text-muted-foreground">
+              {formatTimeOfDay(bid.updatedAt)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  )
+}
+
 /** The Control tab (ADMN-02, ADMN-03, ADMN-07) — the presenter's live hand. */
 function ControlPanel({
   view,
@@ -960,6 +1039,15 @@ function ControlPanel({
   const resetArmed = armedReset !== null && armedReset.phase === phase ? armedReset.mode : null
   // D-81's read-out, from the snapshot only.
   const settle = presenterSettle(phase, currentItem, view.players)
+  // D-117's gate: a pure fact about the snapshot — the current item is sealed and
+  // the room is inside its run (LIVE) or looking at its result (SETTLED). The
+  // card appears when a sealed run opens and disappears when the room leaves the
+  // item or the game leaves the run. It is never gated on the socket: a dropped
+  // connection leaves the ledger standing, like the item list.
+  const sealedLedger =
+    currentItem !== null &&
+    isSealedAuction(currentItem.auctionType) &&
+    (phase === 'LIVE' || phase === 'SETTLED')
 
   return (
     <>
@@ -1049,7 +1137,14 @@ function ControlPanel({
           reset card, and never anywhere else. */}
       {settle !== null && <PresenterSettleCard card={settle} />}
 
-      {/* Card 3 — Reset (ADMN-03, D-78/D-79). Both buttons are outline and
+      {/* The presenter's private sealed ledger (D-117): the current item's
+          effective bids while its run is on the board — LIVE and SETTLED — and
+          nowhere else on any route. Its amounts are the one thing the room can
+          never see, and the card is a read-out: no control, no command, no
+          in-flight state, no accent. */}
+      {sealedLedger && <SealedBidsCard bids={view.sealedBids} progress={view.sealedProgress} />}
+
+      {/* Card 4 — Reset (ADMN-03, D-78/D-79). Both buttons are outline and
           neither is ever accent: an irreversible control must not be the most
           inviting thing on the page. They are gated by the socket alone and
           never by phase — a `keep_players` reset in a fresh lobby is a
