@@ -100,10 +100,10 @@ func (s *state) runWinner() (bid, bool) {
 // mutation that records the acceptance and settles the item at the price the
 // server derives for this instant.
 //
-// The ORDER is the contract (D-96): an unknown player is a programmer error, a
-// closed window is window_closed, and the price above the budget is
-// exceeds_budget — the ladder that D-97 extends with the race loser's
-// already_sold arm in this plan's second task.
+// The ORDER is the contract (D-96/D-97): an unknown player is a programmer
+// error, a run sold by ANOTHER acceptance is already_sold, every other closed
+// window is window_closed, and a price above the budget is exceeds_budget —
+// the same "the order is the contract" discipline the D-52 ladder keeps.
 //
 // A refusal is NOT a mutation: it calls emit once, inside this same critical
 // section (the PlaceBid precedent), and returns a *BidRejectedError — nothing
