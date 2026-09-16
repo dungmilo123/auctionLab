@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/netip"
 	"sort"
+	"strings"
 )
 
 // Interface is ONE system interface plus the addresses configured on it.
@@ -25,9 +26,10 @@ import (
 // returns this machine's 127.0.0.1/8 whatever the test intended. D-83 requires
 // a fake IP table, so the seam carries the table.
 type Interface struct {
-	// Name is informational only. D-83 deliberately has NO interface-name
-	// deny-list: a Docker bridge is a legitimate candidate if the machine has
-	// no other private address.
+	// Name is the interface's kernel name, and it decides candidacy along with
+	// the flags: a container runtime's bridge or veth pair is skipped by name
+	// (D-83's dated addendum, 2026-09-16 — see isContainerInterface). Any other
+	// name is treated as an ordinary interface.
 	Name string
 	// Flags decide candidacy: net.FlagUp and net.FlagLoopback only (D-83).
 	Flags net.Flags
@@ -64,14 +66,20 @@ func System() ([]Interface, error) {
 }
 
 // Enumerate answers D-83's candidate list: one `http://<ip>:<port>/` URL per
-// private IPv4 address on an UP, non-loopback interface, ranked 192.168/16,
-// then 10/8, then 172.16/12, and ordered by address inside one class.
+// private IPv4 address on an UP, non-loopback, non-container interface, ranked
+// 192.168/16, then 10/8, then 172.16/12, and ordered by address inside one
+// class.
 //
 // The secondary sort key is not decoration: the OS decides the order
 // net.Interfaces() reports, D-84's default selection is "the first candidate",
-// and without a total order that default would flicker between boots. Docker
-// bridges are deliberately retained — D-83's locked filter is the address rule,
-// and a bridge address is a real address the machine answers on.
+// and without a total order that default would flicker between boots.
+//
+// Container interfaces are excluded by NAME (see isContainerInterface), which is
+// the one addition to D-83 since it was written: a bridge address is a real
+// address the machine answers on, but it is never an address a phone in the room
+// can reach, and on a Docker host it filled 6 of the presenter's 7 candidate
+// rows (UI-review finding 6). The exclusion is name-based, never IP-range-based:
+// an ordinary interface holding a private 172.17.x address stays eligible.
 func Enumerate(src InterfaceSource, port int) ([]string, error) {
 	ifaces, err := src()
 	if err != nil {
@@ -82,6 +90,9 @@ func Enumerate(src InterfaceSource, port int) ([]string, error) {
 	for _, ifi := range ifaces {
 		if ifi.Flags&net.FlagUp == 0 || ifi.Flags&net.FlagLoopback != 0 {
 			continue // D-83: down and loopback interfaces are never offered
+		}
+		if isContainerInterface(ifi.Name) {
+			continue // D-83 addendum: container bridges and veth pairs are never offered
 		}
 		for _, a := range ifi.Addrs {
 			ipnet, ok := a.(*net.IPNet)
@@ -116,6 +127,32 @@ func Enumerate(src InterfaceSource, port int) ([]string, error) {
 		urls = append(urls, fmt.Sprintf("http://%s:%d/", addr, port))
 	}
 	return urls, nil
+}
+
+// isContainerInterface reports whether an interface name belongs to a container
+// runtime's private namespace. Six families, and only these six:
+//
+//   - docker0        Docker's default bridge
+//   - br-*           Docker's user-defined bridges
+//   - veth*          the host end of a container's veth pair
+//   - virbr*         the libvirt bridge
+//   - podman*        the Podman bridge
+//   - cni*           the Kubernetes/CNI bridge
+//
+// The predicate is deliberately narrow: it is a name test, not an address test,
+// so an ordinary interface that happens to hold 172.17.0.42 (a network that
+// really uses that block) is still a candidate. Anything unrecognized keeps the
+// D-83 behaviour of being offered to the presenter.
+func isContainerInterface(name string) bool {
+	if name == "docker0" {
+		return true
+	}
+	for _, prefix := range []string{"br-", "veth", "virbr", "podman", "cni"} {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // rank is D-83's preference: a 192.168/16 address is offered first, then 10/8,
