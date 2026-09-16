@@ -33,6 +33,10 @@ function publicItem(overrides: Partial<PublicItem> = {}): PublicItem {
     deadlineAt: TS + 30_000,
     minNextBid: 130_000,
     extensionsUsed: 0,
+    startedAt: null,
+    floorPrice: null,
+    decrementStep: null,
+    decrementIntervalMs: null,
     settle: null,
     ...overrides,
   }
@@ -91,6 +95,7 @@ function tick(overrides: Partial<PriceTick> = {}): ViewFrame {
       minNextBid: 140_000,
       deadlineAt: TS + 30_000,
       remainingMs: 29_750,
+      startedAt: null,
       ...overrides,
     },
   }
@@ -275,6 +280,8 @@ describe('the LIVE overlay (D-60/D-67)', () => {
       deadlineAt: TS + 30_000,
       topBidder: 'An',
       serverTs: TS + 250,
+      // An English run's anchor is the deadline pair; no Dutch clock rides along.
+      startedAt: null,
     })
   })
 
@@ -319,6 +326,107 @@ describe('the LIVE overlay (D-60/D-67)', () => {
       snapshot: playerSnapshot({ phase: 'ITEM_INTRO', item: publicItem({ status: 'intro', currentPrice: null, minNextBid: null, deadlineAt: null, topBidder: null }) }),
     })
     expect(reduceView(intro, accepted())).toBeNull()
+  })
+})
+
+describe('the Dutch live overlay (D-94)', () => {
+  const DUTCH_STARTED_AT = TS - 4_000
+
+  /** The Dutch LIVE item the decoder admits: a price, its clock, no ladder. */
+  function dutchItem(overrides: Partial<PublicItem> = {}): PublicItem {
+    return publicItem({
+      auctionType: 'dutch',
+      currentPrice: 280_000,
+      minNextBid: null,
+      deadlineAt: null,
+      topBidder: null,
+      startedAt: DUTCH_STARTED_AT,
+      floorPrice: 100_000,
+      decrementStep: 20_000,
+      decrementIntervalMs: 1_000,
+      ...overrides,
+    })
+  }
+
+  /** The view after one Dutch snapshot. */
+  function dutch(overrides: Partial<PublicItem> = {}) {
+    return applied(initialViewState(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({ item: dutchItem(overrides) }),
+    })
+  }
+
+  /** The server's Dutch beat: the derived price plus the clock it derived from. */
+  function dutchTick(overrides: Partial<PriceTick> = {}): ViewFrame {
+    return {
+      kind: 'price.tick',
+      ts: TS + 250,
+      tick: {
+        itemId: 'i1',
+        currentPrice: 270_000,
+        minNextBid: 0,
+        deadlineAt: null,
+        remainingMs: null,
+        startedAt: DUTCH_STARTED_AT,
+        ...overrides,
+      },
+    }
+  }
+
+  it('seeds a Dutch overlay from the snapshot alone — the price AND its anchor', () => {
+    // A reload mid-Dutch paints the falling price from the snapshot alone
+    // (D-63): the item's own clock plus the snapshot's server instant are the
+    // whole anchor, and the ladder minimum a Dutch run never has reads as 0
+    // (the wire's own "no ladder" value — nothing on this body reads it).
+    expect(dutch().live).toEqual({
+      itemId: 'i1',
+      currentPrice: 280_000,
+      minNextBid: 0,
+      deadlineAt: null,
+      topBidder: null,
+      serverTs: TS,
+      startedAt: DUTCH_STARTED_AT,
+    })
+  })
+
+  it('re-anchors on a Dutch tick and never invents a ladder minimum', () => {
+    const state = applied(dutch(), dutchTick())
+    expect(state.live?.currentPrice).toBe(270_000)
+    expect(state.live?.minNextBid).toBe(0)
+    expect(state.live?.startedAt).toBe(DUTCH_STARTED_AT)
+    expect(state.live?.serverTs).toBe(TS + 250)
+  })
+
+  it('keeps the anchor it holds when a tick omits started_at — the price never blanks', () => {
+    // The carried rule for a frame with no timing in it (05-UI-SPEC §partial):
+    // the body carries on interpolating from the anchor it already has.
+    const carried = applied(
+      dutch(),
+      dutchTick({ currentPrice: 260_000, startedAt: null }),
+    )
+    expect(carried.live?.startedAt).toBe(DUTCH_STARTED_AT)
+    expect(carried.live?.currentPrice).toBe(260_000)
+  })
+
+  it('admits no Dutch overlay without a price, and none without an anchor', () => {
+    expect(dutch({ currentPrice: null }).live).toBeNull()
+    expect(dutch({ startedAt: null }).live).toBeNull()
+  })
+
+  it('discards the Dutch overlay the moment the phase leaves LIVE', () => {
+    const settled = applied(dutch(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({
+        phase: 'SETTLED',
+        item: dutchItem({
+          status: 'settled',
+          currentPrice: 230_000,
+          settle: { outcome: 'sold', winner: 'An', price: 230_000, truthValue: 400_000, budgetDelta: 170_000 },
+        }),
+      }),
+    })
+    expect(settled.live).toBeNull()
+    expect(settled.item?.settle?.price).toBe(230_000)
   })
 })
 

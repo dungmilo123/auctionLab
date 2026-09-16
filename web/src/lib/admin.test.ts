@@ -226,6 +226,10 @@ function settledItem(overrides: Partial<PublicItem> = {}): PublicItem {
     deadlineAt: null,
     minNextBid: null,
     extensionsUsed: 0,
+    startedAt: null,
+    floorPrice: null,
+    decrementStep: null,
+    decrementIntervalMs: null,
     settle: { outcome: 'sold', winner: 'An', price: 300_000, truthValue: 350_000, budgetDelta: 50_000 },
     ...overrides,
   }

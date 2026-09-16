@@ -287,6 +287,23 @@ const UNSOLD_ITEM = {
   settle: { outcome: 'unsold', winner: null, price: 0, truth_value: 75_000, budget_delta: 0 },
 }
 
+// Phase 5 (D-92/D-94): the Dutch LIVE item, hand-copied from
+// internal/game/project.go's PublicItem — the five numbers its clock needs and
+// `min_next_bid`/`deadline_at` absent entirely (a Dutch run has no ladder and no
+// deadline; an absent key is how the client tells that, D-98).
+const LIVE_DUTCH_ITEM = {
+  id: 'i4',
+  name: 'Đồng hồ',
+  auction_type: 'dutch',
+  start_price: 300_000,
+  status: 'live',
+  current_price: 280_000,
+  started_at: SERVER_TS - 4_000,
+  floor_price: 100_000,
+  decrement_step: 20_000,
+  decrement_interval_ms: 1_000,
+}
+
 /** A LIVE snapshot around one item, with the me/lobby the invariant needs. */
 function liveSnapshot(item: unknown = LIVE_ITEM): Record<string, unknown> {
   return {
@@ -321,6 +338,12 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
       deadlineAt: SERVER_TS + 30_000,
       minNextBid: 130_000,
       extensionsUsed: 0,
+      // Phase 5's Dutch clock is absent on an English item — the keys are
+      // decoded as null, never invented (D-94).
+      startedAt: null,
+      floorPrice: null,
+      decrementStep: null,
+      decrementIntervalMs: null,
       settle: null,
     })
   })
@@ -422,23 +445,69 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
   })
 
   it('decodes a non-English LIVE item for its pending-type body (H13)', () => {
-    // A dutch item that somehow reaches LIVE: the server still projects the
-    // price fields it has, and the client must render `live.typePending`
-    // rather than reject the whole snapshot and freeze the screen.
-    const dutch = {
-      id: 'i3',
-      name: 'Đồng hồ',
-      auction_type: 'dutch',
+    // H13's leniency is retained for the two SEALED types: their LIVE body
+    // renders `live.typePending`, so a projection carrying fewer fields must
+    // still apply rather than freeze the screen. Dutch is no longer lenient —
+    // its body derives a price from the clock below, so the Dutch arm has its
+    // own totality rule (D-94).
+    const sealed = {
+      id: 'i5',
+      name: 'Tranh kín',
+      auction_type: 'sealed_first',
       start_price: 300_000,
       status: 'live',
       current_price: 300_000,
-      min_next_bid: 300_000,
     }
-    expect(readPlayerSnapshot({ ...liveSnapshot(dutch), item: dutch })?.item?.auctionType).toBe(
-      'dutch',
+    expect(readPlayerSnapshot({ ...liveSnapshot(sealed), item: sealed })?.item?.auctionType).toBe(
+      'sealed_first',
     )
-    // No deadline on the wire at all: still decodable.
-    expect(readPlayerSnapshot({ ...liveSnapshot(dutch), item: { ...dutch, deadline_at: null } })).not.toBeNull()
+    expect(
+      readPlayerSnapshot({ ...liveSnapshot({ ...sealed, deadline_at: null }), item: { ...sealed, deadline_at: null } }),
+    ).not.toBeNull()
+  })
+
+  const MISSING_CLOCK_FIELDS: Array<[label: string, field: string]> = [
+    ['a Dutch LIVE item without a current price', 'current_price'],
+    ['a Dutch LIVE item without a floor price', 'floor_price'],
+    ['a Dutch LIVE item without a decrement step', 'decrement_step'],
+    ['a Dutch LIVE item without a decrement interval', 'decrement_interval_ms'],
+    ['a Dutch LIVE item without its clock anchor', 'started_at'],
+  ]
+
+  it.each(MISSING_CLOCK_FIELDS)('refuses %s', (_label, field) => {
+    const partial = { ...LIVE_DUTCH_ITEM } as Record<string, unknown>
+    delete partial[field]
+    expect(readPlayerSnapshot({ ...liveSnapshot(partial), item: partial })).toBeNull()
+  })
+
+  it('refuses a Dutch LIVE item that carries a deadline it cannot have (D-93)', () => {
+    const withDeadline = { ...LIVE_DUTCH_ITEM, deadline_at: SERVER_TS + 30_000 }
+    expect(readPlayerSnapshot({ ...liveSnapshot(withDeadline), item: withDeadline })).toBeNull()
+  })
+
+  it('admits the complete Dutch LIVE item, clock and mechanics decoded (D-94)', () => {
+    expect(readPlayerSnapshot(liveSnapshot(LIVE_DUTCH_ITEM))?.item).toEqual({
+      id: 'i4',
+      name: 'Đồng hồ',
+      description: '',
+      auctionType: 'dutch',
+      hintMin: null,
+      hintMax: null,
+      startPrice: 300_000,
+      status: 'live',
+      currentPrice: 280_000,
+      // A Dutch item advertises no ladder and no deadline at all (D-98): the
+      // keys are absent on the wire, so both read as null.
+      topBidder: null,
+      deadlineAt: null,
+      minNextBid: null,
+      extensionsUsed: null,
+      startedAt: SERVER_TS - 4_000,
+      floorPrice: 100_000,
+      decrementStep: 20_000,
+      decrementIntervalMs: 1_000,
+      settle: null,
+    })
   })
 
   const violations: Array<[label: string, phase: string, item: unknown]> = [
@@ -506,6 +575,8 @@ describe('readPriceTick (D-56)', () => {
       minNextBid: 130_000,
       deadlineAt: SERVER_TS + 30_000,
       remainingMs: 29_750,
+      // An English beat has no Dutch anchor; the key is absent on the wire.
+      startedAt: null,
     })
   })
 
@@ -513,6 +584,33 @@ describe('readPriceTick (D-56)', () => {
     const tick = readPriceTick({ item_id: 'i1', current_price: 300_000, min_next_bid: 300_000 })
     expect(tick?.deadlineAt).toBeNull()
     expect(tick?.remainingMs).toBeNull()
+    expect(tick?.startedAt).toBeNull()
+  })
+
+  it('carries the Dutch anchor a falling price re-anchors on (D-94)', () => {
+    // The server's Dutch beat: current_price derived at the beat, started_at
+    // for the re-anchor, no deadline and no remaining (D-91/D-93/D-94). The
+    // ladder minimum rides along as its zero value because the frozen Phase-3
+    // field has no `omitempty` — a Dutch body never reads it.
+    const tick = readPriceTick({
+      item_id: 'i4',
+      current_price: 280_000,
+      min_next_bid: 0,
+      started_at: SERVER_TS - 4_000,
+    })
+    expect(tick).toEqual({
+      itemId: 'i4',
+      currentPrice: 280_000,
+      minNextBid: 0,
+      deadlineAt: null,
+      remainingMs: null,
+      startedAt: SERVER_TS - 4_000,
+    })
+  })
+
+  it('reads a tick whose started_at is present but malformed as "no anchor"', () => {
+    const tick = readPriceTick({ item_id: 'i4', current_price: 1, min_next_bid: 0, started_at: 'soon' })
+    expect(tick?.startedAt).toBeNull()
   })
 
   const malformed: Array<[label: string, input: unknown]> = [
@@ -588,6 +686,10 @@ describe('readPhaseChanged (D-57)', () => {
         deadlineAt: SERVER_TS + 30_000,
         minNextBid: 130_000,
         extensionsUsed: 0,
+        startedAt: null,
+        floorPrice: null,
+        decrementStep: null,
+        decrementIntervalMs: null,
         settle: null,
       },
     })

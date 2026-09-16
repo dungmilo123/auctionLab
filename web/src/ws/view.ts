@@ -55,6 +55,12 @@ export type LiveOverlay = {
   topBidder: string | null
   /** the server clock this overlay was last anchored to (D-60) */
   serverTs: number
+  /**
+   * Phase 5 (D-94): the Dutch price clock's anchor, carried from the item's own
+   * live field and re-anchored by every frame that repeats it. null for an
+   * English run, whose anchor is `deadlineAt`/`serverTs` instead.
+   */
+  startedAt: number | null
 }
 
 /** Everything one route renders, reduced from snapshots and events. */
@@ -162,6 +168,10 @@ function overlayFrom(item: PublicItem | null, serverTs: number): LiveOverlay | n
     deadlineAt: item.deadlineAt,
     topBidder: item.topBidder,
     serverTs,
+    // RED (05-03): the Dutch anchor is declared but not carried, so no Dutch
+    // frame can be admitted yet — the gate below still requires a ladder
+    // minimum a Dutch run never has.
+    startedAt: null,
   }
 }
 

@@ -172,6 +172,17 @@ export type PublicItem = {
   deadlineAt: number | null
   minNextBid: number | null
   extensionsUsed: number | null
+  /**
+   * Phase 5 (D-94, additive): the Dutch price clock — the instant the server's
+   * clock started plus the three mechanics a client re-derives the falling
+   * number from. They are emitted ONLY for a `dutch` item, so an English item's
+   * key set is byte-identical to Phase 4's; a Dutch item has no `min_next_bid`
+   * and no `deadline_at` at all (D-93/D-98).
+   */
+  startedAt: number | null
+  floorPrice: number | null
+  decrementStep: number | null
+  decrementIntervalMs: number | null
   /** present ONLY at SETTLED — the leak boundary is the object itself (D-67/D-68) */
   settle: SettleInfo | null
 }
@@ -403,6 +414,13 @@ export function readPublicItem(value: unknown): PublicItem | null {
     deadlineAt: readInt(value.deadline_at),
     minNextBid: readInt(value.min_next_bid),
     extensionsUsed: readInt(value.extensions_used),
+    // RED (05-03): the four Dutch fields are declared but not decoded, so a
+    // complete Dutch LIVE payload loses its clock and the LIVE arm's Dutch
+    // totality rule cannot admit it yet.
+    startedAt: null,
+    floorPrice: null,
+    decrementStep: null,
+    decrementIntervalMs: null,
     settle: readSettle(value.settle),
   }
 }
@@ -497,6 +515,13 @@ export type PriceTick = {
   minNextBid: number
   deadlineAt: number | null
   remainingMs: number | null
+  /**
+   * Phase 5 (D-94, additive): the Dutch clock's anchor. A Dutch beat carries it
+   * so every tick re-anchors the falling price; an English beat has no such key
+   * (the deadline pair is its anchor), and a tick that omits it must NOT clear
+   * the anchor the body already holds (05-UI-SPEC §partial).
+   */
+  startedAt: number | null
 }
 
 /** The D-54 broadcast. */
@@ -607,6 +632,8 @@ export function readPriceTick(data: unknown): PriceTick | null {
     minNextBid,
     deadlineAt: readInt(data.deadline_at),
     remainingMs: readInt(data.remaining_ms),
+    // RED (05-03): declared, not decoded — the optional Dutch anchor.
+    startedAt: null,
   }
 }
 
