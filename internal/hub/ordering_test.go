@@ -430,7 +430,7 @@ func TestAuctionEventStreamStaysOrdered(t *testing.T) {
 	stream := startReader(screen)
 
 	admin := dialWS(t, h)
-	join(t, admin, `{"type":"join","role":"admin"}`)
+	join(t, admin, adminJoinJSON)
 
 	player := dialWS(t, h)
 	hello, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`)

@@ -33,6 +33,27 @@ import (
 // to fail the case instead of hanging the package.
 const testIOTimeout = 3 * time.Second
 
+// testAdminKey is ADMN-04's capability for this package's tests. The hub is
+// built with it, and every admin handshake below carries it through one of
+// D-76's two channels — the join.key field a script/probe uses
+// (TestAdminJoinAuthorization) or the `auction_admin` cookie a browser sends on
+// the upgrade request (dialWSWithCookie).
+//
+// The literal is the production SHAPE (64 hex characters, D-74) but no real key:
+// a fixture that could accidentally match a live server's capability would be a
+// leak, not a test.
+const testAdminKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+// adminKeyField is D-76's script/probe credential as a JSON fragment, so the
+// admin frames in this package cannot drift apart in spelling.
+const adminKeyField = `,"key":"` + testAdminKey + `"`
+
+// adminJoinJSON is the complete admin handshake frame: since ADMN-04 the admin
+// role is authorized, and every existing admin fixture carries the test key
+// through the channel the browser never needs (D-76 keeps the browser on the
+// cookie, so production JS never has to read the capability).
+const adminJoinJSON = `{"type":"join","role":"admin"` + adminKeyField + `}`
+
 // testPolicy is D-40's shape with values small enough to observe: a 4-deep FIFO
 // (so a stalled client overflows deterministically) and liveness timings short
 // enough that a pong window is not a test's runtime. The mechanism is what is
@@ -152,8 +173,34 @@ func newTestServer(t *testing.T, h *Hub) *httptest.Server {
 func dialURL(t *testing.T, srv *httptest.Server) *websocket.Conn {
 	t.Helper()
 
+	return dialURLWithHeader(t, srv, nil)
+}
+
+// testAdminCookie is D-75's capability cookie as it reaches this package: the
+// name is a wire contract shared with internal/api, written here as a literal on
+// purpose (a rename in either package has to break a test, and api's own
+// TestAdminGate pins the same spelling at the HTTP edge).
+const testAdminCookie = "auction_admin"
+
+// dialURLWithCookie dials with D-75's admin capability cookie on the upgrade
+// request — the channel a browser uses. gorilla's Dialer takes request headers,
+// which is where a cookie has to travel (RESEARCH §Code Examples, verified
+// against the gorilla DialContext docs); without this the same-origin page would
+// be the only way to exercise the cookie arm at the socket.
+func dialURLWithCookie(t *testing.T, srv *httptest.Server, value string) *websocket.Conn {
+	t.Helper()
+
+	return dialURLWithHeader(t, srv, http.Header{
+		"Cookie": []string{testAdminCookie + "=" + value},
+	})
+}
+
+// dialURLWithHeader is the one dial: an extra request header, or none.
+func dialURLWithHeader(t *testing.T, srv *httptest.Server, header http.Header) *websocket.Conn {
+	t.Helper()
+
 	url := "ws" + strings.TrimPrefix(srv.URL, "http")
-	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		status := 0
 		if resp != nil {
@@ -170,6 +217,12 @@ func dialURL(t *testing.T, srv *httptest.Server) *websocket.Conn {
 func dialWS(t *testing.T, h *Hub) *websocket.Conn {
 	t.Helper()
 	return dialURL(t, newTestServer(t, h))
+}
+
+// dialWSWithCookie is dialWS with the admin capability cookie on the request.
+func dialWSWithCookie(t *testing.T, h *Hub, value string) *websocket.Conn {
+	t.Helper()
+	return dialURLWithCookie(t, newTestServer(t, h), value)
 }
 
 // frame is one server frame decoded for a contract assertion: the five D-21

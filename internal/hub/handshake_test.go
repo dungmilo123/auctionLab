@@ -37,6 +37,11 @@ func TestHandshakePerRole(t *testing.T) {
 			if role == "player" {
 				joinRequest += `,"nickname":"An"`
 			}
+			if role == RoleAdmin {
+				// ADMN-04/D-76: the admin role is authorized, and the
+				// script/probe channel is join.key.
+				joinRequest += adminKeyField
+			}
 			joinRequest += "}"
 
 			hello, snapshot := join(t, conn, joinRequest)
@@ -114,7 +119,11 @@ func TestPlayerHelloCarriesIdentity(t *testing.T) {
 
 	for _, role := range []string{"screen", "admin"} {
 		conn := dialWS(t, h)
-		env, _ := join(t, conn, fmt.Sprintf(`{"type":"join","role":%q}`, role))
+		frame := fmt.Sprintf(`{"type":"join","role":%q}`, role)
+		if role == RoleAdmin {
+			frame = adminJoinJSON // ADMN-04: the admin role is authorized
+		}
+		env, _ := join(t, conn, frame)
 		if _, ok := frameData(t, env)["token"]; ok {
 			t.Errorf("%s hello carries a token; only a player handshake may (D-29)", role)
 		}
@@ -278,14 +287,15 @@ func TestPreJoinCommand(t *testing.T) {
 
 // TestUnsupportedCommand pins D-24's forward-compatibility rule: a command from
 // a later phase is already in the frozen catalog, so it answers the typed
-// unsupported error instead of looking like an unknown message. Phase 3 routed
-// `admin.item.*`, so the example moved to Phase 4's config command.
+// unsupported error instead of looking like an unknown message. Phase 4 routes
+// `admin.game.reset`/`admin.config.update`, so the previous example retires and
+// the case moves to Phase 5's sealed-bid vocabulary.
 func TestUnsupportedCommand(t *testing.T) {
 	h, _ := newTestHub(t)
 	conn := dialWS(t, h)
-	join(t, conn, `{"type":"join","role":"admin"}`)
+	join(t, conn, adminJoinJSON)
 
-	writeFrame(t, conn, `{"type":"admin.config.update"}`)
+	writeFrame(t, conn, `{"type":"dutch.accept","id":"whatever"}`)
 	assertErrorCode(t, readFrame(t, conn), CodeUnsupported)
 }
 
@@ -324,6 +334,99 @@ func TestBadMessage(t *testing.T) {
 		// is an implementation detail this test must not pin.
 		if env, err := readFrameErr(conn); err == nil {
 			t.Fatalf("the server answered an oversized frame with %q; the D-40 read limit is not in effect", env.Type)
+		}
+	})
+}
+
+// TestAdminJoinAuthorization pins ADMN-04/D-76 at the transport edge: the admin
+// role is authorized either by the capability cookie that arrived on the HTTP
+// upgrade request (the browser's channel) or by the `key` field of the join
+// frame (the script/probe channel), and a join carrying neither — or a wrong
+// value — is answered with the frozen not_authorized code and retired by the
+// very same per-connection rejection cap every other refused join uses. The
+// player and screen roles are not touched by the gate.
+//
+// The check cannot live at the upgrade: the role only exists after the first
+// frame (research Pitfall 3), so this is the contract that keeps an
+// unauthenticated socket from ever reaching the admin projection.
+func TestAdminJoinAuthorization(t *testing.T) {
+	t.Run("a join with no credentials is refused and retired at the cap", func(t *testing.T) {
+		h, _ := newTestHub(t)
+		conn := dialWS(t, h) // no cookie, no key
+
+		// D-23's cap counts REJECTIONS: the socket stays open so a presenter
+		// who mistyped can retry, and the last refusal is followed by a close
+		// instead of another error frame.
+		for attempt := 1; attempt <= maxRejectedJoins; attempt++ {
+			writeFrame(t, conn, `{"type":"join","role":"admin"}`)
+			env, err := readFrameErr(conn)
+			if err != nil {
+				t.Fatalf("attempt %d of %d: the server closed early (%v); the cap must be reached first (D-23/D-76)",
+					attempt, maxRejectedJoins, err)
+			}
+			assertErrorCode(t, env, CodeNotAuthorized)
+		}
+
+		if env, err := readFrameErr(conn); err == nil {
+			t.Fatalf("frame %q after %d refused admin joins; want the connection closed (D-23 cap)",
+				env.Type, maxRejectedJoins)
+		}
+	})
+
+	t.Run("a wrong cookie and a wrong key are both refused", func(t *testing.T) {
+		h, _ := newTestHub(t)
+
+		wrongCookie := dialWSWithCookie(t, h, "not-the-capability")
+		writeFrame(t, wrongCookie, `{"type":"join","role":"admin"}`)
+		assertErrorCode(t, readFrame(t, wrongCookie), CodeNotAuthorized)
+
+		wrongKey := dialWS(t, h)
+		writeFrame(t, wrongKey, `{"type":"join","role":"admin","key":"not-the-capability"}`)
+		assertErrorCode(t, readFrame(t, wrongKey), CodeNotAuthorized)
+	})
+
+	t.Run("the upgrade cookie authorizes the admin handshake", func(t *testing.T) {
+		h, _ := newTestHub(t)
+
+		conn := dialWSWithCookie(t, h, testAdminKey)
+		hello, snapshot := join(t, conn, `{"type":"join","role":"admin"}`)
+
+		if got := frameString(t, frameData(t, hello), "role"); got != RoleAdmin {
+			t.Errorf("hello role = %q, want %q", got, RoleAdmin)
+		}
+		// AdminView is the secret-capable projection (D-25/D-26), so its
+		// presence is the proof that the authorized join reached the admin role
+		// rather than some unauthenticated fallback.
+		if _, ok := frameData(t, snapshot)["sealed_bids"]; !ok {
+			t.Errorf("the admin snapshot carries no sealed_bids block; the cookie-authorized join did not receive the admin projection: %s", snapshot.Data)
+		}
+	})
+
+	t.Run("join.key authorizes the admin handshake", func(t *testing.T) {
+		h, _ := newTestHub(t)
+
+		conn := dialWS(t, h) // no cookie: the script/probe channel
+		hello, snapshot := join(t, conn, adminJoinJSON)
+
+		if got := frameString(t, frameData(t, hello), "role"); got != RoleAdmin {
+			t.Errorf("hello role = %q, want %q", got, RoleAdmin)
+		}
+		if _, ok := frameData(t, snapshot)["sealed_bids"]; !ok {
+			t.Errorf("the admin snapshot carries no sealed_bids block; the key-authorized join did not receive the admin projection: %s", snapshot.Data)
+		}
+	})
+
+	t.Run("the player and screen roles stay unauthenticated", func(t *testing.T) {
+		h, _ := newTestHub(t)
+
+		player := dialWS(t, h) // no cookie, no key: the classroom join
+		if env, _ := join(t, player, `{"type":"join","role":"player","nickname":"An"}`); frameString(t, frameData(t, env), "role") != RolePlayer {
+			t.Errorf("player hello role = %q, want %q", frameString(t, frameData(t, env), "role"), RolePlayer)
+		}
+
+		screen := dialWS(t, h)
+		if env, _ := join(t, screen, `{"type":"join","role":"screen"}`); frameString(t, frameData(t, env), "role") != RoleScreen {
+			t.Errorf("screen hello role = %q, want %q", frameString(t, frameData(t, env), "role"), RoleScreen)
 		}
 	})
 }

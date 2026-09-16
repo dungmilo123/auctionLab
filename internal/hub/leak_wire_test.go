@@ -97,7 +97,7 @@ func TestPlayerAndScreenWirePayloadsLeakNothing(t *testing.T) {
 	join(t, screen, `{"type":"join","role":"screen"}`)
 
 	admin := dialWS(t, h)
-	_, adminSnapshot := join(t, admin, `{"type":"join","role":"admin"}`)
+	_, adminSnapshot := join(t, admin, adminJoinJSON)
 
 	other := dialWS(t, h)
 	join(t, other, `{"type":"join","role":"player","nickname":"Binh"}`)

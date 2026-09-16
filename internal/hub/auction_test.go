@@ -38,11 +38,19 @@ func joinPlayer(t *testing.T, h *Hub, nickname string) (*websocket.Conn, frame) 
 
 // joinRole joins one identity-less role (screen or admin). Such a join is not a
 // mutation, so it fans nothing out to anybody — not even to itself.
+//
+// An admin handshake carries the test key (ADMN-04/D-76): the role is
+// authorized in the hub, and these fixtures use the script/probe channel so the
+// browser's cookie path stays pinned by TestAdminJoinAuthorization alone.
 func joinRole(t *testing.T, h *Hub, role string) *websocket.Conn {
 	t.Helper()
 
 	conn := dialWS(t, h)
-	join(t, conn, fmt.Sprintf(`{"type":"join","role":%q}`, role))
+	frame := fmt.Sprintf(`{"type":"join","role":%q}`, role)
+	if role == RoleAdmin {
+		frame = adminJoinJSON
+	}
+	join(t, conn, frame)
 	return conn
 }
 

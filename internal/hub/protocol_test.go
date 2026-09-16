@@ -131,7 +131,7 @@ func TestProtocol(t *testing.T) {
 
 		h, _ := newTestHub(t)
 		conn := dialWS(t, h)
-		writeFrame(t, conn, `{"type":"join","role":"admin"}`)
+		writeFrame(t, conn, adminJoinJSON)
 		_ = readFrame(t, conn) // hello
 		_ = readFrame(t, conn) // state.snapshot
 
