@@ -205,6 +205,62 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
   )
 }
 
+/**
+ * The sealed live arm's two wells (D-121, 06-UI-SPEC §The arm table amendment).
+ *
+ * A sealed run has no price to fill the first well and no bidder to name, so
+ * the arm keeps the carried pair of wells and changes what is in them: the
+ * count well takes the accent fill the price well spends on every other type
+ * (the count is the only moving datum the room has), and the second well is the
+ * carried countdown, re-anchored by every frame that carries timing. A sealed
+ * run emits NO `price.tick` (D-116), so the clock interpolates from the newest
+ * frame until the settle's snapshot replaces the body.
+ *
+ * Nothing else may be added here: no amount, no start/current price, no bidder
+ * row and no feed ever reaches this arm (T-06-13), and the count is the
+ * server's own number (`sealed_progress`, already reduced) rather than a
+ * client-side length — the browser counts nothing.
+ */
+function SealedWells({ live, sealed }: { live: LiveOverlay | null; sealed: SealedProgress | null }) {
+  const { t } = useLanguage()
+
+  return (
+    // Both wells keep the footprint the intro arm gave them, so the transition
+    // into LIVE changes numbers, never layout.
+    <div className="grid shrink-0 grid-cols-2 gap-4">
+      {/* The one accent fill of this screen-state. No label and no caption row:
+          the sentence labels itself (the carried `intro.waiting` well is the
+          label-less precedent), and a label above it would restate it. */}
+      <div className="border-2 border-border bg-primary px-4 py-2 text-primary-foreground">
+        {/* The count is the server's own field and a sealed projection always
+            carries it; a payload that reached here without one renders nothing
+            rather than a fabricated count (the player body's own rule). */}
+        {sealed !== null && (
+          <p className="text-display leading-[1.2] font-bold whitespace-nowrap">
+            {fill(t('screen.sealedProgress'), {
+              submitted: String(sealed.submitted),
+              total: String(sealed.total),
+            })}
+          </p>
+        )}
+      </div>
+
+      {/* The carried countdown, never accent: the count is the datum and the
+          clock is context (the Dutch floor well's own rule). */}
+      <div className="border-2 border-border bg-background px-4 py-2">
+        <p className="text-sm leading-[1.5] font-bold">{t('live.timeLabel')}</p>
+        {/* Anchored on a frame that carried timing; a run whose deadline is
+            absent shows no clock rather than a placeholder this phase never
+            agreed on (the English arm's guard, verbatim). */}
+        {live !== null && live.deadlineAt !== null && (
+          <ScreenCountdown deadlineAt={live.deadlineAt} serverTs={live.serverTs} />
+        )}
+        <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+      </div>
+    </div>
+  )
+}
+
 /** The hint range, or null when the item carries no hint at all (a fact, not an error). */
 function hintRange(item: PublicItem): string | null {
   const { hintMin, hintMax } = item
@@ -354,12 +410,14 @@ function BidFeed({ bids }: { bids: readonly RecentBid[] }) {
 }
 
 /**
- * Body 2 — ITEM_INTRO and LIVE, one body with three arms (SCRN-02/D-105). The
- * item stays in the same geometry while the phase moves, so the projector must
- * not reflow at the moment the run opens: the arms differ in exactly the cells
- * the UI-SPEC's arm table names, and in nothing else. The English arm's wells
- * live here; the Dutch arm's live wells are `DutchWells` above, because a
- * falling price needs the one component that owns its clock.
+ * Body 2 — ITEM_INTRO and LIVE, one body with four arms (SCRN-02/D-105/D-121).
+ * The item stays in the same geometry while the phase moves, so the projector
+ * must not reflow at the moment the run opens: the arms differ in exactly the
+ * cells the UI-SPEC's arm table names, and in nothing else. The English arm's
+ * wells live here; the Dutch arm's live wells are `DutchWells` above, because a
+ * falling price needs the one component that owns its clock; the sealed arm's
+ * two wells are `SealedWells`, which swaps the count in where the price well
+ * cannot fill a well for a run that has no price at all.
  */
 function ItemBody({
   item,
@@ -379,13 +437,18 @@ function ItemBody({
   // D-105's branch, through the pure selector rather than a literal: the Dutch
   // live arm is the one arm whose number is derived instead of projected.
   const dutchArm = liveArm && isDutchAuction(item.auctionType)
+  // D-121's branch, through the same kind of selector: a sealed run has no
+  // price well and no bidder row, so its arm cannot be expressed as cells of
+  // the English default.
+  const sealedArm = liveArm && isSealedAuction(item.auctionType)
   const typeKey = AUCTION_TYPE_KEYS[item.auctionType]
   const hint = hintRange(item)
 
   // The English LIVE price is the newest frame's number (snapshot, then ticks
   // and accepted bids in arrival order) — `current_price` is the top bid or the
-  // start price before the first one. The Dutch arm renders `DutchWells`
-  // instead, so this fallback is only ever read by the arms below it.
+  // start price before the first one. The Dutch and sealed arms render their own
+  // wells instead, so this value is only ever read by the English live arm and
+  // by the intro arm below it.
   const price = liveArm ? (live?.currentPrice ?? item.currentPrice) : item.startPrice
   const topBidder = live?.topBidder ?? item.topBidder
 
@@ -416,9 +479,14 @@ function ItemBody({
           changes numbers, never layout. The Dutch live arm swaps in its own
           pair (the derived price and the floor); a Dutch item can only reach
           the arms below with an overlay, because the decoder's Dutch LIVE arm
-          requires all five numbers and `overlayFrom` admits the item on them. */}
+          requires all five numbers and `overlayFrom` admits the item on them.
+          The sealed arm is branched on its TYPE alone, so a sealed run can
+          never fall through to the price well — it renders the count the room
+          watches and the carried clock, and nothing else. */}
       {dutchArm && live !== null ? (
         <DutchWells item={item} live={live} />
+      ) : sealedArm ? (
+        <SealedWells live={live} sealed={sealed} />
       ) : (
         <div className="grid shrink-0 grid-cols-2 gap-4">
           <div
@@ -469,17 +537,6 @@ function ItemBody({
             <p className="min-w-0 break-words text-base leading-[1.5]">{topBidder}</p>
           )}
         </div>
-      )}
-
-      {/* Phase 4 ships the shell; Phase 6 is what makes the numbers move. The
-          line is count-only by type — the amounts live on the admin projection. */}
-      {liveArm && isSealedAuction(item.auctionType) && sealed !== null && (
-        <p className="shrink-0 text-xl leading-[1.2] font-bold">
-          {fill(t('screen.sealedProgress'), {
-            submitted: String(sealed.submitted),
-            total: String(sealed.total),
-          })}
-        </p>
       )}
 
       {liveArm && isEnglishAuction(item.auctionType) && <BidFeed bids={feed} />}
