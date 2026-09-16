@@ -65,6 +65,17 @@ describe('the sealed field message (D-119/D-120)', () => {
     expect(sealedFieldError(field({ raw: '320000' }))).toBeNull()
   })
 
+  it('names a non-positive amount invalid before either bound, even at a zero start price (D-112)', () => {
+    // The engine's FIRST rung is `amount <= 0 → invalid_amount`
+    // (`internal/game/sealed.go`), and `start_price` is server-legal at 0
+    // (`validateItemInput` bounds it `[0, MaxAmount]`): a zero passes both
+    // bounds, so this is the pair the inclusive case above cannot exercise —
+    // without the rung the CTA would enable a submit the server refuses.
+    expect(sealedFieldError(field({ raw: '0' }))).toBe('reason.invalidAmount')
+    expect(sealedFieldError(field({ raw: '0', startPrice: 0 }))).toBe('reason.invalidAmount')
+    expect(sealedFieldError(field({ raw: '00', startPrice: 0 }))).toBe('reason.invalidAmount')
+  })
+
   it("applies the server's own order when one value breaks two rules (D-112)", () => {
     // A start price above the budget is a configuration the presenter owns, but
     // the ORDER is the contract: `below_minimum` is answered before
@@ -93,6 +104,10 @@ describe('the sealed submit predicate (D-120)', () => {
   it('is disabled for an empty or unparseable field', () => {
     expect(canSubmitSealed(submit({ raw: '' }))).toBe(false)
     expect(canSubmitSealed(submit({ raw: '1.000' }))).toBe(false)
+  })
+
+  it('is disabled for a zero amount even at a zero start price', () => {
+    expect(canSubmitSealed(submit({ raw: '0', startPrice: 0 }))).toBe(false)
   })
 
   it('is disabled while the socket is not open, the window has closed, or a frame is in flight', () => {

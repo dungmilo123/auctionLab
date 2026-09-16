@@ -59,12 +59,17 @@ export function sealedInputValue(dirty: boolean, userValue: string, myBid: numbe
  * is usable. An EMPTY field is not an error (the carried nickname-field rule):
  * it is the initial state, and the disabled CTA is the whole feedback. The order
  * is the server's own (D-112), so a value that breaks two rules shows the
- * sentence the engine would answer with.
+ * sentence the engine would answer with — including the engine's `amount <= 0`
+ * first rung (`invalid_amount`), which a literal `0` hits before either bound
+ * and even when `start_price` is `0`.
  */
 export function sealedFieldError(input: SealedAmountInput): BidReasonKey | null {
   if (input.raw === '') return null
   const amount = parseBidAmount(input.raw)
-  if (amount === null) return 'reason.invalidAmount'
+  // `parseBidAmount` yields whole non-negative amounts, so `amount < 1` is the
+  // engine's `amount <= 0` rung: a zero reads invalid_amount before the bounds
+  // are consulted, exactly as `SubmitSealed` refuses it.
+  if (amount === null || amount < 1) return 'reason.invalidAmount'
   if (amount < input.startPrice) return 'reason.belowMinimum'
   if (amount > input.budget) return 'reason.exceedsBudget'
   return null
@@ -72,12 +77,13 @@ export function sealedFieldError(input: SealedAmountInput): BidReasonKey | null 
 
 /**
  * D-120's enabled predicate: the socket is `open` AND the window is open
- * (`remainingMs > 0`) AND nothing is in flight AND the typed value parses AND
- * `startPrice ≤ amount ≤ budget` — equality legal on both bounds. It delegates
- * to `sealedFieldError`, so the CTA and the sentence can never disagree (the
- * D-82b rule in player form): an enabled-but-refused submit has nowhere to come
- * from. The empty field is disabled here rather than refused above, because an
- * unfilled field is not an error. The server still decides (D-52).
+ * (`remainingMs > 0`) AND nothing is in flight AND the typed value parses as a
+ * positive amount AND `startPrice ≤ amount ≤ budget` — equality legal on both
+ * bounds. It delegates to `sealedFieldError`, so the CTA and the sentence can
+ * never disagree (the D-82b rule in player form): an enabled-but-refused submit
+ * has nowhere to come from. The empty field is disabled here rather than refused
+ * above, because an unfilled field is not an error. The server still decides
+ * (D-52).
  */
 export function canSubmitSealed(input: SealedSubmitInput): boolean {
   return (

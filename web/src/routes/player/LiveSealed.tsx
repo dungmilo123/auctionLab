@@ -113,9 +113,11 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
   // socket's status, the newest frame's server clock, the server count and the
   // owner's own amount. The submit's own fan-out moves the signal (a fresh
   // `server_ts`, and either `my_bid` or the count — D-110 commits an edit as a
-  // full mutation), a refusal releases it, and so does a socket that leaves
-  // `open`: the CTA can never remain permanently disabled on `Sending…`, and no
-  // effect has to chase any of those.
+  // full mutation), a refusal releases the flag, an edit clears the captured
+  // signal (a value being retyped is by definition not in flight — the input is
+  // disabled while `sending`, so `edit` can never run mid-flight), and a socket
+  // that leaves `open` moves the status: the CTA can never remain permanently
+  // disabled on `Sending…`, and no effect has to chase any of those.
   const [submitted, setSubmitted] = useState<string | null>(null)
 
   // The field's value belongs to the item being looked at: carrying the item id
@@ -198,6 +200,11 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
 
   function edit(next: string) {
     setField({ itemId, dirty: true, value: next })
+    // The previous submit's signal no longer describes this value, and clearing
+    // it is also what keeps the edit from re-arming the flag: dropping the
+    // rejection below removes the clause that released `sending`, and a sealed
+    // run emits no ticks that would move the signal instead.
+    setSubmitted(null)
     onClearRejection()
   }
 
