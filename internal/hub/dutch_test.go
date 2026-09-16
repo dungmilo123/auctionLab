@@ -297,3 +297,123 @@ func TestDutchAcceptRefusals(t *testing.T) {
 		}
 	})
 }
+
+// TestDutchTickOnTheWire is DTCH-01's public frame contract on a real socket:
+// the seeded LIVE snapshot carries the derived price, the clock anchor and the
+// three mechanics (D-94) and no ladder minimum, and a beat sends those same
+// numbers at the CURRENT revision — with neither deadline_at nor remaining_ms,
+// because a Dutch run has no window at all (D-93/D-58).
+func TestDutchTickOnTheWire(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	clock := &testClock{t: base.Add(3 * time.Second)} // three intervals past the start
+	h, engine, _ := newLiveDutchHub(t, clock, base.UnixMilli(), 1_000_000)
+
+	conn, snapshot := dutchAcceptDial(t, h)
+
+	// The snapshot a reloading phone renders from: every mechanic plus the
+	// anchor, and NOTHING ladder-shaped.
+	item := dataObject(t, snapshot, "item")
+	if got := objectInt(t, item, "current_price"); got != 70_000 {
+		t.Errorf("snapshot current_price = %d, want the derived 70000 at this instant (DTCH-01)", got)
+	}
+	if got := objectInt(t, item, "started_at"); got != base.UnixMilli() {
+		t.Errorf("snapshot started_at = %d, want the run's %d (D-94)", got, base.UnixMilli())
+	}
+	if got := objectInt(t, item, "floor_price"); got != dutchFloorPrice {
+		t.Errorf("snapshot floor_price = %d, want %d", got, dutchFloorPrice)
+	}
+	if got := objectInt(t, item, "decrement_step"); got != dutchStep {
+		t.Errorf("snapshot decrement_step = %d, want %d", got, dutchStep)
+	}
+	if got := objectInt(t, item, "decrement_interval_ms"); got != dutchIntervalMS {
+		t.Errorf("snapshot decrement_interval_ms = %d, want %d", got, dutchIntervalMS)
+	}
+	if hasKey(item, "min_next_bid") {
+		t.Error("a Dutch snapshot advertises min_next_bid: a Dutch price has no ladder (D-98)")
+	}
+	if hasKey(item, "deadline_at") {
+		t.Error("a Dutch snapshot advertises deadline_at: a Dutch run has no deadline (D-93)")
+	}
+	if hasKey(item, "top_bidder") {
+		t.Error("a Dutch snapshot advertises a top bidder: an acceptance is not a ladder bid (D-98)")
+	}
+
+	// One beat: the same derived number, the anchor to re-anchor on, no window —
+	// and the current revision, because a tick is not a mutation (D-58).
+	rev := engine.Rev()
+	h.tick()
+	beat := readType(t, conn, TypePriceTick)
+	if beat.Rev != rev {
+		t.Errorf("tick rev = %d, want the current %d (D-58)", beat.Rev, rev)
+	}
+	data := frameData(t, beat)
+	if got := objectInt(t, data, "current_price"); got != 70_000 {
+		t.Errorf("tick current_price = %d, want the derived 70000 (DTCH-01)", got)
+	}
+	if got := objectInt(t, data, "started_at"); got != base.UnixMilli() {
+		t.Errorf("tick started_at = %d, want the run's %d so the client re-anchors (D-94)", got, base.UnixMilli())
+	}
+	if hasKey(data, "deadline_at") {
+		t.Error("a Dutch tick carries deadline_at: there is no window to describe (D-93)")
+	}
+	if hasKey(data, "remaining_ms") {
+		t.Error("a Dutch tick carries remaining_ms: there is no window to count down (D-94)")
+	}
+	if got := engine.Rev(); got != rev {
+		t.Errorf("revision = %d after a tick, want the unchanged %d", got, rev)
+	}
+}
+
+// TestDutchFloorDoesNotSettle is D-99/DTCH-03's floor contract at the ticker:
+// reaching the floor is NOT an outcome. The run stays LIVE, the price stays
+// pinned at floor_price, and every beat keeps sending a tick — until the
+// presenter's force-end, which settles unsold at price 0 and moves no budget
+// (D-99/D-102/ECON-03).
+func TestDutchFloorDoesNotSettle(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	// Twenty intervals in: long past the floor (the fixture floors after six).
+	clock := &testClock{t: base.Add(20 * time.Second)}
+	h, engine, _ := newLiveDutchHub(t, clock, base.UnixMilli(), 1_000_000)
+
+	conn, snapshot := dutchAcceptDial(t, h)
+	budgetBefore := meOf(t, snapshot).Budget
+
+	for i := 0; i < 2; i++ {
+		h.tick()
+		beat := readType(t, conn, TypePriceTick)
+		if got := objectInt(t, frameData(t, beat), "current_price"); got != dutchFloorPrice {
+			t.Errorf("beat %d current_price = %d, want the pinned floor %d (D-91)", i, got, dutchFloorPrice)
+		}
+		if got := engine.Phase(); got != game.PhaseLive {
+			t.Fatalf("phase after beat %d = %s, want LIVE: the floor is not an outcome (D-99)", i, got)
+		}
+	}
+	if got := engine.Rev(); got != 1 {
+		t.Errorf("revision = %d after two floor beats, want the seeded 1: a beat is not a mutation (D-58)", got)
+	}
+
+	// The presenter ends it: unsold, price 0, nobody charged (D-102/ECON-03).
+	// The force-end travels from the admin socket; the settle's own frames are
+	// read from the PLAYER's socket, whose `me` block is what proves no budget
+	// moved (an admin snapshot carries no identity).
+	admin := joinRole(t, h, RoleAdmin)
+	writeFrame(t, admin, `{"type":"admin.item.force_end"}`)
+	frames := expectFrames(t, conn, TypeItemSettled, TypeLeaderboard, TypeStateSnapshot)
+
+	settled := dataObject(t, frames[0], "settle")
+	if got := frameString(t, settled, "outcome"); got != "unsold" {
+		t.Errorf("force-ended outcome = %q, want unsold: nobody accepted (D-99/D-102)", got)
+	}
+	if got := objectInt(t, settled, "price"); got != 0 {
+		t.Errorf("force-ended price = %d, want 0 (ECON-03)", got)
+	}
+	if raw, ok := settled["winner"]; !ok || string(raw) != "null" {
+		t.Errorf("force-ended winner = %s, want an explicit null", raw)
+	}
+	if got := meOf(t, frames[2]).Budget; got != budgetBefore {
+		t.Errorf("a force-end moved a budget: %d -> %d, want the unchanged %d (ECON-03)", budgetBefore, got, budgetBefore)
+	}
+	if got := engine.Phase(); got != game.PhaseSettled {
+		t.Errorf("phase after the force-end = %s, want SETTLED", got)
+	}
+}

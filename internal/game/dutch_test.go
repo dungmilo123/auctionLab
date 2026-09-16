@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"path/filepath"
@@ -585,5 +586,340 @@ func TestAcceptDutchRaceHasExactlyOneWinner(t *testing.T) {
 	}
 	if run.settle.Winner == nil {
 		t.Fatal("the race's reveal has no winner")
+	}
+}
+
+// numberField reads one decoded JSON number as int64 and reports whether the key
+// was there at all — the shape a not-yet-projected field takes, so a missing key
+// fails an assertion instead of panicking the case.
+func numberField(t *testing.T, obj map[string]any, key string) (int64, bool) {
+	t.Helper()
+
+	raw, ok := obj[key]
+	if !ok {
+		return 0, false
+	}
+	value, ok := raw.(float64)
+	if !ok {
+		t.Fatalf("%s = %#v, want a JSON number", key, raw)
+	}
+	return int64(value), true
+}
+
+// tickObject decodes one tick frame exactly as the wire would carry it. The
+// Dutch assertions below are about the JSON contract (D-24), so they read the
+// marshaled frame rather than a Go field — which is also what lets the RED
+// phase compile before the field exists.
+func tickObject(t *testing.T, tick PriceTick) map[string]any {
+	t.Helper()
+
+	raw, err := json.Marshal(tick)
+	if err != nil {
+		t.Fatalf("marshaling the tick: %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("the tick is not a JSON object: %v", err)
+	}
+	return doc
+}
+
+// TestDutchPriceAgreesAcrossSurfaces is DTCH-01's single-source contract: at ONE
+// injected instant the public projection, the D-56 tick frame and the accept all
+// report the same number, because every one of them calls dutchPriceAt. The
+// projection half is also D-94/D-63's self-sufficiency: a client that reloads
+// mid-run holds started_at plus the four mechanics, and the frame's own
+// current_price is exactly the derivation at the frame's own server_ts.
+func TestDutchPriceAgreesAcrossSurfaces(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	an := mustJoin(t, env, "An")
+	it := dutchFixture()
+	mustOpenDutchRun(t, env, it)
+
+	// Three intervals in: the server's own number at this instant is 70_000.
+	env.clock.t = env.clock.t.Add(3 * time.Second)
+	const want = int64(70_000)
+	startedAt := env.runOf(t).startedAt
+
+	// --- 1. the projection: both public roles carry the whole price clock -----
+	for _, role := range []struct {
+		name     string
+		role     Role
+		playerID string
+	}{
+		{name: "player", role: RolePlayer, playerID: an.PlayerID},
+		{name: "screen", role: RoleScreen},
+	} {
+		t.Run(role.name, func(t *testing.T) {
+			doc := decodeObject(t, env.engine.Snapshot(role.role, role.playerID))
+			assertNoSecrets(t, role.name, doc)
+
+			item := asObject(t, doc["item"], "item")
+			if got, ok := numberField(t, item, "current_price"); !ok || got != want {
+				t.Errorf("%s current_price = %#v/%t, want the derived %d at this instant (DTCH-01)", role.name, item["current_price"], ok, want)
+			}
+			if got, ok := numberField(t, item, "started_at"); !ok || got != startedAt {
+				t.Errorf("%s started_at = %#v/%t, want the run's %d (D-94)", role.name, item["started_at"], ok, startedAt)
+			}
+			if got, ok := numberField(t, item, "floor_price"); !ok || got != it.floorPrice {
+				t.Errorf("%s floor_price = %#v/%t, want %d (D-94)", role.name, item["floor_price"], ok, it.floorPrice)
+			}
+			if got, ok := numberField(t, item, "decrement_step"); !ok || got != it.decrementStep {
+				t.Errorf("%s decrement_step = %#v/%t, want %d (D-94)", role.name, item["decrement_step"], ok, it.decrementStep)
+			}
+			if got, ok := numberField(t, item, "decrement_interval_ms"); !ok || got != it.decrementIntervalMS {
+				t.Errorf("%s decrement_interval_ms = %#v/%t, want %d (D-94)", role.name, item["decrement_interval_ms"], ok, it.decrementIntervalMS)
+			}
+			if _, ok := item["min_next_bid"]; ok {
+				t.Errorf("%s advertises min_next_bid for a Dutch item: a Dutch price has no ladder (D-98)", role.name)
+			}
+			if _, ok := item["deadline_at"]; ok {
+				t.Errorf("%s advertises deadline_at for a Dutch run: a Dutch run has no deadline (D-93)", role.name)
+			}
+			if _, ok := item["top_bidder"]; ok {
+				t.Errorf("%s advertises a top bidder for a Dutch item: an acceptance is not a ladder bid (D-98)", role.name)
+			}
+
+			// The honesty property the client anchors on: the frame's own number
+			// is the derivation at the frame's own anchor.
+			anchor, _ := numberField(t, doc, "server_ts")
+			derived := dutchPriceAt(it, startedAt, anchor)
+			if got, _ := numberField(t, item, "current_price"); got != derived {
+				t.Errorf("%s current_price = %d is not the derivation at its own server_ts %d (%d)", role.name, got, anchor, derived)
+			}
+		})
+	}
+
+	// --- 2. the tick: the same number, no deadline, the anchor travels --------
+	var (
+		tick PriceTick
+		ok   bool
+	)
+	if err := env.engine.Section(func(v View) error {
+		tick, ok = v.Tick()
+		return nil
+	}); err != nil {
+		t.Fatalf("building the Dutch tick: %v", err)
+	}
+	if !ok {
+		t.Fatal("a LIVE Dutch run produced no tick: the ticker would have nothing to send")
+	}
+	if tick.CurrentPrice != want {
+		t.Errorf("tick current_price = %d, want the same derived %d the projection carries (DTCH-01)", tick.CurrentPrice, want)
+	}
+	tickDoc := tickObject(t, tick)
+	if got, ok := numberField(t, tickDoc, "started_at"); !ok || got != startedAt {
+		t.Errorf("tick started_at = %#v/%t, want the run's %d (D-94)", tickDoc["started_at"], ok, startedAt)
+	}
+	if tick.DeadlineAt != nil || tick.RemainingMS != nil {
+		t.Errorf("a Dutch tick carries deadline_at %v / remaining_ms %v: there is no window to describe (D-93)", tick.DeadlineAt, tick.RemainingMS)
+	}
+
+	// --- 3. the accept: charged at exactly the same number --------------------
+	budgetBefore := env.player(t, an.PlayerID).budget
+	if _, refused, err := env.acceptDutch(an.PlayerID); err != nil || refused {
+		t.Fatalf("the accept at the derived price was refused: err = %v, refusal = %+v", err, refused)
+	}
+	run := env.runOf(t)
+	if run.settle == nil || run.settle.Price != want {
+		t.Fatalf("the settle charged %+v, want the derived %d — one number, three surfaces (DTCH-01)", run.settle, want)
+	}
+	if got := env.player(t, an.PlayerID).budget; got != budgetBefore-run.settle.Price+it.truthValue {
+		t.Errorf("winner budget = %d, want the accept charged at the same derived %d", got, want)
+	}
+}
+
+// TestDutchTickPersistsNothing is DTCH-01's no-write rule: a beat on a LIVE
+// Dutch run is a pure read — the frame carries the derived price and the clock
+// anchor, carries neither deadline_at nor remaining_ms, and moves nothing: no
+// revision, no audit row, and the runtime row still holds deadline_at NULL
+// (D-58/D-93).
+func TestDutchTickPersistsNothing(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	it := dutchFixture()
+	mustOpenDutchRun(t, env, it)
+	env.clock.t = env.clock.t.Add(4 * time.Second)
+
+	revBefore := env.engine.Rev()
+	startedAt := env.runOf(t).startedAt
+
+	var (
+		tick PriceTick
+		ok   bool
+	)
+	if err := env.engine.Section(func(v View) error {
+		tick, ok = v.Tick()
+		return nil
+	}); err != nil {
+		t.Fatalf("building the Dutch tick: %v", err)
+	}
+	if !ok {
+		t.Fatal("a LIVE Dutch run produced no tick")
+	}
+	const want = int64(60_000) // four intervals past the start price
+	if tick.CurrentPrice != want {
+		t.Errorf("tick current_price = %d, want the derived %d (DTCH-01)", tick.CurrentPrice, want)
+	}
+	tickDoc := tickObject(t, tick)
+	if got, ok := numberField(t, tickDoc, "started_at"); !ok || got != startedAt {
+		t.Errorf("tick started_at = %#v/%t, want the run's %d (D-94)", tickDoc["started_at"], ok, startedAt)
+	}
+	if tick.DeadlineAt != nil {
+		t.Errorf("a Dutch tick carries deadline_at %d: a Dutch run has no deadline (D-93)", *tick.DeadlineAt)
+	}
+	if tick.RemainingMS != nil {
+		t.Errorf("a Dutch tick carries remaining_ms %d: there is no window to count down (D-94)", *tick.RemainingMS)
+	}
+
+	// A tick is not a mutation (D-58/DTCH-01).
+	if got := env.engine.Rev(); got != revBefore {
+		t.Errorf("revision = %d after a tick, want the unchanged %d", got, revBefore)
+	}
+	rows, err := env.store.LoadBids()
+	if err != nil {
+		t.Fatalf("loading the bid audit: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("a tick persisted %d audit row(s), want none: no price is ever stored per tick", len(rows))
+	}
+	rt, ok, err := env.store.LoadRuntime(it.id)
+	if err != nil {
+		t.Fatalf("loading the Dutch runtime row: %v", err)
+	}
+	if !ok {
+		t.Fatal("the LIVE Dutch run has no auction_runtime row")
+	}
+	if rt.DeadlineAt != nil {
+		t.Errorf("the persisted Dutch runtime row carries deadline_at %d, want NULL (D-93)", *rt.DeadlineAt)
+	}
+	if rt.StartedAt != startedAt {
+		t.Errorf("the persisted Dutch runtime row holds started_at %d, want %d", rt.StartedAt, startedAt)
+	}
+	if rt.SettledAt != nil {
+		t.Errorf("the persisted Dutch runtime row carries settled_at %d before any settle", *rt.SettledAt)
+	}
+}
+
+// TestDutchForceEndIsUnsold is DTCH-03's zero-accept outcome: the presenter's
+// force-end runs the ONE settle path and, with no acceptance recorded, produces
+// the unsold reveal — price 0, an explicit null winner, and no budget movement —
+// before the floor exactly as after it (D-99/D-102/ECON-03).
+func TestDutchForceEndIsUnsold(t *testing.T) {
+	cases := []struct {
+		name    string
+		advance time.Duration
+	}{
+		{name: "before floor time", advance: 2 * time.Second},
+		{name: "the instant the floor is reached", advance: 6 * time.Second},
+		{name: "long past floor time", advance: 90 * time.Second},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+			an := mustJoin(t, env, "An")
+			it := dutchFixture()
+			mustOpenDutchRun(t, env, it)
+			env.clock.t = env.clock.t.Add(tc.advance)
+
+			revBefore := env.engine.Rev()
+			budgetBefore := env.player(t, an.PlayerID).budget
+
+			if err := env.engine.ForceEnd(); err != nil {
+				t.Fatalf("ForceEnd on a LIVE Dutch run: %v", err)
+			}
+
+			run := env.runOf(t)
+			if run.settle == nil {
+				t.Fatal("the force-ended Dutch run has no settle reveal")
+			}
+			if run.settle.Outcome != "unsold" {
+				t.Errorf("settle outcome = %q, want unsold: nobody accepted (D-99/D-102)", run.settle.Outcome)
+			}
+			if run.settle.Price != 0 {
+				t.Errorf("unsold settle price = %d, want 0 (ECON-03)", run.settle.Price)
+			}
+			if run.settle.BudgetDelta != 0 {
+				t.Errorf("unsold settle budget_delta = %d, want 0", run.settle.BudgetDelta)
+			}
+			if run.settle.Winner != nil {
+				t.Errorf("unsold settle winner = %+v, want an explicit null", run.settle.Winner)
+			}
+			if run.settle.TruthValue != it.truthValue {
+				t.Errorf("settle truth_value = %d, want the item's %d (the reveal still carries it)", run.settle.TruthValue, it.truthValue)
+			}
+			if got := env.player(t, an.PlayerID).budget; got != budgetBefore {
+				t.Errorf("a force-end moved a budget: %d -> %d, want the unchanged %d (ECON-03)", budgetBefore, got, budgetBefore)
+			}
+			if got := env.player(t, an.PlayerID).totalValue; got != 0 {
+				t.Errorf("a force-end moved total_value to %d, want 0: nothing was sold", got)
+			}
+			if got := env.engine.Rev(); got != revBefore+1 {
+				t.Errorf("revision = %d across the force-end, want exactly one bump to %d", got, revBefore+1)
+			}
+
+			// The unsold reveal reaches every role, and the public item keeps the
+			// Dutch clock it ran on — a settled Dutch item is not a blank row.
+			doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+			assertNoSecrets(t, "screen", doc)
+			item := asObject(t, doc["item"], "item")
+			reveal := asObject(t, item["settle"], "item.settle")
+			if reveal["outcome"] != "unsold" {
+				t.Errorf("the projected reveal says %#v, want unsold", reveal["outcome"])
+			}
+			if _, ok := item["started_at"]; !ok {
+				t.Error("the settled Dutch item lost its started_at anchor (D-94)")
+			}
+			if _, ok := item["min_next_bid"]; ok {
+				t.Error("a Dutch item advertises min_next_bid: a Dutch price has no ladder (D-98)")
+			}
+			if _, ok := item["deadline_at"]; ok {
+				t.Error("a Dutch item advertises deadline_at: a Dutch run has no deadline (D-93)")
+			}
+		})
+	}
+}
+
+// TestAcceptIsNotALadderBid is D-98/D-105's separation contract: the acceptance
+// rides the ONE append-only trail with kind `accept`, so the durable audit keeps
+// the evidence while every English read ignores it — the ladder holds nothing,
+// the outbid banner sees nothing, and the projector's feed stays empty.
+func TestAcceptIsNotALadderBid(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	an := mustJoin(t, env, "An")
+	it := dutchFixture()
+	mustOpenDutchRun(t, env, it)
+	env.clock.t = env.clock.t.Add(3 * time.Second)
+
+	if _, refused, err := env.acceptDutch(an.PlayerID); err != nil || refused {
+		t.Fatalf("the Dutch accept was refused: err = %v, refusal = %+v", err, refused)
+	}
+
+	// The durable half: ONE row, carrying the accept kind (D-98).
+	rows, err := env.store.LoadBids()
+	if err != nil {
+		t.Fatalf("loading the bid audit: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Kind != trailAccept {
+		t.Fatalf("the audit trail holds %+v, want exactly one kind=accept row", rows)
+	}
+
+	// The ladder reads nothing: both run-scoped readers filter on the kind.
+	env.engine.mu.RLock()
+	_, hasTop := env.engine.state.topBid()
+	_, hasLast := env.engine.state.lastBidOf(an.PlayerID)
+	env.engine.mu.RUnlock()
+	if hasTop || hasLast {
+		t.Errorf("an acceptance led the English ladder (top = %t, last = %t): accept must never join it (D-98)", hasTop, hasLast)
+	}
+
+	// The projector's feed is English-only: the acceptance never reaches it.
+	doc := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+	feed := asArray(t, doc["recent_bids"], "recent_bids")
+	if len(feed) != 0 {
+		t.Errorf("recent_bids = %+v, want an empty feed for a Dutch run (D-98/D-105)", feed)
+	}
+	item := asObject(t, doc["item"], "item")
+	if _, ok := item["top_bidder"]; ok {
+		t.Error("a Dutch item advertised a top bidder: an acceptance is not a bid (D-98)")
 	}
 }

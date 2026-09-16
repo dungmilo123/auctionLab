@@ -416,6 +416,84 @@ func TestPlayerAndScreenPayloadsLeakNothing(t *testing.T) {
 			}
 		})
 	}
+
+	// Phase 5's half of the same lock (D-94/D-98/D-105): a Dutch run carries the
+	// falling price's clock and mechanics with no ladder, its acceptance never
+	// reaches the projector's feed, and the reveal stays the only place a
+	// truth_value may travel — before SETTLED the object does not exist at all.
+	dutchScenarios := []struct {
+		name       string
+		phase      Phase
+		role       Role
+		playerID   string
+		wantSettle bool
+	}{
+		{name: "Dutch LIVE player view", phase: PhaseLive, role: RolePlayer, playerID: "p-an"},
+		{name: "Dutch LIVE screen view", phase: PhaseLive, role: RoleScreen},
+		{name: "Dutch SETTLED player view", phase: PhaseSettled, role: RolePlayer, playerID: "p-binh", wantSettle: true},
+		{name: "Dutch SETTLED screen view", phase: PhaseSettled, role: RoleScreen, wantSettle: true},
+	}
+	for _, sc := range dutchScenarios {
+		t.Run(sc.name, func(t *testing.T) {
+			env.installState(lateJoinDutchFixture(sc.phase))
+			doc := decodeObject(t, env.engine.Snapshot(sc.role, sc.playerID))
+			assertNoSecrets(t, sc.name, doc)
+
+			item := asObject(t, doc["item"], "item")
+			settle, hasSettle := item["settle"]
+			if hasSettle != sc.wantSettle {
+				t.Fatalf("item.settle present = %t, want %t for a Dutch %s item (D-67)", hasSettle, sc.wantSettle, sc.phase)
+			}
+			if !sc.wantSettle {
+				walkKeysAt(doc, nil, func(path []string, key string) {
+					if key == "settle" {
+						t.Errorf("%s carries a settle key at %v before SETTLED", sc.name, path)
+					}
+				})
+			}
+
+			// D-94: the whole price clock travels, and nothing ladder-shaped does.
+			for _, key := range []string{"started_at", "floor_price", "decrement_step", "decrement_interval_ms", "current_price"} {
+				if _, ok := item[key]; !ok {
+					t.Errorf("%s: a Dutch item must carry %q so a client can re-derive the price (D-94/D-63)", sc.name, key)
+				}
+			}
+			for _, key := range []string{"min_next_bid", "deadline_at", "top_bidder"} {
+				if _, ok := item[key]; ok {
+					t.Errorf("%s: a Dutch item carries %q — it has no ladder and no deadline (D-93/D-98)", sc.name, key)
+				}
+			}
+
+			if sc.wantSettle {
+				// The settled Dutch item's number is the price that was CHARGED,
+				// never a re-derivation long past the floor.
+				reveal := asObject(t, settle, "item.settle")
+				if reveal["outcome"] != "sold" || reveal["price"] != float64(70_000) {
+					t.Errorf("settle = %#v, want sold at the accepted 70000", reveal)
+				}
+				if reveal["truth_value"] != float64(fixtureTruthValue) {
+					t.Errorf("settle.truth_value = %#v, want the revealed %d", reveal["truth_value"], fixtureTruthValue)
+				}
+				winner := asObject(t, reveal["winner"], "settle.winner")
+				if winner["nickname"] != "Bình" {
+					t.Errorf("settle.winner = %#v, want Bình (the accept row's player)", winner)
+				}
+				if item["current_price"] != reveal["price"] {
+					t.Errorf("a settled Dutch item's current_price = %#v, want the accepted %#v", item["current_price"], reveal["price"])
+				}
+			}
+
+			if sc.role == RoleScreen {
+				if _, hasMe := doc["me"]; hasMe {
+					t.Errorf("the screen view carries a `me` section: the projector has no identity")
+				}
+				feed := asArray(t, doc["recent_bids"], "recent_bids")
+				if len(feed) != 0 {
+					t.Errorf("recent_bids = %+v, want an empty feed: the projector's feed is English-only (D-105)", feed)
+				}
+			}
+		})
+	}
 }
 
 // TestHintBoundsProjectIndependently is WR-02's regression: the item validator
@@ -524,6 +602,51 @@ func lateJoinFixture(phase Phase) *state {
 	return s
 }
 
+// lateJoinDutchFixture is the Dutch arm of that table: the same three players,
+// one Dutch item carrying the four public mechanics a client needs to re-derive
+// the price (D-94), and a DEADLINE-LESS run (D-93) whose trail holds ONE
+// kind=accept entry — the durable shape a real accept commits (D-98).
+func lateJoinDutchFixture(phase Phase) *state {
+	s := populatedState()
+	it := s.items["it-1"]
+	it.auctionType = "dutch"
+	it.minIncrement, it.durationMS = 0, 0
+	it.antiSnipeMode, it.antiSnipeWindowMS, it.maxExtensions = "", 0, 0
+	it.floorPrice, it.decrementStep, it.decrementIntervalMS = 40_000, 10_000, 1_000
+	it.status = "live"
+
+	startedAt := testStart.UnixMilli()
+	run := &auctionRun{itemID: "it-1", startedAt: startedAt} // no deadline (D-93)
+
+	s.players["p-cuong"] = &player{
+		id: "p-cuong", nickname: "Cường", nicknameKey: "cường", token: strings.Repeat("c", 64),
+		budget: 1_000_000, joinedAt: testStart.Add(6_000).UnixMilli(), lastSeenAt: testStart.Add(6_000).UnixMilli(),
+	}
+	s.order = append(s.order, "p-cuong")
+	s.connected["p-cuong"] = true
+
+	switch phase {
+	case PhaseLive:
+		s.phase = PhaseLive
+		s.currentAuction = run
+	case PhaseSettled:
+		s.phase, it.status = PhaseSettled, "settled"
+		s.bids = []bid{{
+			itemID: "it-1", playerID: "p-binh", amount: 70_000,
+			createdAt: startedAt + 3_000, kind: trailAccept,
+		}}
+		run.settledAt = startedAt + 3_000
+		run.settle = &SettleInfo{
+			Outcome: "sold", Winner: &Bidder{Nickname: "Bình"},
+			Price: 70_000, TruthValue: fixtureTruthValue, BudgetDelta: fixtureTruthValue - 70_000,
+		}
+		s.currentAuction = run
+		s.players["p-binh"].budget = 750_000 - 70_000 + fixtureTruthValue
+		s.players["p-binh"].totalValue = fixtureTruthValue
+	}
+	return s
+}
+
 // TestLateJoinSnapshotIsSelfSufficientAtEveryPhase is SESS-04/D-63's contract:
 // one snapshot has to be enough for a client that just arrived. The table walks
 // every phase — including LOBBY/FINALE with no item, and both a sold and an
@@ -540,6 +663,10 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 	// --- every phase, from a snapshot alone -----------------------------------
 	introKeys := []string{"id", "name", "description", "auction_type", "hint_min", "hint_max", "start_price", "status"}
 	runKeys := []string{"current_price", "top_bidder", "deadline_at", "extensions_used"}
+	// D-94: a Dutch run swaps the ladder fields for the falling price's clock —
+	// no top_bidder, no deadline_at, no min_next_bid, but the anchor and the
+	// three mechanics that let a client re-derive the number itself.
+	dutchRunKeys := []string{"current_price", "extensions_used", "started_at", "floor_price", "decrement_step", "decrement_interval_ms"}
 
 	cases := []struct {
 		name   string
@@ -548,16 +675,23 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 		run    bool   // the live fields a run carries
 		next   bool   // min_next_bid is advertised only while LIVE
 		settle bool
+		dutch  bool // the Dutch arm: its own fixture and its own live key set
 	}{
 		{name: "LOBBY has no current item", phase: PhaseLobby},
 		{name: "ITEM_INTRO renders the intro body", phase: PhaseItemIntro, status: "intro"},
 		{name: "LIVE renders the English body", phase: PhaseLive, status: "live", run: true, next: true},
+		{name: "LIVE renders the Dutch body", phase: PhaseLive, status: "live", run: true, dutch: true},
 		{name: "SETTLED renders the reveal", phase: PhaseSettled, status: "settled", run: true, settle: true},
+		{name: "SETTLED renders the Dutch reveal", phase: PhaseSettled, status: "settled", run: true, settle: true, dutch: true},
 		{name: "FINALE has no current item", phase: PhaseFinale},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			env.installState(lateJoinFixture(tc.phase))
+			fixture := lateJoinFixture(tc.phase)
+			if tc.dutch {
+				fixture = lateJoinDutchFixture(tc.phase)
+			}
+			env.installState(fixture)
 
 			for _, role := range []struct {
 				name     string
@@ -587,7 +721,10 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 						}
 						// Every key the phase body reads, and nothing else.
 						want := append([]string(nil), introKeys...)
-						if tc.run {
+						switch {
+						case tc.dutch:
+							want = append(want, dutchRunKeys...)
+						case tc.run:
 							want = append(want, runKeys...)
 						}
 						if tc.next {
@@ -598,7 +735,7 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 						}
 						assertKeySet(t, "item", obj, want...)
 
-						if tc.run {
+						if tc.run && !tc.dutch {
 							top := asObject(t, obj["top_bidder"], "item.top_bidder")
 							assertKeySet(t, "item.top_bidder", top, "nickname")
 						}
