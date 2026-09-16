@@ -20,6 +20,7 @@ func TestEventLiteralsMatchTheHubCatalog(t *testing.T) {
 		EventItemSettled:  "item.settled",
 		EventLeaderboard:  "leaderboard",
 		EventPriceTick:    "price.tick",
+		EventFinale:       "finale",
 	}
 	for got, want := range types {
 		if got != want {

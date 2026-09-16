@@ -484,12 +484,17 @@ func TestAdminCommandSemantics(t *testing.T) {
 			t.Errorf("revision = %d across one next, want one bump to %d", got, rev+1)
 		}
 		events := env.lastEvents()
-		if len(events) != 2 || events[0].Type != EventPhaseChanged || events[1].Type != EventSnapshot {
-			t.Fatalf("entering FINALE emitted %+v, want phase.changed then snapshot", events)
+		if len(events) != 3 || events[0].Type != EventPhaseChanged || events[1].Type != EventFinale || events[2].Type != EventSnapshot {
+			t.Fatalf("entering FINALE emitted %+v, want phase.changed, finale then snapshot", events)
 		}
 		payload, ok := events[0].Data.(PhaseChanged)
 		if !ok || payload.Phase != string(PhaseFinale) || payload.Item != nil {
 			t.Errorf("phase.changed = %#v, want FINALE with a null item (current_item_id cleared)", events[0].Data)
+		}
+		// D-89: the finale payload rides the reserved catalog frame and stays
+		// last-but-one, so the snapshot is still the frame a resync lands on.
+		if _, ok := events[1].Data.(FinaleReveal); !ok {
+			t.Errorf("the finale payload is %T, want FinaleReveal", events[1].Data)
 		}
 		// D-25/H10: the projection agrees — no item is current in FINALE.
 		doc := decodeObject(t, env.engine.Snapshot(RolePlayer, "p-nobody"))

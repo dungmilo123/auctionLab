@@ -26,16 +26,22 @@ type Event struct {
 	To   string
 }
 
-// The event types a Phase 3 mutation may produce. The values are the frozen
-// wire strings (hub.Type*); `EventSnapshot` is the empty string by design (H1).
+// The event types a mutation may produce. The values are the frozen wire strings
+// (hub.Type*); `EventSnapshot` is the empty string by design (H1).
 const (
-	EventSnapshot     = ""               // the recipient's own role projection
-	EventPhaseChanged = "phase.changed"  // {phase}
-	EventItemIntro    = "item.intro"     // *PublicItem, status intro
-	EventItemLive     = "item.live"      // *PublicItem with the live fields
-	EventBidAccepted  = "bid.accepted"   // BidAccepted
-	EventBidRejected  = "bid.rejected"   // BidRejection — private (To = player id)
-	EventItemSettled  = "item.settled"   // *PublicItem with the settle object
-	EventLeaderboard  = "leaderboard"    // []LeaderEntry
-	EventPriceTick    = "price.tick"     // PriceTick — built by the hub (D-56), never bumps rev
+	EventSnapshot     = ""              // the recipient's own role projection
+	EventPhaseChanged = "phase.changed" // {phase}
+	EventItemIntro    = "item.intro"    // *PublicItem, status intro
+	EventItemLive     = "item.live"     // *PublicItem with the live fields
+	EventBidAccepted  = "bid.accepted"  // BidAccepted
+	EventBidRejected  = "bid.rejected"  // BidRejection — private (To = player id)
+	EventItemSettled  = "item.settled"  // *PublicItem with the settle object
+	EventLeaderboard  = "leaderboard"   // []LeaderEntry
+	EventPriceTick    = "price.tick"    // PriceTick — built by the hub (D-56), never bumps rev
+
+	// Phase 4 (D-89): the FINALE transition's reveal. The literal is the
+	// server→client type the catalog already reserves (hub.TypeFinale), so this
+	// addition widens no wire surface — it makes the reserved frame reachable,
+	// exactly as Phase 3 made the Phase 2 placeholders reachable.
+	EventFinale = "finale" // FinaleReveal — podium + standings, built from one leaderboard
 )

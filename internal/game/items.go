@@ -389,7 +389,9 @@ func (e *Engine) StartItem(itemID string) error {
 //   - in ITEM_INTRO the item on screen ends as `skipped` and the next pending
 //     item opens its intro; with none left the game enters FINALE;
 //   - in SETTLED the next pending item opens its intro; with none left, FINALE;
-//   - FINALE clears current_item_id (H10: the "current item" concept is over);
+//   - FINALE clears current_item_id (H10: the "current item" concept is over) and
+//     publishes the D-89 `finale` payload, so the ceremony is event-driven while
+//     the snapshot stays the fallback a resync renders from;
 //   - any other phase is refused with nothing changed.
 func (e *Engine) NextItem() error {
 	e.mu.Lock()
@@ -419,6 +421,11 @@ func (e *Engine) NextItem() error {
 			s.phase = PhaseFinale
 			s.events = append(s.events,
 				Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseFinale)},
+				// D-89: the reserved `finale` frame lands between the phase change
+				// and the snapshot — the snapshot stays LAST because it is what a
+				// client that missed everything else resyncs from (D-41), and the
+				// finale is the event that carries the ceremony itself.
+				Event{Type: EventFinale, Data: s.finaleReveal()},
 				Event{Type: EventSnapshot},
 			)
 			return nil

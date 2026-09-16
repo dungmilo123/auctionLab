@@ -1254,10 +1254,13 @@ func TestFinaleProjection(t *testing.T) {
 		}
 
 		wantOrder := []string{"An", "Bình"}
+		ranked := []string{an.PlayerID, binh.PlayerID}
 		if cuong.PlayerID < dung.PlayerID {
 			wantOrder = append(wantOrder, "Cường", "Dung")
+			ranked = append(ranked, cuong.PlayerID, dung.PlayerID)
 		} else {
 			wantOrder = append(wantOrder, "Dung", "Cường")
+			ranked = append(ranked, dung.PlayerID, cuong.PlayerID)
 		}
 		for i, entry := range standings {
 			row := asObject(t, entry, "standings entry")
@@ -1268,7 +1271,7 @@ func TestFinaleProjection(t *testing.T) {
 
 		// The player half: every FINALE snapshot carries its own place, so the
 		// body never matches an identity against a public list (D-89).
-		for i, id := range []string{an.PlayerID, binh.PlayerID, cuong.PlayerID, dung.PlayerID} {
+		for i, id := range ranked {
 			me := asObject(t, decodeObject(t, env.engine.Snapshot(RolePlayer, id))["me"], "me")
 			if me["rank"] != float64(i+1) {
 				t.Errorf("%s's me.rank at FINALE = %#v, want %d", id, me["rank"], i+1)

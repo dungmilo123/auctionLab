@@ -493,6 +493,36 @@ func (s *state) lobby() []LobbyEntry {
 	return entries
 }
 
+// FinaleReveal is D-89's `finale` payload: the podium — the top three of the
+// standing — plus the complete standing, so one frame is enough for the winner
+// ceremony while the snapshot remains a fully sufficient fallback.
+//
+// Both lists carry the server's own rank (ECON-05) and both come from ONE
+// leaderboard pass, because the podium is a PREFIX of the standings and never a
+// second sort: two orderings of the same players is exactly how a projector and
+// a phone would start disagreeing about who won. The podium is capped at three
+// rows and is an empty list — never null — when nobody played.
+type FinaleReveal struct {
+	Podium    []LeaderEntry `json:"podium"`
+	Standings []LeaderEntry `json:"standings"`
+}
+
+// maxPodiumRows is D-89's podium cap: the three places the ceremony shows.
+const maxPodiumRows = 3
+
+// finaleReveal builds that payload from one pass over the standing.
+func (s *state) finaleReveal() FinaleReveal {
+	standings := s.leaderboard()
+	podium := make([]LeaderEntry, 0, maxPodiumRows)
+	for i, entry := range standings {
+		if i == maxPodiumRows {
+			break
+		}
+		podium = append(podium, entry)
+	}
+	return FinaleReveal{Podium: podium, Standings: standings}
+}
+
 // leaderboard is the public standing: budget first, then total value, then join
 // order — the PLAN.md §5 tie-break chain, applied consistently so the lobby, the
 // live dashboard and the podium never disagree.
