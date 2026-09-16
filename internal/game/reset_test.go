@@ -230,8 +230,12 @@ func TestResetKeepPlayers(t *testing.T) {
 	events, revs := env.publishedFrames()
 
 	// --- the reset -----------------------------------------------------------
-	if err := env.engine.Reset(ResetKeepPlayers); err != nil {
+	wrote, err := env.engine.Reset(ResetKeepPlayers)
+	if err != nil {
 		t.Fatalf("Reset(keep_players): %v", err)
+	}
+	if !wrote {
+		t.Error("Reset(keep_players) over a played room reported no write; the transport edge answers no-ops from that flag")
 	}
 
 	if got := env.engine.Rev(); got != revBefore+1 {
@@ -395,8 +399,10 @@ func TestResetClearPlayers(t *testing.T) {
 	revBefore := env.engine.Rev()
 	events, revs := env.publishedFrames()
 
-	if err := env.engine.Reset(ResetClearPlayers); err != nil {
+	if wrote, err := env.engine.Reset(ResetClearPlayers); err != nil {
 		t.Fatalf("Reset(clear_players): %v", err)
+	} else if !wrote {
+		t.Error("Reset(clear_players) reported no write; a lobby full of phones has a room to clear")
 	}
 
 	if got := env.engine.Rev(); got != revBefore+1 {
@@ -448,8 +454,10 @@ func TestResetClearPlayers(t *testing.T) {
 
 	revBefore = env.engine.Rev()
 	events, revs = env.publishedFrames()
-	if err := env.engine.Reset(ResetClearPlayers); err != nil {
+	if wrote, err := env.engine.Reset(ResetClearPlayers); err != nil {
 		t.Fatalf("clear_players in LOBBY: %v", err)
+	} else if !wrote {
+		t.Error("clear_players in LOBBY reported no write: the phones joined, so there is something to clear")
 	}
 	if got := env.engine.Rev(); got != revBefore+1 {
 		t.Errorf("revision after a LOBBY clear_players = %d, want %d: the phones joined, so there is something to clear", got, revBefore+1)
@@ -485,9 +493,12 @@ func TestResetPhaseEdges(t *testing.T) {
 	phaseBefore := env.engine.Phase()
 	events, revs := env.publishedFrames()
 
-	err := env.engine.Reset(ResetMode("reset_everything"))
+	wrote, err := env.engine.Reset(ResetMode("reset_everything"))
 	if err == nil {
 		t.Fatal("Reset(reset_everything) was accepted; the mode vocabulary must be closed")
+	}
+	if wrote {
+		t.Error("a refused mode reported a write; nothing was committed")
 	}
 	if !strings.Contains(err.Error(), "reset_everything") {
 		t.Errorf("refusal %q does not name the rejected mode, so the presenter cannot act on it", err)
@@ -523,8 +534,10 @@ func TestResetPhaseEdges(t *testing.T) {
 		t.Fatalf("phase before the FINALE reset = %q, want FINALE", got)
 	}
 
-	if err := env.engine.Reset(ResetKeepPlayers); err != nil {
+	if wrote, err := env.engine.Reset(ResetKeepPlayers); err != nil {
 		t.Fatalf("Reset(keep_players) from FINALE: %v", err)
+	} else if !wrote {
+		t.Error("Reset(keep_players) from FINALE reported no write; a played game has a timeline to clear")
 	}
 	if got := env.engine.Phase(); got != PhaseLobby {
 		t.Errorf("phase after a FINALE reset = %q, want LOBBY", got)
@@ -541,8 +554,12 @@ func TestResetPhaseEdges(t *testing.T) {
 	// --- a keep_players reset of an already-fresh lobby is a no-op ----------
 	revBefore = env.engine.Rev()
 	events, revs = env.publishedFrames()
-	if err := env.engine.Reset(ResetKeepPlayers); err != nil {
+	wrote, err = env.engine.Reset(ResetKeepPlayers)
+	if err != nil {
 		t.Fatalf("Reset(keep_players) in LOBBY: %v", err)
+	}
+	if wrote {
+		t.Error("a no-op keep_players reset reported a write; nothing was committed")
 	}
 	if got := env.engine.Rev(); got != revBefore {
 		t.Errorf("revision after a LOBBY keep_players reset = %d, want the unchanged %d: there is nothing to reset, so there is nothing to persist", got, revBefore)
@@ -574,21 +591,27 @@ func TestReleaseSession(t *testing.T) {
 
 	// An id the engine does not know is refused rather than silently ignored:
 	// the command names a row, and a typo must not report success.
-	if err := env.engine.ReleaseSession("no-such-player"); err == nil {
+	if wrote, err := env.engine.ReleaseSession("no-such-player"); err == nil {
 		t.Error("releasing an unknown player was accepted; the command must validate the row it names")
+	} else if wrote {
+		t.Error("a refused release reported a write; nothing was committed")
 	}
-	if err := env.engine.ReleaseSession(""); err == nil {
+	if _, err := env.engine.ReleaseSession(""); err == nil {
 		t.Error("releasing the empty id was accepted")
 	}
 
 	// --- two independently released rows do not collide ---------------------
 	revBefore := env.engine.Rev()
-	if err := env.engine.ReleaseSession(an.PlayerID); err != nil {
+	if wrote, err := env.engine.ReleaseSession(an.PlayerID); err != nil {
 		t.Fatalf("releasing the first player: %v", err)
+	} else if !wrote {
+		t.Error("releasing a live row reported no write; the token write is the command's whole point")
 	}
 	anReleased := env.rawToken(t, an.PlayerID)
-	if err := env.engine.ReleaseSession(binh.PlayerID); err != nil {
+	if wrote, err := env.engine.ReleaseSession(binh.PlayerID); err != nil {
 		t.Fatalf("releasing a second player while the first is released: %v", err)
+	} else if !wrote {
+		t.Error("releasing the second live row reported no write")
 	}
 	binhReleased := env.rawToken(t, binh.PlayerID)
 
@@ -623,10 +646,13 @@ func TestReleaseSession(t *testing.T) {
 	}
 
 	// Releasing is idempotent: the row is already released, so there is nothing
-	// left to write and the revision stands still.
+	// left to write, the revision stands still, and the engine says so — the
+	// hub uses that `false` to answer the presenter's panel with a snapshot.
 	revBefore = env.engine.Rev()
-	if err := env.engine.ReleaseSession(an.PlayerID); err != nil {
+	if wrote, err := env.engine.ReleaseSession(an.PlayerID); err != nil {
 		t.Fatalf("releasing an already-released player: %v", err)
+	} else if wrote {
+		t.Error("re-releasing an already-released row reported a write; nothing was committed")
 	}
 	if got := env.engine.Rev(); got != revBefore {
 		t.Errorf("revision after re-releasing = %d, want the unchanged %d", got, revBefore)
@@ -678,7 +704,7 @@ func TestClaimReleasedNickname(t *testing.T) {
 		t.Fatalf("fixture economics = budget %d / total %d, want 1.250.000 / 350.000", before.budget, before.totalValue)
 	}
 
-	if err := env.engine.ReleaseSession(an.PlayerID); err != nil {
+	if _, err := env.engine.ReleaseSession(an.PlayerID); err != nil {
 		t.Fatalf("releasing %s: %v", an.PlayerID, err)
 	}
 
@@ -751,7 +777,7 @@ func TestClaimReleasedNickname(t *testing.T) {
 	// A stale token alongside the nickname is still D-30 (2): the unknown token
 	// is ignored and the nickname decides, so a device with a stale token is not
 	// stranded.
-	if err := env.engine.ReleaseSession(binh.PlayerID); err != nil {
+	if _, err := env.engine.ReleaseSession(binh.PlayerID); err != nil {
 		t.Fatalf("releasing %s: %v", binh.PlayerID, err)
 	}
 	withStale, err := env.engine.Join(JoinRequest{Role: RolePlayer, Nickname: "Bình", Token: binh.Token}, nil)

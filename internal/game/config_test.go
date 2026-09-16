@@ -183,7 +183,7 @@ func TestUpdateConfigStartingBudgetAffectsFutureJoinsOnly(t *testing.T) {
 		t.Errorf("a join after the edit has budget %d, want the new starting budget %d", fresh.Me.Budget, raised)
 	}
 
-	if err := env.engine.Reset(ResetKeepPlayers); err != nil {
+	if _, err := env.engine.Reset(ResetKeepPlayers); err != nil {
 		t.Fatalf("Reset(keep_players): %v", err)
 	}
 	afterReset, ok := env.engine.Snapshot(RolePlayer, first.PlayerID).(PlayerView)

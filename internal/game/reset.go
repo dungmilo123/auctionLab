@@ -61,14 +61,20 @@ func isReleasedToken(token string) bool { return strings.HasPrefix(token, releas
 //
 // An unknown mode is refused before anything is touched, so the closed
 // vocabulary is the validator (T-04-03).
-func (e *Engine) Reset(mode ResetMode) error {
+//
+// The bool reports whether the command WROTE. A keep_players reset of an
+// already-fresh lobby is D-78's no-op: it commits nothing and fans out nothing
+// (asserted by TestResetPhaseEdges), and the transport edge needs to know that
+// silence so it can answer the presenter's own connection instead of leaving
+// the panel's in-flight flag waiting for a frame that will never come.
+func (e *Engine) Reset(mode ResetMode) (changed bool, err error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	switch mode {
 	case ResetKeepPlayers, ResetClearPlayers:
 	default:
-		return fmt.Errorf("game: reset mode %q is not one of keep_players|clear_players", mode)
+		return false, fmt.Errorf("game: reset mode %q is not one of keep_players|clear_players", mode)
 	}
 
 	// D-78: keep_players over an already-fresh lobby repairs nothing, so it
@@ -77,12 +83,15 @@ func (e *Engine) Reset(mode ResetMode) error {
 	// is deliberately exempt, because a lobby full of phones has a room to clear
 	// even though no item has played.
 	if mode == ResetKeepPlayers && e.state.resetIsNoOp() {
-		return nil
+		return false, nil
 	}
 
-	return e.applyLocked(func(s *state) error {
+	if err := e.applyLocked(func(s *state) error {
 		return s.resetLocked(mode)
-	}, true, nil)
+	}, true, nil); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // resetIsNoOp reports whether the committed state is already exactly what a
@@ -171,20 +180,22 @@ func (s *state) resetLocked(mode ResetMode) error {
 // The write is durable, so it bumps the revision and ends with the role snapshot
 // (D-35): the admin's Players tab learns about it from the same fan-out as
 // everything else, and the released player's own socket is the hub's to close.
-// Releasing an already-released row is a no-op.
-func (e *Engine) ReleaseSession(playerID string) error {
+// Releasing an already-released row is a no-op, and — like the reset's own
+// no-op — it reports that with a false so the transport edge can answer the
+// presenter's connection, whose in-flight flag waits for a frame.
+func (e *Engine) ReleaseSession(playerID string) (changed bool, err error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	p := e.state.players[playerID]
 	if p == nil {
-		return fmt.Errorf("game: player.release %q does not exist", playerID)
+		return false, fmt.Errorf("game: player.release %q does not exist", playerID)
 	}
 	if isReleasedToken(p.token) {
-		return nil // already released: nothing left to write, no revision move
+		return false, nil // already released: nothing left to write, no revision move
 	}
 
-	return e.applyLocked(func(s *state) error {
+	if err := e.applyLocked(func(s *state) error {
 		s.players[playerID].token = releasedToken(playerID)
 		// Presence is in-memory and rides the current revision, but a released
 		// identity must not read as "connected" to the admin while the hub is
@@ -192,5 +203,8 @@ func (e *Engine) ReleaseSession(playerID string) error {
 		s.connected[playerID] = false
 		s.events = append(s.events, Event{Type: EventSnapshot})
 		return nil
-	}, true, nil)
+	}, true, nil); err != nil {
+		return false, err
+	}
+	return true, nil
 }

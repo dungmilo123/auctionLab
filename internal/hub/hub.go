@@ -394,6 +394,27 @@ func (h *Hub) sendError(c *client, code, message string) {
 	})
 }
 
+// confirmNoop answers ONE connection whose command produced NO frame of its own
+// — a keep_players reset of an already-fresh lobby (D-78), a release of a row
+// that was already released (D-80) — with its own role snapshot.
+//
+// The admin panel derives every in-flight flag from its snapshot generation
+// ("the snapshot is the confirmation"), so a command that fans out nothing
+// would leave the controls it gated disabled until some unrelated frame
+// arrived. This is the private counterpart of that rule: the connection that
+// issued the command, its own projection, and the CURRENT revision, because a
+// no-op is not a state event (D-35) — the same shape as sendError.
+//
+// PRECONDITION: engine.mu is NOT held. The caller runs after the command has
+// returned; the snapshot is built inside engine.Section like every other
+// producer that writes this connection's seq counter and FIFO (D-21/D-33).
+func (h *Hub) confirmNoop(c *client) {
+	_ = h.engine.Section(func(v game.View) error {
+		c.enqueue(v.Rev(), TypeStateSnapshot, c.snapshot(v))
+		return nil
+	})
+}
+
 // recover is the consumer half of D-41's fence, run by the connection's writer
 // when a producer has dropped a message.
 //

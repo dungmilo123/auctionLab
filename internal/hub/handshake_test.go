@@ -500,7 +500,33 @@ func TestAdminReset(t *testing.T) {
 		}
 	})
 
-	t.Run("clear_players closes every player socket after the commit", func(t *testing.T) {
+	t.Run("a no-op keep_players reset answers the admin with its own snapshot", func(t *testing.T) {
+		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+		admin := joinRole(t, h, RoleAdmin)
+
+		rev := engine.Rev()
+
+		// A fresh lobby has nothing for keep_players to repair, so the engine
+		// commits nothing and fans nothing out. The presenter's panel derives
+		// its in-flight flag from its snapshot generation, so the transport edge
+		// has to answer the command's own connection — otherwise both Reset
+		// buttons stay disabled until some unrelated snapshot arrives.
+		writeFrame(t, admin, `{"type":"admin.game.reset","mode":"keep_players"}`)
+
+		confirm := expectFrames(t, admin, TypeStateSnapshot)[0]
+		if confirm.Rev != rev {
+			t.Errorf("the no-op confirmation carries revision %d, want the unchanged %d (a no-op is not a state event, D-35)", confirm.Rev, rev)
+		}
+		if got := frameString(t, frameData(t, confirm), "phase"); got != "LOBBY" {
+			t.Errorf("the no-op confirmation's phase = %q, want LOBBY", got)
+		}
+		if got := engine.Rev(); got != rev {
+			t.Errorf("revision = %d after a no-op reset, want the unchanged %d", got, rev)
+		}
+	})
+
+	t.Run("clear_players closes every cleared player's socket after the commit", func(t *testing.T) {
 		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
 
 		admin := joinRole(t, h, RoleAdmin)
@@ -624,6 +650,16 @@ func TestAdminRelease(t *testing.T) {
 	// An empty id is a frame-shape failure, and a refusal changes nothing.
 	writeFrame(t, admin, `{"type":"admin.player.release"}`)
 	assertErrorCode(t, readFrame(t, admin), CodeBadMessage)
+
+	// A re-release of the same row is D-80's no-op: the row already holds the
+	// sentinel, so there is no write and no fan-out. The command still answers
+	// the presenter's own connection, because its in-flight flag waits for a
+	// snapshot and a released row stays in the Players tab until it is claimed.
+	writeFrame(t, admin, fmt.Sprintf(`{"type":"admin.player.release","id":%q}`, anID))
+	confirm := expectFrames(t, admin, TypeStateSnapshot)[0]
+	if rows := playersOf(t, confirm); len(rows) != 2 {
+		t.Errorf("the no-op release confirmation carries %d player(s), want the unchanged 2", len(rows))
+	}
 }
 
 // TestOriginRejectionIsLoggedOncePerInterval pins the abuse guard (IN-07): a

@@ -396,13 +396,23 @@ func (c *client) handleAdmin(in inbound) {
 			c.sendError(CodeBadMessage, "admin.game.reset needs mode keep_players|clear_players")
 			return
 		}
-		err = c.hub.engine.Reset(mode)
-		if err == nil && mode == game.ResetClearPlayers {
-			// D-78: the rows are gone and the commit has landed, so every phone
-			// still holding one is sent back to the join form — with the
-			// session-ended code, never 4001 (a player would read that as
-			// "another device took my identity").
-			c.hub.endPlayerSessions()
+		changed, resetErr := c.hub.engine.Reset(mode)
+		err = resetErr
+		if err == nil {
+			if mode == game.ResetClearPlayers {
+				// D-78: the rows are gone and the commit has landed, so every phone
+				// still holding one is sent back to the join form — with the
+				// session-ended code, never 4001 (a player would read that as
+				// "another device took my identity").
+				c.hub.endPlayerSessions()
+			}
+			if !changed {
+				// D-78's no-op (a keep_players reset of an already-fresh lobby)
+				// fans out nothing, so the presenter's panel would keep waiting
+				// for the snapshot its in-flight flag is derived from. Answer
+				// this connection with its own.
+				c.hub.confirmNoop(c)
+			}
 		}
 	case TypeAdminConfigUpdate:
 		if in.Config == nil {
@@ -415,12 +425,18 @@ func (c *client) handleAdmin(in inbound) {
 			c.sendError(CodeBadMessage, "admin.player.release needs an id")
 			return
 		}
-		err = c.hub.engine.ReleaseSession(in.ID)
+		changed, releaseErr := c.hub.engine.ReleaseSession(in.ID)
+		err = releaseErr
 		if err == nil {
 			// D-80: the token write is what is durable; ending the socket is what
 			// makes the released identity's device notice. An identity with no
 			// live socket is a no-op (endPlayerSession finds nothing).
 			c.hub.endPlayerSession(in.ID)
+			if !changed {
+				// The row was already released, so this command wrote nothing and
+				// fanned out nothing: give the panel the frame it waits for.
+				c.hub.confirmNoop(c)
+			}
 		}
 	}
 
