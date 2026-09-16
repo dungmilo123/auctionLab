@@ -408,11 +408,6 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		next.revision = e.state.revision + 1
 	}
 
-	// Phase 4 (D-78): the reset half of the write set. Every field above is
-	// growth-only — a cleared trail is invisible to bidTail, sealed bids have no
-	// diff at all, and a nil Runtime means "unchanged" rather than "removed" — so
-	// the removals travel as the explicit write set the store needs, read from
-	// the intent Reset recorded rather than inferred from a difference.
 	// Phase 4 (D-81/D-84): the config half of the write set, derived by the same
 	// scratch-vs-committed diff the item rows use, so a mutation cannot forget to
 	// persist what it changed. A nil result leaves game.config_json untouched.
@@ -421,6 +416,11 @@ func (e *Engine) applyLocked(fn func(s *state) error, bumpRevision bool, emit fu
 		return err // nothing persisted, nothing published
 	}
 
+	// Phase 4 (D-78): the reset half of the write set. Every field above is
+	// growth-only — a cleared trail is invisible to bidTail, sealed bids have no
+	// diff at all, and a nil Runtime means "unchanged" rather than "removed" — so
+	// the removals travel as the explicit write set the store needs, read from
+	// the intent Reset recorded rather than inferred from a difference.
 	isReset := next.reset != ""
 
 	if err := e.store.Commit(store.Mutation{
