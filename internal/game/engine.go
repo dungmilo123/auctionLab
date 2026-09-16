@@ -966,7 +966,9 @@ func sameRuntime(a, b *auctionRun) bool {
 }
 
 // bidTail is the append-only tail: the bids committed since prev (H4). The trail
-// is never truncated, so the slice suffix is exactly the new rows.
+// is never truncated, so the slice suffix is exactly the new rows — and each row
+// travels with ITS OWN kind, so an acceptance is persisted as `accept` and a
+// ladder bid as `bid` (D-98) without this function knowing which flow wrote it.
 func (s *state) bidTail(prev *state) []store.BidRow {
 	if len(s.bids) <= len(prev.bids) {
 		return nil
@@ -975,7 +977,7 @@ func (s *state) bidTail(prev *state) []store.BidRow {
 	for _, b := range s.bids[len(prev.bids):] {
 		rows = append(rows, store.BidRow{
 			ItemID: b.itemID, PlayerID: b.playerID,
-			Amount: b.amount, Kind: "bid", CreatedAt: b.createdAt,
+			Amount: b.amount, Kind: b.kind, CreatedAt: b.createdAt,
 		})
 	}
 	return rows

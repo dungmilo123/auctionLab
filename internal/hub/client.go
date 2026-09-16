@@ -274,6 +274,8 @@ func (c *client) handle(payload []byte) {
 		c.requestResync()
 	case TypeBidPlace:
 		c.handleBid(in)
+	case TypeDutchAccept:
+		c.handleDutchAccept()
 	case TypeAdminItemUpsert, TypeAdminItemDelete, TypeAdminItemReorder,
 		TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext,
 		TypeAdminGameReset, TypeAdminConfigUpdate, TypeAdminPlayerRelease:
@@ -328,6 +330,42 @@ func (c *client) handleBid(in inbound) {
 	}
 	log.Printf("ws: bid from %s: %v", c.describe(), err)
 	c.sendError(CodeBadMessage, "the bid could not be placed")
+}
+
+// handleDutchAccept routes one `dutch.accept {}` (D-95). The role gate comes
+// first, exactly like handleBid: a command from the wrong role is a protocol
+// error and never reaches the engine (D-95/H12).
+//
+// The handler takes NO payload — the command has no fields by design, so there
+// is no amount a client could send and none it could influence: the charged
+// price is unconditionally the engine's own derivation at the accept instant
+// (D-95/DTCH-01, T-05-01). An extra key is simply ignored (D-24's additive rule).
+//
+// A refusal travels through the callback with the engine's exclusive lock held
+// (D-53/D-96): the budget and the derived price it reports are the numbers of
+// that moment, and the private frame takes its seq on the same lock-held FIFO as
+// every state event (Pitfall 1).
+func (c *client) handleDutchAccept() {
+	if c.role() != RolePlayer {
+		c.sendError(CodeBadMessage, "dutch.accept needs the player role")
+		return
+	}
+
+	err := c.hub.engine.AcceptDutch(c.playerID(), func(v game.View, rejection game.BidRejection) {
+		c.enqueue(v.Rev(), TypeBidRejected, rejection)
+	})
+	if err == nil {
+		return
+	}
+
+	// A *BidRejectedError means the private frame already answered the player;
+	// there is nothing left to say. Anything else is an engine-level failure.
+	var rejected *game.BidRejectedError
+	if errors.As(err, &rejected) {
+		return
+	}
+	log.Printf("ws: accept from %s: %v", c.describe(), err)
+	c.sendError(CodeBadMessage, "the price could not be accepted")
 }
 
 // amountFromLiteral reads a `bid.place` amount out of its raw JSON literal

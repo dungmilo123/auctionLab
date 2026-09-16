@@ -102,8 +102,8 @@ func auctionFixture(phase Phase) *state {
 	startedAt := testStart.UnixMilli()
 	run := &auctionRun{itemID: "it-1", startedAt: startedAt, deadlineAt: startedAt + 30_000}
 	s.bids = []bid{
-		{itemID: "it-1", playerID: "p-an", amount: 100_000, createdAt: startedAt + 1_000},
-		{itemID: "it-1", playerID: "p-binh", amount: 110_000, createdAt: startedAt + 2_000},
+		{itemID: "it-1", playerID: "p-an", amount: 100_000, createdAt: startedAt + 1_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-binh", amount: 110_000, createdAt: startedAt + 2_000, kind: trailBid},
 	}
 
 	switch phase {
@@ -958,12 +958,12 @@ func TestScreenLeak(t *testing.T) {
 	startedAt := testStart.UnixMilli()
 	live := screenFixture()
 	live.bids = []bid{
-		{itemID: "it-1", playerID: "p-an", amount: 100_000, createdAt: startedAt + 1_000},
-		{itemID: "it-1", playerID: "p-binh", amount: 110_000, createdAt: startedAt + 2_000},
-		{itemID: "it-1", playerID: "p-an", amount: 120_000, createdAt: startedAt + 3_000},
-		{itemID: "it-1", playerID: "p-binh", amount: 130_000, createdAt: startedAt + 3_000},
-		{itemID: "it-1", playerID: "p-an", amount: 140_000, createdAt: startedAt + 4_000},
-		{itemID: "it-1", playerID: "p-binh", amount: 150_000, createdAt: startedAt + 5_000},
+		{itemID: "it-1", playerID: "p-an", amount: 100_000, createdAt: startedAt + 1_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-binh", amount: 110_000, createdAt: startedAt + 2_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-an", amount: 120_000, createdAt: startedAt + 3_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-binh", amount: 130_000, createdAt: startedAt + 3_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-an", amount: 140_000, createdAt: startedAt + 4_000, kind: trailBid},
+		{itemID: "it-1", playerID: "p-binh", amount: 150_000, createdAt: startedAt + 5_000, kind: trailBid},
 	}
 	env.installState(live)
 

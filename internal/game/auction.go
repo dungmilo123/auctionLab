@@ -20,6 +20,17 @@ const (
 	ReasonAlreadyLeading = "already_leading"
 )
 
+// The trail kinds the append-only `bids` audit carries (PLAN.md §5's vocabulary
+// `bid | accept | sealed_edit`). The kind is what keeps the two flows apart in
+// ONE audit trail: an English ladder read only ever sees `bid`, and a Dutch
+// acceptance is only ever read as `accept` — so an accept can neither join the
+// ladder nor light the English outbid banner (D-98), and a future `sealed_edit`
+// row is excluded from both by construction.
+const (
+	trailBid    = "bid"
+	trailAccept = "accept"
+)
+
 // ErrNotLive reports that no live auction exists to settle — the phase edge
 // LIVE → SETTLED is the only one a settle may take (D-55/D-65).
 var ErrNotLive = errors.New("game: no live auction to settle")
@@ -48,12 +59,14 @@ type auctionRun struct {
 
 // bid is one accepted bid in the process-wide append-only trail (H4/D-51). A
 // bid belongs to a run when its itemID matches and its createdAt is at or after
-// the run's startedAt.
+// the run's startedAt, and `kind` says which flow wrote it: `bid` for the
+// English ladder, `accept` for a Dutch acceptance (D-98).
 type bid struct {
 	itemID    string
 	playerID  string
 	amount    int64
 	createdAt int64
+	kind      string
 }
 
 // currentRun returns the open auction run, or nil when no item is running.
@@ -63,6 +76,10 @@ func (s *state) currentRun() *auctionRun { return s.currentAuction }
 // the append-only trail that belongs to the current item and run (H4/H5). The
 // run boundary is startedAt, which is the same rule boot reconstruction uses,
 // so a replayed item cannot resurrect a previous run's price.
+//
+// The `bid` kind filter is D-98: a Dutch acceptance rides the same trail, and
+// the English ladder must never read one as a bid — so this is the ONE place
+// that decides what "a bid" means, and currentPrice/minNextBid inherit it.
 func (s *state) topBid() (bid, bool) {
 	run := s.currentAuction
 	if run == nil {
@@ -70,7 +87,7 @@ func (s *state) topBid() (bid, bool) {
 	}
 	for i := len(s.bids) - 1; i >= 0; i-- {
 		b := s.bids[i]
-		if b.itemID == run.itemID && b.createdAt >= run.startedAt {
+		if b.kind == trailBid && b.itemID == run.itemID && b.createdAt >= run.startedAt {
 			return b, true
 		}
 	}
@@ -79,7 +96,8 @@ func (s *state) topBid() (bid, bool) {
 
 // lastBidOf returns one player's most recent accepted bid in the current run —
 // the value behind PlayerMe.last_bid (D-67). It is scoped to the run on purpose:
-// a bid from the previous item must not light the outbid banner (D-72).
+// a bid from the previous item must not light the outbid banner (D-72), and a
+// Dutch acceptance is not one of this player's bids (D-98).
 func (s *state) lastBidOf(playerID string) (bid, bool) {
 	run := s.currentAuction
 	if run == nil {
@@ -87,7 +105,7 @@ func (s *state) lastBidOf(playerID string) (bid, bool) {
 	}
 	for i := len(s.bids) - 1; i >= 0; i-- {
 		b := s.bids[i]
-		if b.playerID == playerID && b.itemID == run.itemID && b.createdAt >= run.startedAt {
+		if b.kind == trailBid && b.playerID == playerID && b.itemID == run.itemID && b.createdAt >= run.startedAt {
 			return b, true
 		}
 	}
@@ -153,7 +171,7 @@ func (s *state) topBidderNickname() (string, bool) {
 //     will carry, so it needs no second lock section.
 func (s *state) acceptBid(playerID string, amount, now int64, it *item) {
 	run := s.currentAuction
-	s.bids = append(s.bids, bid{itemID: run.itemID, playerID: playerID, amount: amount, createdAt: now})
+	s.bids = append(s.bids, bid{itemID: run.itemID, playerID: playerID, amount: amount, createdAt: now, kind: trailBid})
 
 	if run.deadlineAt > 0 && it.antiSnipeMode == "extend" && it.antiSnipeWindowMS > 0 {
 		remaining := run.deadlineAt - now
@@ -194,7 +212,10 @@ func (s *state) settleLocked(now int64) error {
 		return fmt.Errorf("game: settle for unknown item %q", run.itemID)
 	}
 
-	top, hasWinner := s.topBid()
+	// D-100: the winner lookup is type-aware — the English ladder's top bid, or
+	// the Dutch run's recorded acceptance. One accessor, so a Dutch settle takes
+	// exactly this branch rather than growing a settle of its own.
+	top, hasWinner := s.runWinner()
 	if hasWinner {
 		p := s.players[top.playerID]
 		if p == nil {

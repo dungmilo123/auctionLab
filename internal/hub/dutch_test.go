@@ -125,7 +125,9 @@ func TestDutchAcceptSettlesOnTheWire(t *testing.T) {
 	writeFrame(t, conn, `{"type":"dutch.accept","amount":1}`)
 	frames := expectFrames(t, conn, TypeItemSettled, TypeLeaderboard, TypeStateSnapshot)
 
-	settled := frameData(t, frames[0])
+	// item.settled carries the public item with the reveal nested under `settle`
+	// (D-67), so the price the room reads is the settle object's own.
+	settled := dataObject(t, frames[0], "settle")
 	if got := frameString(t, settled, "outcome"); got != "sold" {
 		t.Errorf("item.settled outcome = %q, want sold", got)
 	}

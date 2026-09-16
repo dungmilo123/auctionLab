@@ -629,7 +629,10 @@ func (s *state) currentPublicItem() *PublicItem {
 func (s *state) settleReveal(it *item) *SettleInfo {
 	reveal := &SettleInfo{Outcome: "unsold", TruthValue: it.truthValue}
 
-	top, ok := s.topBid()
+	// D-100: the SAME type-aware accessor settleLocked charged with, so a Dutch
+	// restart derives the identical sold object from the acceptance row and an
+	// English restart derives the identical one from the ladder.
+	top, ok := s.runWinner()
 	if !ok {
 		// ECON-03: unsold is a first-class outcome — price 0, delta 0 and an
 		// explicit null winner — and no budget moves.

@@ -43,7 +43,11 @@ func (e *Engine) loadAuctionState() error {
 		// Only accepted bids join the trail. The table is the append-only audit
 		// and a later phase may write other kinds; the same filter the boot
 		// reconstruction query uses keeps a foreign row out of the ladder (H5).
-		if row.Kind != "bid" {
+		//
+		// The kind travels WITH the row: the ladder and feed predicates filter on
+		// it (D-98), so a loaded bid that lost its kind would silently vanish
+		// from every English read after a restart.
+		if row.Kind != trailBid {
 			continue
 		}
 		s.bids = append(s.bids, bid{
@@ -51,6 +55,7 @@ func (e *Engine) loadAuctionState() error {
 			playerID:  row.PlayerID,
 			amount:    row.Amount,
 			createdAt: row.CreatedAt,
+			kind:      row.Kind,
 		})
 	}
 

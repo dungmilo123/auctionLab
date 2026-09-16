@@ -130,8 +130,12 @@ func TestProtocol(t *testing.T) {
 		// for the same reason: they route to the engine now, and their
 		// transport contracts are pinned by TestAdminReset/TestAdminRelease and
 		// by the config cases in internal/game.
+		//
+		// Phase 5's 05-01 removes `dutch.accept`: it routes to the engine now,
+		// and its transport contract is pinned by dutch_test.go (player-only,
+		// with the private refusal frames).
 		future := []string{
-			TypeDutchAccept, TypeSealedSubmit,
+			TypeSealedSubmit,
 		}
 
 		h, _ := newTestHub(t)
