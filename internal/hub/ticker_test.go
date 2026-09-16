@@ -2,6 +2,7 @@ package hub
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 	"time"
 
@@ -276,4 +277,77 @@ func TestStartTickerStopsTheBeat(t *testing.T) {
 		t.Errorf("the ticker enqueued %d beat(s) after stop: the goroutine outlived its stop function (Pitfall 11)", got)
 	}
 	stop() // idempotent
+}
+
+// drainSend empties one client's FIFO and reports the ENVELOPE types it held.
+// The beats below are counted here rather than on a socket: a frame the ticker
+// emits lands in this queue, so an empty queue IS the silence (the
+// TestStartTickerStopsTheBeat pattern).
+func drainSend(c *client) []string {
+	var types []string
+	for {
+		select {
+		case env := <-c.send:
+			types = append(types, env.Type)
+		default:
+			return types
+		}
+	}
+}
+
+// TestSealedTickStaysSilent is D-116's ticker half: a live sealed window has no
+// moving number to describe, so an explicit beat emits NOTHING — while the very
+// same beat still settles the run once the wall clock passes its deadline,
+// because the settle arm reads deadline_at and the item's type never enters
+// into it (D-107).
+func TestSealedTickStaysSilent(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	clock := &testClock{t: base.Add(1 * time.Second)}
+	h, engine, _ := newLiveSealedHub(t, clock, base.UnixMilli(), 1_000_000)
+
+	// One real submission first, so the state the beats read is the state a
+	// submit produced: a count that just moved, and no price at all.
+	conn, _ := sealedSubmitDial(t, h)
+	writeFrame(t, conn, `{"type":"sealed.submit","amount":150000}`)
+	expectFrames(t, conn, TypeSealedReceived, TypeStateSnapshot)
+
+	// The watcher whose FIFO the beats can be counted in, exactly as
+	// TestStartTickerStopsTheBeat builds one.
+	watch := &client{hub: h, send: make(chan Envelope, 64), done: make(chan struct{})}
+	watch.setIdentity(RoleScreen, "")
+	h.registry.add(watch)
+
+	rev := engine.Rev()
+	h.tick()
+	if got := drainSend(watch); len(got) != 0 {
+		t.Errorf("a beat during a live sealed window emitted %v, want nothing: a sealed run has no ladder and no moving number to tick (D-116)", got)
+	}
+	if got := engine.Rev(); got != rev {
+		t.Errorf("revision after a silent beat = %d, want the unchanged %d (a tick is never a mutation, D-58)", got, rev)
+	}
+	if got := engine.Phase(); got != game.PhaseLive {
+		t.Fatalf("phase after a beat inside the window = %s, want the unchanged LIVE", got)
+	}
+
+	// The deadline arm is untouched: past the deadline the SAME beat settles the
+	// item once, through the one settle path, and the settle's own three frames
+	// are the whole fan-out — never a stale LIVE tick.
+	clock.t = base.Add(31 * time.Second)
+	h.tick()
+	if got := engine.Phase(); got != game.PhaseSettled {
+		t.Fatalf("phase after a due sealed beat = %s, want SETTLED (D-107: sealed settles on the wall clock)", got)
+	}
+	if got, want := engine.Rev(), rev+1; got != want {
+		t.Errorf("revision after the due sealed beat = %d, want exactly one bump to %d", got, want)
+	}
+	want := []string{TypeItemSettled, TypeLeaderboard, TypeStateSnapshot}
+	if got := drainSend(watch); !slices.Equal(got, want) {
+		t.Errorf("frames after the due sealed beat = %v, want %v", got, want)
+	}
+
+	// A second beat is a clean no-op: the settled run has nothing left to say.
+	h.tick()
+	if got := drainSend(watch); len(got) != 0 {
+		t.Errorf("a beat after the sealed settle emitted %v, want nothing", got)
+	}
 }

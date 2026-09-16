@@ -647,6 +647,57 @@ func lateJoinDutchFixture(phase Phase) *state {
 	return s
 }
 
+// lateJoinSealedFixture is the sealed arm of the phase table: a sealed item
+// carrying the TWO effective rows a live window holds (plus one row belonging to
+// another item, which no sealed projection may show), and a run whose only live
+// field is its deadline (D-116). The late joiner (p-cuong) has never submitted,
+// so the own-amount key must be ABSENT for them (D-115).
+func lateJoinSealedFixture(phase Phase) *state {
+	s := populatedState()
+	it := s.items["it-1"]
+	it.auctionType = "sealed_first"
+	it.minIncrement, it.durationMS = 0, 30_000
+	it.antiSnipeMode, it.antiSnipeWindowMS, it.maxExtensions = "disabled", 0, 0
+	it.status = "live"
+
+	startedAt := testStart.UnixMilli()
+	run := &auctionRun{itemID: "it-1", startedAt: startedAt, deadlineAt: startedAt + 30_000}
+	s.sealedBids = []sealedBid{
+		// Deliberately out of submission order, so the admin ledger's ordering
+		// assertion is about the rule rather than about the slice.
+		{itemID: "it-1", playerID: "p-binh", amount: 220_000, submittedAt: startedAt + 5_000, updatedAt: startedAt + 8_000},
+		{itemID: "it-1", playerID: "p-an", amount: 150_000, submittedAt: startedAt + 1_000, updatedAt: startedAt + 1_000},
+		{itemID: "it-prev", playerID: "p-an", amount: 999_000, submittedAt: startedAt - 60_000, updatedAt: startedAt - 60_000},
+	}
+
+	s.players["p-cuong"] = &player{
+		id: "p-cuong", nickname: "Cường", nicknameKey: "cường", token: strings.Repeat("c", 64),
+		budget: 1_000_000, joinedAt: testStart.Add(6_000).UnixMilli(), lastSeenAt: testStart.Add(6_000).UnixMilli(),
+	}
+	s.order = append(s.order, "p-cuong")
+	s.connected["p-cuong"] = true
+
+	switch phase {
+	case PhaseLive:
+		s.phase = PhaseLive
+		s.currentAuction = run
+	case PhaseSettled:
+		s.phase, it.status = PhaseSettled, "settled"
+		run.settledAt = startedAt + 30_000
+		// The Vickrey charge: Bình wins at 220000 but pays the second highest
+		// 150000 — the reveal publishes the PRICE, never the winner's bid
+		// (D-114).
+		run.settle = &SettleInfo{
+			Outcome: "sold", Winner: &Bidder{Nickname: "Bình"},
+			Price: 150_000, TruthValue: fixtureTruthValue, BudgetDelta: fixtureTruthValue - 150_000,
+		}
+		s.currentAuction = run
+		s.players["p-binh"].budget = 750_000 - 150_000 + fixtureTruthValue
+		s.players["p-binh"].totalValue = fixtureTruthValue
+	}
+	return s
+}
+
 // TestLateJoinSnapshotIsSelfSufficientAtEveryPhase is SESS-04/D-63's contract:
 // one snapshot has to be enough for a client that just arrived. The table walks
 // every phase — including LOBBY/FINALE with no item, and both a sold and an
@@ -667,6 +718,10 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 	// no top_bidder, no deadline_at, no min_next_bid, but the anchor and the
 	// three mechanics that let a client re-derive the number itself.
 	dutchRunKeys := []string{"current_price", "extensions_used", "started_at", "floor_price", "decrement_step", "decrement_interval_ms"}
+	// D-116: a sealed run advertises exactly ONE live field. There is no ladder
+	// to describe — no price, no minimum, no top bidder, no extension count —
+	// and the counts live in sealed_progress, a separate projection field.
+	sealedRunKeys := []string{"deadline_at"}
 
 	cases := []struct {
 		name   string
@@ -676,13 +731,16 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 		next   bool   // min_next_bid is advertised only while LIVE
 		settle bool
 		dutch  bool // the Dutch arm: its own fixture and its own live key set
+		sealed bool // the sealed arm: its own fixture and its own live key set
 	}{
 		{name: "LOBBY has no current item", phase: PhaseLobby},
 		{name: "ITEM_INTRO renders the intro body", phase: PhaseItemIntro, status: "intro"},
 		{name: "LIVE renders the English body", phase: PhaseLive, status: "live", run: true, next: true},
 		{name: "LIVE renders the Dutch body", phase: PhaseLive, status: "live", run: true, dutch: true},
+		{name: "LIVE renders the sealed body", phase: PhaseLive, status: "live", run: true, sealed: true},
 		{name: "SETTLED renders the reveal", phase: PhaseSettled, status: "settled", run: true, settle: true},
 		{name: "SETTLED renders the Dutch reveal", phase: PhaseSettled, status: "settled", run: true, settle: true, dutch: true},
+		{name: "SETTLED renders the sealed reveal", phase: PhaseSettled, status: "settled", run: true, settle: true, sealed: true},
 		{name: "FINALE has no current item", phase: PhaseFinale},
 	}
 	for _, tc := range cases {
@@ -690,6 +748,9 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 			fixture := lateJoinFixture(tc.phase)
 			if tc.dutch {
 				fixture = lateJoinDutchFixture(tc.phase)
+			}
+			if tc.sealed {
+				fixture = lateJoinSealedFixture(tc.phase)
 			}
 			env.installState(fixture)
 
@@ -724,6 +785,8 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 						switch {
 						case tc.dutch:
 							want = append(want, dutchRunKeys...)
+						case tc.sealed:
+							want = append(want, sealedRunKeys...)
 						case tc.run:
 							want = append(want, runKeys...)
 						}
@@ -735,7 +798,7 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 						}
 						assertKeySet(t, "item", obj, want...)
 
-						if tc.run && !tc.dutch {
+						if tc.run && !tc.dutch && !tc.sealed {
 							top := asObject(t, obj["top_bidder"], "item.top_bidder")
 							assertKeySet(t, "item.top_bidder", top, "nickname")
 						}
@@ -769,6 +832,20 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 					}
 					for _, entry := range asArray(t, doc["leaderboard"], "leaderboard") {
 						assertKeySet(t, "leaderboard entry", asObject(t, entry, "leaderboard entry"), "rank", "nickname", "total_value", "budget")
+					}
+
+					// D-116: the count is the ONE sealed fact that crosses
+					// between roles, and it is an explicit null for every other
+					// item type — which is what lets a client tell "not a sealed
+					// item" from "a field this build does not know".
+					if tc.sealed {
+						progress := asObject(t, doc["sealed_progress"], "sealed_progress")
+						assertKeySet(t, "sealed_progress", progress, "submitted", "total")
+						if progress["submitted"] != float64(2) || progress["total"] != float64(3) {
+							t.Errorf("sealed_progress = %#v, want {submitted:2, total:3} — the item's two rows out of the room", progress)
+						}
+					} else if doc["sealed_progress"] != nil {
+						t.Errorf("sealed_progress on a non-sealed %s = %#v, want an explicit null", tc.phase, doc["sealed_progress"])
 					}
 				})
 			}
@@ -1545,4 +1622,198 @@ func TestFinaleProjection(t *testing.T) {
 			t.Errorf("the zero-player FINALE snapshot carries %d feed rows, want none", got)
 		}
 	})
+}
+
+// numberPathsDeep collects the key path of every decoded number equal to want.
+// It is how the sealed assertions prove an AMOUNT travelled (or did not) rather
+// than merely that a key with a suspicious name exists.
+func numberPathsDeep(value any, path []string, want int64, out *[][]string) {
+	switch node := value.(type) {
+	case map[string]any:
+		for key, child := range node {
+			next := append(append([]string(nil), path...), key)
+			if number, ok := child.(float64); ok && int64(number) == want {
+				*out = append(*out, next)
+			}
+			numberPathsDeep(child, next, want, out)
+		}
+	case []any:
+		for _, child := range node {
+			numberPathsDeep(child, path, want, out)
+		}
+	}
+}
+
+// amountPaths returns every path in a decoded document whose value is want.
+func amountPaths(doc map[string]any, want int64) [][]string {
+	var paths [][]string
+	numberPathsDeep(doc, nil, want, &paths)
+	return paths
+}
+
+// samePath reports whether one collected path is exactly the keys in want.
+func samePath(path []string, want ...string) bool {
+	if len(path) != len(want) {
+		return false
+	}
+	for i := range path {
+		if path[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestSealedPlayerProjectionMyBidAndProgress is D-115/D-116's player half: the
+// snapshot carries the player's OWN effective amount while a sealed run is live
+// — never another player's, and only through the key `my_bid` (D-26's leak lock
+// forbids every `sealed_bid*` spelling) — plus the count-only progress that is
+// the one sealed fact shared with the projector.
+func TestSealedPlayerProjectionMyBidAndProgress(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	const (
+		anAmount   = int64(150_000)
+		binhAmount = int64(220_000)
+	)
+
+	t.Run("LIVE: each owner reads its own amount and nothing of the other's", func(t *testing.T) {
+		env.installState(lateJoinSealedFixture(PhaseLive))
+
+		for _, tc := range []struct {
+			playerID string
+			own      int64
+			other    int64
+		}{
+			{playerID: "p-an", own: anAmount, other: binhAmount},
+			{playerID: "p-binh", own: binhAmount, other: anAmount},
+		} {
+			doc := decodeObject(t, env.engine.Snapshot(RolePlayer, tc.playerID))
+			assertNoSecrets(t, "sealed owner "+tc.playerID, doc)
+
+			me := asObject(t, doc["me"], "me")
+			got, present := me["my_bid"]
+			if !present || got != float64(tc.own) {
+				t.Errorf("%s's my_bid = %#v (present=%t), want its own effective amount %d (D-115)", tc.playerID, got, present, tc.own)
+			}
+
+			// The other player's sheet is not an amount this payload may carry
+			// under ANY key — the own-amount key is the only legal exit (D-118).
+			if paths := amountPaths(doc, tc.other); len(paths) != 0 {
+				t.Errorf("%s's payload carries the other player's amount %d at %v: the only legal exits are the owner and the admin (D-26/D-118)", tc.playerID, tc.other, paths)
+			}
+			if paths := amountPaths(doc, tc.own); len(paths) != 1 || !samePath(paths[0], "me", "my_bid") {
+				t.Errorf("%s's payload carries its own amount at %v, want exactly me.my_bid", tc.playerID, paths)
+			}
+
+			progress := asObject(t, doc["sealed_progress"], "sealed_progress")
+			if progress["submitted"] != float64(2) || progress["total"] != float64(3) {
+				t.Errorf("%s's sealed_progress = %#v, want {submitted:2, total:3} (D-116)", tc.playerID, progress)
+			}
+		}
+
+		// A player who has submitted NOTHING has no key at all: absence is the
+		// wire's way of saying "not yet", exactly like last_bid (D-115).
+		doc := decodeObject(t, env.engine.Snapshot(RolePlayer, "p-cuong"))
+		me := asObject(t, doc["me"], "me")
+		if value, present := me["my_bid"]; present {
+			t.Errorf("a player with no effective row carries my_bid = %#v, want the key absent (D-115)", value)
+		}
+	})
+
+	t.Run("SETTLED: the own amount is gone, the reveal is not", func(t *testing.T) {
+		env.installState(lateJoinSealedFixture(PhaseSettled))
+
+		for _, playerID := range []string{"p-an", "p-binh"} {
+			doc := decodeObject(t, env.engine.Snapshot(RolePlayer, playerID))
+			assertNoSecrets(t, "sealed settled "+playerID, doc)
+			me := asObject(t, doc["me"], "me")
+			if value, present := me["my_bid"]; present {
+				t.Errorf("%s's my_bid = %#v at SETTLED, want the key absent: the own amount is emitted only while the sealed item runs (D-115)", playerID, value)
+			}
+			item := asObject(t, doc["item"], "item")
+			reveal := asObject(t, item["settle"], "item.settle")
+			if reveal["price"] != float64(anAmount) {
+				t.Errorf("settled reveal price = %#v, want the CHARGED %d — for Vickrey that is the second highest, not the winner's bid (D-114)", reveal["price"], anAmount)
+			}
+			// The winner's own bid is never published: only the price they pay.
+			if paths := amountPaths(doc, binhAmount); len(paths) != 0 {
+				t.Errorf("%s's settled payload carries the winner's bid %d at %v: the reveal publishes the PRICE, never the bid (D-114)", playerID, binhAmount, paths)
+			}
+		}
+	})
+}
+
+// TestSealedLiveFieldsAreDeadlineOnly is D-116's public-shape contract at the
+// projection boundary: a LIVE sealed item carries its deadline and NOTHING from
+// the ladder — no price, no minimum, no top bidder, no extension count. Without
+// the type branch, currentPrice() would fall back to start_price and publish a
+// plausible-looking number the client could act on (research Pitfall 4).
+func TestSealedLiveFieldsAreDeadlineOnly(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+	for _, tc := range []struct {
+		name     string
+		phase    Phase
+		role     Role
+		playerID string
+	}{
+		{name: "LIVE player", phase: PhaseLive, role: RolePlayer, playerID: "p-an"},
+		{name: "LIVE screen", phase: PhaseLive, role: RoleScreen},
+		{name: "SETTLED screen", phase: PhaseSettled, role: RoleScreen},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env.installState(lateJoinSealedFixture(tc.phase))
+
+			doc := decodeObject(t, env.engine.Snapshot(tc.role, tc.playerID))
+			assertNoSecrets(t, tc.name, doc)
+			item := asObject(t, doc["item"], "item")
+
+			for _, ladderField := range []string{"current_price", "min_next_bid", "top_bidder", "extensions_used"} {
+				if value, present := item[ladderField]; present {
+					t.Errorf("%s carries item.%s = %#v: a sealed run has no ladder to describe (D-116)", tc.name, ladderField, value)
+				}
+			}
+			if got := item["deadline_at"]; got != float64(testStart.UnixMilli()+30_000) {
+				t.Errorf("%s carries deadline_at = %#v, want the run's own %d: the countdown is the ONE live field a sealed run has", tc.name, got, testStart.UnixMilli()+30_000)
+			}
+			if _, present := item["settle"]; present != (tc.phase == PhaseSettled) {
+				t.Errorf("%s carries settle presence = %t, want %t: the boundary is the object's presence (D-67)", tc.name, present, tc.phase == PhaseSettled)
+			}
+		})
+	}
+}
+
+// TestSealedAdminLedgerProgress is D-117's presenter privilege: the admin
+// snapshot carries the CURRENT item's effective rows — scoped, nickname
+// included, in the tie-break's own order — plus the server's count. It is also
+// the positive control for the player/screen assertions above: the amounts are
+// present here, so their absence elsewhere is a boundary rather than an
+// accident.
+func TestSealedAdminLedgerProgress(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	env.installState(lateJoinSealedFixture(PhaseLive))
+
+	doc := decodeObject(t, env.engine.Snapshot(RoleAdmin, ""))
+	rows := asArray(t, doc["sealed_bids"], "sealed_bids")
+	if len(rows) != 2 {
+		t.Fatalf("the admin ledger lists %d rows, want the current item's 2 — the fixture also holds a row for another item, which must not travel: %+v", len(rows), rows)
+	}
+
+	// The order is the tie-break's own (submitted_at ASC, then player id ASC),
+	// not the order the state happens to hold the rows in.
+	first := asObject(t, rows[0], "sealed_bids[0]")
+	assertKeySet(t, "sealed_bids[0]", first, "item_id", "player_id", "nickname", "amount", "submitted_at", "updated_at")
+	if first["player_id"] != "p-an" || first["nickname"] != "An" || first["amount"] != float64(150_000) {
+		t.Errorf("sealed_bids[0] = %#v, want An's 150000 — the earliest first submission leads (D-117)", first)
+	}
+	second := asObject(t, rows[1], "sealed_bids[1]")
+	if second["player_id"] != "p-binh" || second["nickname"] != "Bình" || second["amount"] != float64(220_000) {
+		t.Errorf("sealed_bids[1] = %#v, want Bình's 220000", second)
+	}
+
+	progress := asObject(t, doc["sealed_progress"], "sealed_progress")
+	assertKeySet(t, "sealed_progress", progress, "submitted", "total")
+	if progress["submitted"] != float64(2) || progress["total"] != float64(3) {
+		t.Errorf("the admin card's count = %#v, want the server's own {submitted:2, total:3} (D-116)", progress)
+	}
 }

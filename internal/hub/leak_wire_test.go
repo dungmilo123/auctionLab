@@ -2,6 +2,7 @@ package hub
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -379,5 +380,230 @@ func TestPlayerAndScreenWirePayloadsLeakNothing(t *testing.T) {
 	})
 	if !found {
 		t.Fatal("the admin snapshot carried none of D-26's secret keys; this test cannot claim to detect a leak")
+	}
+}
+
+// sealedAmountA and sealedAmountB are the two REAL effective amounts the sealed
+// wire group is built from. A populated fixture is the point: an empty one would
+// let every absence assertion below pass without proving anything (D-26).
+const (
+	sealedAmountA = int64(150_000)
+	sealedAmountB = int64(220_000)
+)
+
+// sealedAmountPaths walks a decoded frame and collects the key path of every
+// number equal to want. Asserting on PATHS rather than on a key name is what
+// catches an amount that leaked under a key nobody thought to forbid.
+func sealedAmountPaths(value any, path []string, want int64, out *[][]string) {
+	switch node := value.(type) {
+	case map[string]any:
+		for key, child := range node {
+			next := append(append([]string(nil), path...), key)
+			if number, ok := child.(float64); ok && int64(number) == want {
+				*out = append(*out, next)
+			}
+			sealedAmountPaths(child, next, want, out)
+		}
+	case []any:
+		for _, child := range node {
+			sealedAmountPaths(child, path, want, out)
+		}
+	}
+}
+
+// amountsIn returns every path in one frame's data whose value is want.
+func amountsIn(t *testing.T, env frame, want int64) [][]string {
+	t.Helper()
+
+	var paths [][]string
+	sealedAmountPaths(decodedDocument(t, env), nil, want, &paths)
+	return paths
+}
+
+// isOwnBidPath reports whether a path is exactly the ONE legal exit a player has
+// for an amount: its own `me.my_bid` (D-115).
+func isOwnBidPath(path []string) bool {
+	return len(path) == 2 && path[0] == "me" && path[1] == "my_bid"
+}
+
+// TestSealedWirePayloadsLeakNothing is D-118's wire lock for the sealed secret,
+// asserted on the bytes that really crossed a socket while a POPULATED sealed
+// window ran. The walk covers every message a player or the projector can
+// receive — the handshake, both roles' snapshots, a private refusal, an error
+// frame and the private confirmation — and the only two legal exits for an
+// effective amount are the OWNER's `my_bid` and the admin's ledger (D-26/D-117).
+//
+// The admin connection is the positive control: the amounts are really in the
+// room's state, so their absence from the player and screen streams is a
+// boundary rather than an accident.
+func TestSealedWirePayloadsLeakNothing(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+	clock := &testClock{t: base.Add(1 * time.Second)}
+	h, _, _ := newLiveSealedHub(t, clock, base.UnixMilli(), 1_000_000)
+
+	// Player A resumes the sealed identity its token owns; player B joins fresh.
+	// BOTH submit, so two real amounts exist and either one could leak.
+	playerA := dialWS(t, h)
+	helloA, _ := join(t, playerA, `{"type":"join","role":"player","token":"`+sealedPlayerToken+`"}`)
+	expectFrames(t, playerA, TypeStateSnapshot) // the resume's own presence fan-out
+
+	playerB := dialWS(t, h)
+	helloB, _ := join(t, playerB, `{"type":"join","role":"player","nickname":"Bình"}`)
+	expectFrames(t, playerB, TypeStateSnapshot) // the join's own mutation snapshot
+
+	screen := joinRole(t, h, RoleScreen)
+	admin := joinRole(t, h, RoleAdmin)
+
+	// The traffic: two accepted submissions (each answered privately and then
+	// fanned out), one refusal, and one unknown command.
+	writeFrame(t, playerA, fmt.Sprintf(`{"type":"sealed.submit","amount":%d}`, sealedAmountA))
+	writeFrame(t, playerB, fmt.Sprintf(`{"type":"sealed.submit","amount":%d}`, sealedAmountB))
+	writeFrame(t, playerA, `{"type":"sealed.submit","amount":0}`)
+	writeFrame(t, playerB, `{"type":"future.command"}`)
+
+	playerAFrames := append([]frame{helloA}, drainFrames(t, playerA, 300*time.Millisecond)...)
+	playerBFrames := append([]frame{helloB}, drainFrames(t, playerB, 300*time.Millisecond)...)
+	screenFrames := drainFrames(t, screen, 300*time.Millisecond)
+	adminFrames := drainFrames(t, admin, 300*time.Millisecond)
+
+	if len(playerAFrames) < 4 || len(playerBFrames) < 4 || len(screenFrames) < 2 || len(adminFrames) < 2 {
+		t.Fatalf("the sealed fixture produced too little traffic (A %d, B %d, screen %d, admin %d frames); the leak assertions would be vacuous",
+			len(playerAFrames), len(playerBFrames), len(screenFrames), len(adminFrames))
+	}
+
+	// D-26: no forbidden key anywhere on a player or screen stream.
+	for _, group := range []struct {
+		name   string
+		frames []frame
+	}{
+		{name: "player A", frames: playerAFrames},
+		{name: "player B", frames: playerBFrames},
+		{name: "screen", frames: screenFrames},
+	} {
+		for i, env := range group.frames {
+			doc := decodedDocument(t, env)
+			walkKeysAt(doc, nil, func(path []string, key string) {
+				if !forbiddenKey(key) {
+					return
+				}
+				if key == "token" && env.Type == TypeHello {
+					return // D-29's single exception: the caller's own token
+				}
+				t.Errorf("%s frame %d (%s) carries the forbidden key %q at %v: a player/screen payload must not be able to express a secret (D-26)",
+					group.name, i, env.Type, key, path)
+			})
+			if obj, ok := doc.(map[string]any); ok && group.name == "screen" {
+				if _, present := obj["me"]; present {
+					t.Errorf("screen frame %d (%s) carries a `me` block: one client's identity reached another (D-25)", i, env.Type)
+				}
+			}
+		}
+	}
+
+	// The owner's amount is legal at exactly ONE path, and the other player's is
+	// nowhere at all.
+	for _, tc := range []struct {
+		name    string
+		frames  []frame
+		own     int64
+		foreign int64
+	}{
+		{name: "player A", frames: playerAFrames, own: sealedAmountA, foreign: sealedAmountB},
+		{name: "player B", frames: playerBFrames, own: sealedAmountB, foreign: sealedAmountA},
+	} {
+		sawOwn := false
+		for i, env := range tc.frames {
+			if paths := amountsIn(t, env, tc.foreign); len(paths) != 0 {
+				t.Errorf("%s frame %d (%s) carries the OTHER player's amount %d at %v: the only legal exits are the owner and the admin (D-26/D-118)",
+					tc.name, i, env.Type, tc.foreign, paths)
+			}
+			for _, path := range amountsIn(t, env, tc.own) {
+				sawOwn = true
+				if !isOwnBidPath(path) {
+					t.Errorf("%s frame %d (%s) carries its own amount %d at %v, want only me.my_bid — the D-26 leak lock forbids every sealed_bid* spelling",
+						tc.name, i, env.Type, tc.own, path)
+				}
+			}
+		}
+		if !sawOwn {
+			t.Errorf("%s never received its own amount: the own-bid exit (me.my_bid) is missing from the live sealed window (D-115)", tc.name)
+		}
+	}
+
+	// The projector may read the count and the deadline and nothing else.
+	sawProgress := false
+	highestSubmitted := 0
+	for i, env := range screenFrames {
+		doc := decodedDocument(t, env)
+		if paths := amountsIn(t, env, sealedAmountA); len(paths) != 0 {
+			t.Errorf("screen frame %d (%s) carries player A's amount at %v: the projector sees the count and never an amount (D-116)", i, env.Type, paths)
+		}
+		if paths := amountsIn(t, env, sealedAmountB); len(paths) != 0 {
+			t.Errorf("screen frame %d (%s) carries player B's amount at %v: the projector sees the count and never an amount (D-116)", i, env.Type, paths)
+		}
+		obj, ok := documentObject(doc)
+		if !ok {
+			continue
+		}
+		if progress, ok := obj["sealed_progress"].(map[string]any); ok {
+			sawProgress = true
+			if progress["total"] != float64(2) {
+				t.Errorf("screen frame %d sealed_progress.total = %#v, want the room's 2", i, progress["total"])
+			}
+			if submitted, ok := progress["submitted"].(float64); ok && int(submitted) > highestSubmitted {
+				highestSubmitted = int(submitted)
+			}
+		}
+		if item, ok := obj["item"].(map[string]any); ok && item["status"] == "live" {
+			if _, present := item["deadline_at"]; !present {
+				t.Errorf("screen frame %d carries a LIVE sealed item without deadline_at: the countdown has no anchor (D-116)", i)
+			}
+			for _, ladder := range []string{"current_price", "min_next_bid", "top_bidder", "extensions_used"} {
+				if value, present := item[ladder]; present {
+					t.Errorf("screen frame %d carries item.%s = %#v: a sealed run has no ladder to describe (D-116)", i, ladder, value)
+				}
+			}
+		}
+	}
+	if !sawProgress {
+		t.Fatal("no screen frame carried sealed_progress; the count assertions would be vacuous")
+	}
+	if highestSubmitted != 2 {
+		t.Errorf("the projector's count only reached %d of 2 while both players submitted: the count must move on every sealed submit (D-110)", highestSubmitted)
+	}
+
+	// The private confirmation is the count and nothing else (D-111), and the
+	// refusal is the ordinary private frame.
+	confirmations := 0
+	for i, env := range playerAFrames {
+		switch env.Type {
+		case TypeSealedReceived:
+			confirmations++
+			data := frameData(t, env)
+			if len(data) != 2 || !hasKey(data, "submitted") || !hasKey(data, "total") {
+				t.Errorf("player A frame %d: sealed.received keys = %v, want exactly submitted+total (SEAL-01: the confirmation contains no price)", i, data)
+			}
+		case TypeError:
+			// An error frame is a code and a message; the walk above already
+			// proved it carries no amount and no forbidden key.
+		}
+	}
+	if confirmations != 1 {
+		t.Errorf("player A received %d sealed.received frame(s), want exactly 1", confirmations)
+	}
+
+	// Positive control: the walker CAN see the amounts, and the admin ledger is
+	// where they are allowed to be (D-117).
+	adminA, adminB := false, false
+	for _, env := range adminFrames {
+		if len(amountsIn(t, env, sealedAmountA)) > 0 {
+			adminA = true
+		}
+		if len(amountsIn(t, env, sealedAmountB)) > 0 {
+			adminB = true
+		}
+	}
+	if !adminA || !adminB {
+		t.Fatalf("the admin stream carried A=%t B=%t: the presenter's ledger is the positive control and must hold both amounts (D-26/D-117)", adminA, adminB)
 	}
 }

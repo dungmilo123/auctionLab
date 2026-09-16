@@ -23,7 +23,7 @@ func validEnglishInput() ItemInput {
 		Name: "Bức tranh", Description: "Sơn dầu", AuctionType: "english",
 		TruthValue: 350_000,
 		HintMin:    opt(200_000), HintMax: opt(500_000),
-		StartPrice: 100_000,
+		StartPrice:   100_000,
 		MinIncrement: opt(10_000), DurationMS: opt(30_000),
 		AntiSnipeMode: "extend", AntiSnipeWindowMS: opt(10_000), MaxExtensions: opt(2),
 	}
@@ -39,6 +39,19 @@ func validDutchInput() ItemInput {
 		HintMin:    opt(60_000), HintMax: opt(120_000),
 		StartPrice: 100_000,
 		FloorPrice: opt(40_000), DecrementStep: opt(10_000), DecrementIntervalMS: opt(1_000),
+	}
+}
+
+// validSealedInput is one complete sealed item (D-107): a wall-clock window and
+// anti-snipe disabled, because a sealed window is never extended. Both sealed
+// types share the shape; a case flips auction_type where it matters.
+func validSealedInput() ItemInput {
+	return ItemInput{
+		Name: "Tranh", Description: "Sealed lot", AuctionType: "sealed_first",
+		TruthValue: 350_000,
+		HintMin:    opt(200_000), HintMax: opt(500_000),
+		StartPrice: 100_000,
+		DurationMS: opt(30_000), AntiSnipeMode: "disabled",
 	}
 }
 
@@ -228,6 +241,174 @@ func TestItemUpsertValidation(t *testing.T) {
 		in.AntiSnipeWindowMS, in.MaxExtensions = nil, nil
 		if err := env.engine.ItemUpsert(in); err != nil {
 			t.Errorf("a Dutch item with no optional mechanics was rejected: %v (Phase 5 owns its flow)", err)
+		}
+	})
+}
+
+// TestValidateSealedItemInput is D-107's save-time arm: a sealed item needs a
+// wall-clock duration of at least a millisecond and anti-snipe DISABLED — a
+// closed window must never be extended at the last minute, which is why the
+// rule is refused where the presenter can still act on it (mirroring how the
+// Dutch arm refuses duration_ms). The English extension fields stay INERT for
+// the type and must not be refused generically.
+func TestValidateSealedItemInput(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	revBefore := env.engine.Rev()
+
+	cases := []struct {
+		name    string
+		mutate  func(in *ItemInput)
+		wantErr string
+	}{
+		{
+			name:    "a sealed item without duration_ms is rejected",
+			mutate:  func(in *ItemInput) { in.DurationMS = nil },
+			wantErr: "duration_ms",
+		},
+		{
+			name:    "a zero duration is rejected",
+			mutate:  func(in *ItemInput) { in.DurationMS = opt(0) },
+			wantErr: "duration_ms",
+		},
+		{
+			name:    "anti-snipe extend is rejected on a sealed item",
+			mutate:  func(in *ItemInput) { in.AntiSnipeMode = "extend" },
+			wantErr: "anti_snipe_mode",
+		},
+		{
+			name:    "an empty anti-snipe mode is rejected too",
+			mutate:  func(in *ItemInput) { in.AntiSnipeMode = "" },
+			wantErr: "anti_snipe_mode",
+		},
+	}
+	for _, tc := range cases {
+		for _, typ := range []string{"sealed_first", "vickrey"} {
+			t.Run(tc.name+" ("+typ+")", func(t *testing.T) {
+				in := validSealedInput()
+				in.AuctionType = typ
+				tc.mutate(&in)
+
+				err := env.engine.ItemUpsert(in)
+				if err == nil {
+					t.Fatalf("ItemUpsert accepted %+v; want a rejection", in)
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("error %q does not name %q, so the presenter cannot act on it", err, tc.wantErr)
+				}
+				if got := len(env.itemIDs(t)); got != 0 {
+					t.Errorf("%d item(s) exist after a rejected sealed input, want 0: a rejection never mutates", got)
+				}
+			})
+		}
+	}
+	if got := env.engine.Rev(); got != revBefore {
+		t.Errorf("revision = %d after every rejected sealed input, want the unchanged %d", got, revBefore)
+	}
+
+	t.Run("the inert English extension fields are not refused on a sealed row", func(t *testing.T) {
+		// The shipped editor inlines every field it holds into a save, so a
+		// leftover window or cap must not make a sealed row unsaveable — the
+		// English arm scopes them, the sealed arm leaves them inert.
+		for _, typ := range []string{"sealed_first", "vickrey"} {
+			in := validSealedInput()
+			in.AuctionType = typ
+			in.AntiSnipeWindowMS = opt(10_000)
+			in.MaxExtensions = opt(2)
+			if err := env.engine.ItemUpsert(in); err != nil {
+				t.Errorf("a %s row carrying inert extension fields was rejected: %v (D-107: only anti_snipe_mode is refused)", typ, err)
+			}
+		}
+	})
+}
+
+// TestStartSealedItemGuardsByType is D-107's LIVE edge for the sealed types: a
+// configured sealed row starts a run that carries `deadline_at = now +
+// duration_ms` exactly like English, so the ticker's settle arm and the boot's
+// resume both have a window to work with; a row that LOST its duration (only a
+// hand-edited file can hold one — the validator refuses to create it) is refused
+// at the edge that needs it.
+func TestStartSealedItemGuardsByType(t *testing.T) {
+	for _, typ := range []string{"sealed_first", "vickrey"} {
+		t.Run("a "+typ+" item goes LIVE with a wall-clock deadline", func(t *testing.T) {
+			env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+			in := validSealedInput()
+			in.AuctionType = typ
+			id := mustUpsertItem(t, env, in)
+
+			if err := env.engine.StartItem(id); err != nil {
+				t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+			}
+			revBefore := env.engine.Rev()
+			if err := env.engine.StartItem(id); err != nil {
+				t.Fatalf("item.start (ITEM_INTRO → LIVE) for a %s row: %v", typ, err)
+			}
+
+			if got := env.engine.Phase(); got != PhaseLive {
+				t.Fatalf("phase = %q, want LIVE", got)
+			}
+			if got := env.engine.Rev(); got != revBefore+1 {
+				t.Errorf("revision = %d across the start, want one bump to %d", got, revBefore+1)
+			}
+
+			now := env.clock.now().UnixMilli()
+			run := env.runOf(t)
+			if run.startedAt != now {
+				t.Errorf("run started_at = %d, want the injected now %d", run.startedAt, now)
+			}
+			if want := now + *in.DurationMS; run.deadlineAt != want {
+				t.Errorf("a %s run carries deadline_at %d, want now + duration_ms = %d (D-107: sealed settles on the wall clock like English)", typ, run.deadlineAt, want)
+			}
+			if run.extensionsUsed != 0 {
+				t.Errorf("a sealed run carries extensions_used = %d, want 0: a closed window is never extended (D-107)", run.extensionsUsed)
+			}
+
+			// The durable half: the runtime row persists the deadline, which is
+			// what a restart and the ticker's settle arm read.
+			rt, ok, err := env.store.LoadRuntime(id)
+			if err != nil {
+				t.Fatalf("LoadRuntime(%q): %v", id, err)
+			}
+			if !ok {
+				t.Fatal("a LIVE sealed run persisted no auction_runtime row: a restart could not resume it")
+			}
+			if rt.DeadlineAt == nil || *rt.DeadlineAt != run.deadlineAt {
+				t.Errorf("persisted sealed deadline = %v, want %d (D-107)", rt.DeadlineAt, run.deadlineAt)
+			}
+		})
+	}
+
+	t.Run("a sealed row whose duration is gone is refused at the LIVE edge", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		id := mustUpsertItem(t, env, validSealedInput())
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+
+		// D-66 refuses to create such a row, so the only way to reach this state
+		// is a row loaded from outside the validator — a hand-edited file.
+		env.engine.mu.Lock()
+		env.engine.state.items[id].durationMS = 0
+		env.engine.mu.Unlock()
+
+		revBefore := env.engine.Rev()
+		err := env.engine.StartItem(id)
+		if err == nil {
+			t.Fatal("a sealed row with no duration went LIVE: the ticker's settle arm could never fire, so that window would never close (D-107)")
+		}
+		if !strings.Contains(err.Error(), "duration_ms") {
+			t.Errorf("error %q does not name duration_ms, so the operator cannot tell what is wrong", err)
+		}
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
+		}
+		if got := env.engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refused start, want the unchanged %d", got, revBefore)
+		}
+		env.engine.mu.RLock()
+		run := env.engine.state.currentAuction
+		env.engine.mu.RUnlock()
+		if run != nil {
+			t.Errorf("a refused sealed start created a run: %+v", run)
 		}
 	})
 }
@@ -687,27 +868,34 @@ func TestNoDeadlineNeverGoesLive(t *testing.T) {
 		}
 	})
 
-	t.Run("a sealed item still cannot go live, and the refusal says so", func(t *testing.T) {
+	t.Run("a sealed item with no duration is refused at the LIVE edge too", func(t *testing.T) {
 		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
 
-		sealed := validEnglishInput()
-		sealed.AuctionType = "sealed_first"
-		sealed.MinIncrement, sealed.DurationMS, sealed.AntiSnipeMode = nil, nil, ""
-		sealed.AntiSnipeWindowMS, sealed.MaxExtensions = nil, nil
+		// A sealed row that lost its duration can only come from outside the
+		// validator (D-107's save arm requires one), so the row is mutated
+		// directly: the LIVE edge must refuse it by TYPE, because the ticker's
+		// settle arm reads deadline_at and nothing else. The configured case —
+		// a sealed row that DOES go live, with its deadline — is
+		// TestStartSealedItemGuardsByType's subject.
+		sealed := validSealedInput()
 		id := mustUpsertItem(t, env, sealed)
 
 		if err := env.engine.StartItem(id); err != nil {
 			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
 		}
+		env.engine.mu.Lock()
+		env.engine.state.items[id].durationMS = 0
+		env.engine.mu.Unlock()
+
 		err := env.engine.StartItem(id)
 		if err == nil {
-			t.Fatal("a sealed item went LIVE: Phase 6 owns that flow")
+			t.Fatal("a sealed row with no duration went LIVE: nothing could ever close that window (D-107)")
 		}
-		if !strings.Contains(err.Error(), "sealed_first") {
-			t.Errorf("error %q does not name the type at fault", err)
+		if !strings.Contains(err.Error(), "duration_ms") {
+			t.Errorf("error %q does not name duration_ms, so the operator cannot tell what is wrong", err)
 		}
-		if strings.Contains(err.Error(), "english") {
-			t.Errorf("the refusal blames the wrong type: %q", err)
+		if got := env.engine.Phase(); got != PhaseItemIntro {
+			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
 		}
 	})
 
