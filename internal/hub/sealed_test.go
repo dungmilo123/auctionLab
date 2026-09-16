@@ -172,6 +172,141 @@ func TestSealedSubmitOnTheWire(t *testing.T) {
 	}
 }
 
+// TestSealedSubmitRejects pins D-112's refusal contract over the real socket:
+// the engine's ordered reason arrives as the private `bid.rejected` at the
+// CURRENT revision (a refusal is not a mutation, D-53), a malformed raw amount
+// literal reaches the engine as 0 rather than a frame-level bad_message (WR-01),
+// and nothing is persisted.
+func TestSealedSubmitRejects(t *testing.T) {
+	base := time.UnixMilli(1_700_000_000_000)
+
+	t.Run("a malformed amount literal is the engine's invalid_amount", func(t *testing.T) {
+		clock := &testClock{t: base.Add(1 * time.Second)}
+		h, engine, st := newLiveSealedHub(t, clock, base.UnixMilli(), 1_000_000)
+		conn, _ := sealedSubmitDial(t, h)
+
+		revBefore := engine.Rev()
+		// A fraction, a whole number spelled with a decimal point, an exponent,
+		// a quoted number and an ABSENT key: every one of them reads as 0, which
+		// is the engine's `invalid_amount` — never a bad_message claiming the
+		// frame was not JSON.
+		for _, literal := range []string{`1.5`, `250000.0`, `1e5`, `"250000"`, ``} {
+			payload := `{"type":"sealed.submit"}`
+			if literal != "" {
+				payload = `{"type":"sealed.submit","amount":` + literal + `}`
+			}
+			writeFrame(t, conn, payload)
+
+			env := readFrame(t, conn)
+			if env.Type != TypeBidRejected {
+				t.Fatalf("amount %q answered %q, want the private %q (WR-01)", literal, env.Type, TypeBidRejected)
+			}
+			if got := frameString(t, frameData(t, env), "reason"); got != "invalid_amount" {
+				t.Errorf("amount %q: reason = %q, want invalid_amount", literal, got)
+			}
+			if env.Rev != revBefore {
+				t.Errorf("amount %q: the refusal carries rev %d, want the current %d", literal, env.Rev, revBefore)
+			}
+		}
+		if got := engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after five refusals, want the unchanged %d (D-53)", got, revBefore)
+		}
+		assertNothingPersisted(t, st)
+	})
+
+	t.Run("a below-minimum amount reports the start price as its floor", func(t *testing.T) {
+		clock := &testClock{t: base.Add(1 * time.Second)}
+		h, engine, st := newLiveSealedHub(t, clock, base.UnixMilli(), 1_000_000)
+		conn, _ := sealedSubmitDial(t, h)
+
+		revBefore := engine.Rev()
+		writeFrame(t, conn, `{"type":"sealed.submit","amount":99999}`)
+		env := readFrame(t, conn)
+		if env.Type != TypeBidRejected {
+			t.Fatalf("a below-minimum submit answered %q, want %q", env.Type, TypeBidRejected)
+		}
+		data := frameData(t, env)
+		if got := frameString(t, data, "reason"); got != "below_minimum" {
+			t.Errorf("reason = %q, want below_minimum", got)
+		}
+		// D-112 #4/SEAL-02: the sealed floor is the item's start price, so the
+		// refusal's sentence has a real number to render.
+		if got := objectInt(t, data, "min_next_bid"); got != sealedStartPrice {
+			t.Errorf("min_next_bid = %d, want the item's start price %d", got, sealedStartPrice)
+		}
+		if got := engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refusal, want the unchanged %d", got, revBefore)
+		}
+		assertNothingPersisted(t, st)
+	})
+
+	t.Run("an over-budget amount reads exceeds_budget", func(t *testing.T) {
+		clock := &testClock{t: base.Add(1 * time.Second)}
+		h, engine, st := newLiveSealedHub(t, clock, base.UnixMilli(), 50_000)
+		conn, _ := sealedSubmitDial(t, h)
+
+		revBefore := engine.Rev()
+		writeFrame(t, conn, `{"type":"sealed.submit","amount":150000}`)
+		env := readFrame(t, conn)
+		if env.Type != TypeBidRejected {
+			t.Fatalf("an over-budget submit answered %q, want %q", env.Type, TypeBidRejected)
+		}
+		data := frameData(t, env)
+		if got := frameString(t, data, "reason"); got != "exceeds_budget" {
+			t.Errorf("reason = %q, want exceeds_budget", got)
+		}
+		if got := objectInt(t, data, "budget"); got != 50_000 {
+			t.Errorf("refusal budget = %d, want the player's own 50000", got)
+		}
+		if got := engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refusal, want the unchanged %d", got, revBefore)
+		}
+		assertNothingPersisted(t, st)
+	})
+
+	t.Run("a player with no live run reaches the private refusal path", func(t *testing.T) {
+		h, engine := newTestHub(t)
+		player, _ := joinPlayer(t, h, "An")
+
+		revBefore := engine.Rev()
+		writeFrame(t, player, `{"type":"sealed.submit","amount":150000}`)
+		env := readFrame(t, player)
+		if env.Type != TypeBidRejected {
+			t.Fatalf("a player's sealed.submit answered %q, want the private %q (D-111)", env.Type, TypeBidRejected)
+		}
+		if got := frameString(t, frameData(t, env), "reason"); got != "window_closed" {
+			t.Errorf("reason = %q, want window_closed with no run open", got)
+		}
+		if env.Rev != revBefore {
+			t.Errorf("a refusal carries rev %d, want the current %d: a refusal is not a mutation (D-53)", env.Rev, revBefore)
+		}
+		if got := engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refusal, want the unchanged %d", got, revBefore)
+		}
+	})
+}
+
+// assertNothingPersisted is D-53's storage half for a refused command: neither
+// an effective sealed row nor an audit row exists.
+func assertNothingPersisted(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	sheets, err := st.LoadSealedBids()
+	if err != nil {
+		t.Fatalf("loading the sealed bids: %v", err)
+	}
+	if len(sheets) != 0 {
+		t.Errorf("a refused submit persisted %d effective row(s), want none: %+v", len(sheets), sheets)
+	}
+	trail, err := st.LoadBids()
+	if err != nil {
+		t.Fatalf("loading the bid audit: %v", err)
+	}
+	if len(trail) != 0 {
+		t.Errorf("a refused submit appended %d audit row(s), want none: %+v", len(trail), trail)
+	}
+}
+
 // TestSealedSubmitRoleGate pins D-111's role gate at the transport edge: the
 // command is player-only, so an admin or screen sender is answered with the
 // frozen `bad_message` and never reaches the engine (H12).

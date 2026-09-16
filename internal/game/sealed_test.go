@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -72,6 +73,34 @@ func (env *testEnv) submitSealed(playerID string, amount int64) (BidRejection, b
 	return rejection, got, err
 }
 
+// sealedRefusal submits an amount the engine is expected to refuse and returns
+// the private refusal. A refusal IS a *BidRejectedError (D-53), so the error is
+// part of the contract rather than a failure: what must hold is that the caller
+// was answered privately AND that the reason is the one the order demands.
+func (env *testEnv) sealedRefusal(t *testing.T, playerID string, amount int64) BidRejection {
+	t.Helper()
+
+	rejection, refused, err := env.submitSealed(playerID, amount)
+	if !refused {
+		t.Fatalf("SubmitSealed(%d) was not answered privately (err = %v)", amount, err)
+	}
+	var rejectedErr *BidRejectedError
+	if !errors.As(err, &rejectedErr) {
+		t.Fatalf("SubmitSealed(%d) error = %v, want a *BidRejectedError", amount, err)
+	}
+	return rejection
+}
+
+// mustSubmitSealed submits an amount the engine must accept, failing the case
+// with the refusal it got instead.
+func (env *testEnv) mustSubmitSealed(t *testing.T, playerID string, amount int64) {
+	t.Helper()
+
+	if rejection, refused, err := env.submitSealed(playerID, amount); err != nil || refused {
+		t.Fatalf("SubmitSealed(%d) was refused: err = %v, refusal = %+v", amount, err, rejection)
+	}
+}
+
 // sealedRowOf reads the ONE effective row of one (item, player) out of the
 // engine's own state, under the lock, so the assertion is about the engine's
 // numbers rather than a projection copy.
@@ -110,6 +139,206 @@ func (env *testEnv) sealedConfirmationOf(t *testing.T, playerID string) SealedPr
 	}
 	t.Fatalf("no private sealed.received event for %q: %+v", playerID, env.lastEvents())
 	return SealedProgress{}
+}
+
+// TestSubmitSealedRejectOrder is D-112's contract: the ORDER of the refusals is
+// the contract (mirroring D-52), the window is decided before any amount is
+// examined, and the amount reasons follow invalid_amount → below_minimum →
+// exceeds_budget. Every case is a refusal, so nothing may be persisted.
+func TestSubmitSealedRejectOrder(t *testing.T) {
+	t.Run("a submission with no live run is window_closed even for an impossible amount", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+
+		// The amount is deliberately one that would read invalid_amount if the
+		// amount were examined first (D-112 #2 before #3).
+		rejection := env.sealedRefusal(t, an.PlayerID, -1)
+		if rejection.Reason != ReasonWindowClosed {
+			t.Errorf("reason = %q, want window_closed — the window is checked BEFORE the amount (D-112 #2/#3)", rejection.Reason)
+		}
+	})
+
+	t.Run("a live ENGLISH run refuses a sealed submission with window_closed", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		mustOpenLiveRun(t, env, englishFixture()) // a LIVE run of the wrong TYPE
+
+		rejection := env.sealedRefusal(t, an.PlayerID, 150_000)
+		if rejection.Reason != ReasonWindowClosed {
+			t.Fatalf("reason=%q, want window_closed: the run's TYPE decides (D-112 #2)", rejection.Reason)
+		}
+	})
+
+	t.Run("the window is [started_at, deadline_at)", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := sealedFixture()
+		mustOpenSealedRun(t, env, it)
+		deadline := env.clock.now().UnixMilli() + it.durationMS
+
+		// One millisecond before the deadline is still inside the window — a
+		// late joiner's submission is not special-cased (SEAL-01).
+		env.clock.t = time.UnixMilli(deadline - 1)
+		env.mustSubmitSealed(t, an.PlayerID, 120_000)
+
+		// The deadline itself is closed, even for an otherwise valid amount.
+		env.clock.t = time.UnixMilli(deadline)
+		if rejection := env.sealedRefusal(t, an.PlayerID, 130_000); rejection.Reason != ReasonWindowClosed {
+			t.Errorf("reason = %q at the deadline, want window_closed (D-112 #3)", rejection.Reason)
+		}
+	})
+
+	t.Run("a non-positive amount is invalid_amount even though it is also below the start price", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		mustOpenSealedRun(t, env, sealedFixture())
+
+		for _, amount := range []int64{0, -1} {
+			if rejection := env.sealedRefusal(t, an.PlayerID, amount); rejection.Reason != ReasonInvalidAmount {
+				t.Errorf("amount %d: reason=%q, want invalid_amount before every bound (D-112 #3)", amount, rejection.Reason)
+			}
+		}
+	})
+
+	t.Run("an amount below the start price is below_minimum and reports that floor", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := sealedFixture()
+		mustOpenSealedRun(t, env, it)
+
+		rejection := env.sealedRefusal(t, an.PlayerID, it.startPrice-1)
+		if rejection.Reason != ReasonBelowMinimum {
+			t.Fatalf("reason=%q, want below_minimum just under the start price (D-112 #4)", rejection.Reason)
+		}
+		// SEAL-02's lower bound is start_price — NOT the English ladder's next
+		// bid, which is right for a sealed run only by accident.
+		if rejection.MinNextBid == nil || *rejection.MinNextBid != it.startPrice {
+			t.Errorf("min_next_bid = %v, want the item's own start price %d (D-112 #4/SEAL-02)", rejection.MinNextBid, it.startPrice)
+		}
+	})
+
+	t.Run("the start price itself is accepted", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := sealedFixture()
+		mustOpenSealedRun(t, env, it)
+
+		env.mustSubmitSealed(t, an.PlayerID, it.startPrice)
+	})
+
+	t.Run("an amount above the budget is exceeds_budget", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		mustOpenSealedRun(t, env, sealedFixture())
+		mustSetBudget(t, env, an.PlayerID, 120_000)
+
+		rejection := env.sealedRefusal(t, an.PlayerID, 120_001)
+		if rejection.Reason != ReasonExceedsBudget {
+			t.Fatalf("reason=%q, want exceeds_budget one above the budget (D-112 #5)", rejection.Reason)
+		}
+		if rejection.Budget != 120_000 {
+			t.Errorf("refusal budget = %d, want the player's own 120000", rejection.Budget)
+		}
+
+		// The budget itself is affordable: the bound is inclusive (SEAL-02).
+		env.mustSubmitSealed(t, an.PlayerID, 120_000)
+	})
+
+	t.Run("an amount below the start price AND above the budget reads below_minimum", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := sealedFixture()
+		mustOpenSealedRun(t, env, it)
+		// A budget below the start price, so one amount can violate both bounds.
+		mustSetBudget(t, env, an.PlayerID, it.startPrice/2)
+
+		if rejection := env.sealedRefusal(t, an.PlayerID, it.startPrice-10_000); rejection.Reason != ReasonBelowMinimum {
+			t.Errorf("reason=%q, want below_minimum before exceeds_budget (D-112 #4 before #5)", rejection.Reason)
+		}
+	})
+}
+
+// TestSubmitSealedRejectChangesNothing pins D-53's non-mutation rule for the
+// sealed flow: one refusal is answered exactly once, privately, and leaves the
+// revision, the fan-out, the effective rows and the audit trail untouched.
+func TestSubmitSealedRejectChangesNothing(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	an := mustJoin(t, env, "An")
+	it := sealedFixture()
+	mustOpenSealedRun(t, env, it)
+
+	// One accepted submission first, so "unchanged" is a comparison against real
+	// rows rather than against nothing at all.
+	env.mustSubmitSealed(t, an.PlayerID, 150_000)
+	rowBefore, ok := env.sealedRowOf(t, it.id, an.PlayerID)
+	if !ok {
+		t.Fatal("the fixture's accepted submission left no effective row")
+	}
+
+	revBefore := env.engine.Rev()
+	fanoutBefore := len(env.revs())
+	eventsBefore := len(env.lastEvents())
+	sheetsBefore, err := env.store.LoadSealedBids()
+	if err != nil {
+		t.Fatalf("LoadSealedBids: %v", err)
+	}
+	trailBefore, err := env.store.LoadBids()
+	if err != nil {
+		t.Fatalf("LoadBids: %v", err)
+	}
+
+	if rejection := env.sealedRefusal(t, an.PlayerID, 0); rejection.Reason != ReasonInvalidAmount {
+		t.Errorf("reason = %q, want invalid_amount", rejection.Reason)
+	}
+
+	if got := env.engine.Rev(); got != revBefore {
+		t.Errorf("revision = %d after a refusal, want the unchanged %d (D-53)", got, revBefore)
+	}
+	if got := len(env.revs()); got != fanoutBefore {
+		t.Errorf("the refusal published %d revision(s), want the unchanged %d — a refusal has no fan-out (D-53)", got, fanoutBefore)
+	}
+	if rowAfter, ok := env.sealedRowOf(t, it.id, an.PlayerID); !ok || rowAfter != rowBefore {
+		t.Errorf("effective row = %+v (present=%v) after a refusal, want the unchanged %+v", rowAfter, ok, rowBefore)
+	}
+	sheetsAfter, err := env.store.LoadSealedBids()
+	if err != nil {
+		t.Fatalf("LoadSealedBids after the refusal: %v", err)
+	}
+	if len(sheetsAfter) != len(sheetsBefore) {
+		t.Errorf("sealed_bids holds %d row(s) after a refusal, want the unchanged %d", len(sheetsAfter), len(sheetsBefore))
+	}
+	trailAfter, err := env.store.LoadBids()
+	if err != nil {
+		t.Fatalf("LoadBids after the refusal: %v", err)
+	}
+	if len(trailAfter) != len(trailBefore) {
+		t.Errorf("the audit trail holds %d row(s) after a refusal, want the unchanged %d (D-109)", len(trailAfter), len(trailBefore))
+	}
+	// The event list belongs to the last COMMITTED mutation, so "unchanged" is
+	// the assertion: a refusal that recorded a frame would have grown it — and
+	// the fan-out counter would have moved with it (D-53).
+	if events := env.lastEvents(); len(events) != eventsBefore {
+		t.Errorf("the refusal recorded %d event(s), want the unchanged %d: a refusal is not a mutation (D-53)", len(events), eventsBefore)
+	}
+}
+
+// TestSubmitSealedLateJoinStaysEligible is SEAL-01's late-joiner rule: joining
+// after the run opened does not touch the window, so a late arrival can still
+// submit while the deadline is in the future — and the count then reports the
+// larger room.
+func TestSubmitSealedLateJoinStaysEligible(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+	it := sealedFixture()
+	mustOpenSealedRun(t, env, it) // the window opens with nobody in the room
+	mustJoin(t, env, "An")
+
+	env.clock.t = env.clock.t.Add(10 * time.Second) // ten seconds into the window
+	late := mustJoin(t, env, "Binh")                // a late arrival, still inside it
+
+	env.mustSubmitSealed(t, late.PlayerID, 130_000)
+	if progress := env.sealedConfirmationOf(t, late.PlayerID); progress.Submitted != 1 || progress.Total != 2 {
+		t.Errorf("sealed.received = %+v, want {1 2} — one sheet out of the room the join just grew", progress)
+	}
 }
 
 // TestSubmitSealedPersistsOneEffectiveRow is SEAL-01's engine half: one real
