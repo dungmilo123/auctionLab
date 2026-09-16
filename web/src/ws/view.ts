@@ -158,20 +158,27 @@ const MAX_RECENT_BIDS = 5
  * Build the LIVE overlay from a projection's own live fields, or null when it
  * carries none — a non-English item with no timing renders its pending-type
  * body instead (H13), and there is nothing for a bid control to read.
+ *
+ * Phase 5 (D-94): a Dutch run has no ladder, so the gate admits it on its own
+ * clock instead — `startedAt` where an English item has `minNextBid`. The
+ * ladder minimum then reads as 0 (the wire's own "no ladder" value: the frozen
+ * `min_next_bid` field of a Dutch tick carries its zero because it has no
+ * `omitempty`), and nothing on the Dutch body reads it.
  */
 function overlayFrom(item: PublicItem | null, serverTs: number): LiveOverlay | null {
-  if (item === null || item.currentPrice === null || item.minNextBid === null) return null
+  // Only a LIVE item has an overlay: a settled or intro item carries no window
+  // to render, and the phase-level rule ("discarded when the phase leaves LIVE")
+  // is then structural here as well.
+  if (item === null || item.status !== 'live' || item.currentPrice === null) return null
+  if (item.minNextBid === null && item.startedAt === null) return null
   return {
     itemId: item.id,
     currentPrice: item.currentPrice,
-    minNextBid: item.minNextBid,
+    minNextBid: item.minNextBid ?? 0,
     deadlineAt: item.deadlineAt,
     topBidder: item.topBidder,
     serverTs,
-    // RED (05-03): the Dutch anchor is declared but not carried, so no Dutch
-    // frame can be admitted yet — the gate below still requires a ladder
-    // minimum a Dutch run never has.
-    startedAt: null,
+    startedAt: item.startedAt,
   }
 }
 
@@ -273,6 +280,10 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
           currentPrice: frame.tick.currentPrice,
           minNextBid: frame.tick.minNextBid,
           deadlineAt: frame.tick.deadlineAt ?? live.deadlineAt,
+          // D-94: a beat that carries the Dutch anchor re-anchors the falling
+          // price; one that omits it keeps the anchor the body already holds, so
+          // the price neither blanks nor jumps backwards (05-UI-SPEC §partial).
+          startedAt: frame.tick.startedAt ?? live.startedAt,
           serverTs: frame.ts,
         },
       }

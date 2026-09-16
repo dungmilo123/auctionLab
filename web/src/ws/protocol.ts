@@ -414,13 +414,13 @@ export function readPublicItem(value: unknown): PublicItem | null {
     deadlineAt: readInt(value.deadline_at),
     minNextBid: readInt(value.min_next_bid),
     extensionsUsed: readInt(value.extensions_used),
-    // RED (05-03): the four Dutch fields are declared but not decoded, so a
-    // complete Dutch LIVE payload loses its clock and the LIVE arm's Dutch
-    // totality rule cannot admit it yet.
-    startedAt: null,
-    floorPrice: null,
-    decrementStep: null,
-    decrementIntervalMs: null,
+    // Phase 5 (D-94): the Dutch price clock. `readInt` maps an absent key to
+    // null — an English item simply has none — while a present-but-ill-typed
+    // value lands as null too, which the Dutch arm below then refuses (T-05-01).
+    startedAt: readInt(value.started_at),
+    floorPrice: readInt(value.floor_price),
+    decrementStep: readInt(value.decrement_step),
+    decrementIntervalMs: readInt(value.decrement_interval_ms),
     settle: readSettle(value.settle),
   }
 }
@@ -472,9 +472,25 @@ function itemMatchesPhase(phase: Phase, item: PublicItem | null): boolean {
       return item !== null && item.status === 'intro' && item.settle === null
     case 'LIVE':
       if (item === null || item.status !== 'live' || item.settle !== null) return false
+      // Phase 5 (D-92/D-93/D-94): a Dutch LIVE item renders from a price clock
+      // the snapshot itself must carry — the derived price plus the anchor and
+      // the three mechanics the client re-derives from — and it may not carry a
+      // deadline it can never have (a Dutch run is deadline-less by type, D-93).
+      // A snapshot that breaks that totality is refused here rather than
+      // painting a body with holes in it (T-05-01).
+      if (item.auctionType === 'dutch') {
+        return (
+          item.currentPrice !== null &&
+          item.floorPrice !== null &&
+          item.decrementStep !== null &&
+          item.decrementIntervalMs !== null &&
+          item.startedAt !== null &&
+          item.deadlineAt === null
+        )
+      }
       // H13: an english LIVE item must carry the numbers its bid controls
-      // render; any other type may reach LIVE with fewer fields and renders
-      // `live.typePending` instead of the form.
+      // render; any other type (the two sealed ones) may reach LIVE with fewer
+      // fields and renders `live.typePending` instead of the form.
       if (item.auctionType !== 'english') return true
       return item.currentPrice !== null && item.minNextBid !== null && item.deadlineAt !== null
     case 'SETTLED':
@@ -632,8 +648,10 @@ export function readPriceTick(data: unknown): PriceTick | null {
     minNextBid,
     deadlineAt: readInt(data.deadline_at),
     remainingMs: readInt(data.remaining_ms),
-    // RED (05-03): declared, not decoded — the optional Dutch anchor.
-    startedAt: null,
+    // Phase 5 (D-94): a Dutch beat's re-anchor. The key is optional, so an
+    // English beat (or a Dutch frame that omits it) reads as null — and the
+    // reducer keeps the anchor it holds rather than clearing it.
+    startedAt: readInt(data.started_at),
   }
 }
 
