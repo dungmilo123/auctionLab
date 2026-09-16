@@ -52,6 +52,23 @@ type Mutation struct {
 	DeletedItems []string
 	Runtime      *RuntimeRow
 	Bids         []BidRow
+
+	// Phase 4 (D-78): the reset write set. Every Phase 3 field above is
+	// growth-only — a nil Runtime means "unchanged", not "removed", and neither
+	// the append-only Bids nor the never-diffed sealed bids can express a
+	// clearing — so the removals are named explicitly instead of inferred.
+	// ClearBids/ClearSealedBids/DeleteRuntime are whole-table clears, because a
+	// reset means "no item has played"; DeletedPlayers is an id list, because a
+	// player row does have an in-memory identity to list.
+	//
+	// Commit runs the children (auction_runtime, sealed_bids, bids) before the
+	// players: with `PRAGMA foreign_keys(1)` seeded by the DSN, a player delete
+	// issued first raises a constraint failure that the engine escalates to a
+	// process exit (research Pitfall 5).
+	ClearBids       bool
+	ClearSealedBids bool
+	DeleteRuntime   bool
+	DeletedPlayers  []string
 }
 
 // LoadGame returns the `game` row. A missing row is an error: boot is
