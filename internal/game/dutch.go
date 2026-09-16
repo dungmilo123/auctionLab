@@ -64,6 +64,45 @@ func dutchPriceAt(it *item, startedAt, now int64) int64 {
 	return price
 }
 
+// addDutchLiveFields is D-94's Dutch half of the public live fields: the price
+// derived at the projection's own instant, the anchor it was derived from, and
+// the three mechanics a client needs to re-derive it between frames. It lives
+// here rather than in project.go so every Dutch number is computed in one file,
+// beside the ONE derivation.
+//
+// Once the run holds an acceptance the CHARGED price is the number that was
+// real: a settled Dutch run re-derives past the floor, and reporting that would
+// make the item disagree with the reveal attached to it (D-98).
+func (s *state) addDutchLiveFields(view *PublicItem, it *item, run *auctionRun, now int64) {
+	if w, ok := s.runAcceptance(); ok {
+		price := w.amount
+		view.CurrentPrice = &price
+	} else {
+		price := dutchPriceAt(it, run.startedAt, now)
+		view.CurrentPrice = &price
+	}
+
+	startedAt := run.startedAt
+	view.StartedAt = &startedAt
+
+	// The project's `> 0` convention for an optional number (see adminItem):
+	// D-92 refuses to start a Dutch run without these mechanics, so a live run
+	// always carries all three, and a client that sees one missing knows the row
+	// is not playable rather than that its price is zero.
+	if it.floorPrice > 0 {
+		v := it.floorPrice
+		view.FloorPrice = &v
+	}
+	if it.decrementStep > 0 {
+		v := it.decrementStep
+		view.DecrementStep = &v
+	}
+	if it.decrementIntervalMS > 0 {
+		v := it.decrementIntervalMS
+		view.DecrementIntervalMS = &v
+	}
+}
+
 // runAcceptance returns the acceptance recorded for the current run: the LAST
 // trail entry of kind `accept`, scoped to the run exactly the way topBid scopes
 // a ladder bid (itemID + createdAt >= startedAt). It is how a settled Dutch run

@@ -713,36 +713,9 @@ func (s *state) addLiveFields(view *PublicItem, it *item, now int64) {
 	}
 
 	if it.auctionType == "dutch" {
-		// The price at THIS projection's instant — the same derivation the
-		// accept validates against and the tick broadcasts, so the number on
-		// screen is the number the server would charge. Once the run holds an
-		// acceptance the charged price is the real one: a settled Dutch run
-		// re-derives past the floor, and reporting that would make the reveal
-		// disagree with the item it is attached to.
-		if w, ok := s.runAcceptance(); ok {
-			price := w.amount
-			view.CurrentPrice = &price
-		} else {
-			price := dutchPriceAt(it, run.startedAt, now)
-			view.CurrentPrice = &price
-		}
-		startedAt := run.startedAt
-		view.StartedAt = &startedAt
-		// The project's `> 0` convention for an optional number (see adminItem):
-		// D-92 refuses to start a Dutch run without these mechanics, so a live
-		// run always carries all three.
-		if it.floorPrice > 0 {
-			v := it.floorPrice
-			view.FloorPrice = &v
-		}
-		if it.decrementStep > 0 {
-			v := it.decrementStep
-			view.DecrementStep = &v
-		}
-		if it.decrementIntervalMS > 0 {
-			v := it.decrementIntervalMS
-			view.DecrementIntervalMS = &v
-		}
+		// The Dutch branch lives in dutch.go, beside the derivation it calls:
+		// every Dutch number in the system is computed in one file.
+		s.addDutchLiveFields(view, it, run, now)
 	} else if price, ok := s.currentPrice(); ok {
 		view.CurrentPrice = &price
 	}
