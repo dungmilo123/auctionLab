@@ -205,6 +205,9 @@ describe('readPlayerSnapshot', () => {
         lastBid: null,
         isTopBidder: false,
         rank: 0,
+        // Phase 6 (D-115): the same additive shape — an absent `my_bid` is the
+        // wire's "not submitted", never a rejection.
+        myBid: null,
       },
       lobby: [
         { nickname: 'An', connected: true },
@@ -212,6 +215,9 @@ describe('readPlayerSnapshot', () => {
       ],
       leaderboard: [{ rank: 1, nickname: 'An', totalValue: 0, budget: 1000000 }],
       item: null,
+      // Phase 6 (D-116): the player's own copy of the count-only counter; an
+      // absent key is "not a sealed item / this build does not send one".
+      sealedProgress: null,
     })
   })
 
@@ -316,6 +322,43 @@ function liveSnapshot(item: unknown = LIVE_ITEM): Record<string, unknown> {
   }
 }
 
+// Phase 6 (D-115/D-116/D-117): the sealed wire literals, hand-copied from
+// internal/game/project.go. A sealed LIVE item carries its deadline and NO
+// ladder field at all — `current_price`, `min_next_bid`, `top_bidder` and
+// `extensions_used` are absent by type (`omitempty` server-side), which is what
+// the sealed arm of the totality table must tolerate.
+const LIVE_SEALED_ITEM = {
+  id: 'i6',
+  name: 'Tranh kín',
+  description: '',
+  auction_type: 'sealed_first',
+  hint_min: 200_000,
+  hint_max: 500_000,
+  start_price: 300_000,
+  status: 'live',
+  deadline_at: SERVER_TS + 45_000,
+}
+
+/** D-117's presenter ledger rows, in the server's own arrival order. */
+const WIRE_SEALED_BIDS = [
+  {
+    item_id: 'i6',
+    player_id: 'p1',
+    nickname: 'An',
+    amount: 320_000,
+    submitted_at: SERVER_TS - 3_000,
+    updated_at: SERVER_TS - 3_000,
+  },
+  {
+    item_id: 'i6',
+    player_id: 'p2',
+    nickname: 'Bình',
+    amount: 350_000,
+    submitted_at: SERVER_TS - 2_000,
+    updated_at: SERVER_TS - 1_000,
+  },
+]
+
 describe('PHASES', () => {
   it('names exactly the five PLAN §6 phases in order', () => {
     expect([...PHASES]).toEqual(['LOBBY', 'ITEM_INTRO', 'LIVE', 'SETTLED', 'FINALE'])
@@ -372,6 +415,9 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
     // D-89's rank is the same shape of additive key: absent means 0, not a
     // rejection.
     expect(snapshot?.me.rank).toBe(0)
+    // Phase 6 (D-115): and `my_bid` is the third — absent means "not submitted",
+    // which is exactly what a player who has not opened the sealed form has.
+    expect(snapshot?.me.myBid).toBeNull()
   })
 
   it('decodes the server-computed rank when the row carries one (D-89/ECON-05)', () => {
@@ -444,26 +490,42 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
     })
   })
 
-  it('decodes a non-English LIVE item for its pending-type body (H13)', () => {
-    // H13's leniency is retained for the two SEALED types: their LIVE body
-    // renders `live.typePending`, so a projection carrying fewer fields must
-    // still apply rather than freeze the screen. Dutch is no longer lenient —
-    // its body derives a price from the clock below, so the Dutch arm has its
-    // own totality rule (D-94).
-    const sealed = {
-      id: 'i5',
-      name: 'Tranh kín',
-      auction_type: 'sealed_first',
-      start_price: 300_000,
-      status: 'live',
-      current_price: 300_000,
+  it('requires the deadline a sealed LIVE body renders (D-116)', () => {
+    // Phase 6 retires H13's leniency for the two sealed types: their LIVE body
+    // renders a clock from `deadline_at`, so an admitted sealed snapshot must
+    // carry it. `current_price` and `min_next_bid` stay optional — a sealed run
+    // has no ladder. Dutch is stricter still (its five clock numbers above), and
+    // the leniency survives only for a type this build does not know at all.
+    expect(readPlayerSnapshot(liveSnapshot(LIVE_SEALED_ITEM))?.item?.auctionType).toBe('sealed_first')
+
+    const { deadline_at: _deadline, ...noDeadline } = LIVE_SEALED_ITEM
+    expect(readPlayerSnapshot({ ...liveSnapshot(noDeadline), item: noDeadline })).toBeNull()
+  })
+
+  it('decodes my_bid and the player sealed counter, and reads both absences as null (D-115/D-116)', () => {
+    const withBid = {
+      ...liveSnapshot(LIVE_SEALED_ITEM),
+      sealed_progress: { submitted: 1, total: 3 },
+      me: {
+        id: 'p1',
+        nickname: 'An',
+        budget: 1_000_000,
+        total_value: 0,
+        connected: true,
+        my_bid: 320_000,
+      },
     }
-    expect(readPlayerSnapshot({ ...liveSnapshot(sealed), item: sealed })?.item?.auctionType).toBe(
-      'sealed_first',
-    )
-    expect(
-      readPlayerSnapshot({ ...liveSnapshot({ ...sealed, deadline_at: null }), item: { ...sealed, deadline_at: null } }),
-    ).not.toBeNull()
+    const snapshot = readPlayerSnapshot(withBid)
+    // The owner reads exactly their OWN effective amount; the count is the one
+    // sealed fact that travels to everyone (D-115/D-116).
+    expect(snapshot?.me.myBid).toBe(320_000)
+    expect(snapshot?.sealedProgress).toEqual({ submitted: 1, total: 3 })
+
+    // A player who never submitted has no `my_bid` at all, and a non-sealed item
+    // carries an explicit null counter — neither is a rejection (D-24 additive).
+    const plain = readPlayerSnapshot(liveSnapshot(LIVE_SEALED_ITEM))
+    expect(plain?.me.myBid).toBeNull()
+    expect(plain?.sealedProgress).toBeNull()
   })
 
   const MISSING_CLOCK_FIELDS: Array<[label: string, field: string]> = [
@@ -525,6 +587,14 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
       'an english LIVE item without a next valid bid',
       'LIVE',
       { ...LIVE_ITEM, min_next_bid: undefined },
+    ],
+    [
+      'a sealed LIVE item without the deadline its body renders (D-116)',
+      'LIVE',
+      (() => {
+        const { deadline_at: _deadline, ...rest } = LIVE_SEALED_ITEM
+        return rest
+      })(),
     ],
     ['a LIVE snapshot with no item at all', 'LIVE', null],
     ['an item whose status contradicts LIVE', 'LIVE', { ...LIVE_ITEM, status: 'intro' }],
@@ -813,6 +883,61 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
     ])
     expect(snapshot?.joinUrls).toEqual(['http://192.168.1.10:8080', 'http://10.0.0.5:8080'])
     expect(snapshot?.selectedJoinUrl).toBe('http://192.168.1.10:8080')
+  })
+
+  it('decodes the presenter sealed ledger strictly and reads an absent list as empty (D-117)', () => {
+    const snapshot = readAdminSnapshot(
+      adminSnapshotPayload({
+        phase: 'LIVE',
+        item: LIVE_SEALED_ITEM,
+        sealed_bids: WIRE_SEALED_BIDS,
+        sealed_progress: { submitted: 2, total: 3 },
+      }),
+    )
+    // The rows arrive in the server's own order and are decoded as sent: the
+    // browser filters, sorts and counts nothing (D-117).
+    expect(snapshot?.sealedBids).toEqual([
+      {
+        itemId: 'i6',
+        playerId: 'p1',
+        nickname: 'An',
+        amount: 320_000,
+        submittedAt: SERVER_TS - 3_000,
+        updatedAt: SERVER_TS - 3_000,
+      },
+      {
+        itemId: 'i6',
+        playerId: 'p2',
+        nickname: 'Bình',
+        amount: 350_000,
+        submittedAt: SERVER_TS - 2_000,
+        updatedAt: SERVER_TS - 1_000,
+      },
+    ])
+    expect(snapshot?.sealedProgress).toEqual({ submitted: 2, total: 3 })
+
+    // An absent (or explicit null) list is "no ledger rows", never a rejection —
+    // the additive-key rule every other optional key follows (D-24).
+    const none = readAdminSnapshot(
+      adminSnapshotPayload({ sealed_bids: undefined, sealed_progress: undefined }),
+    )
+    expect(none?.sealedBids).toEqual([])
+    expect(none?.sealedProgress).toBeNull()
+    expect(readAdminSnapshot(adminSnapshotPayload({ sealed_bids: null }))?.sealedBids).toEqual([])
+
+    // ONE ill-typed row rejects the whole snapshot — the players/items rule: the
+    // card renders the list as a whole, and a half-decoded ledger is one the
+    // presenter cannot trust.
+    expect(
+      readAdminSnapshot(
+        adminSnapshotPayload({ sealed_bids: [{ ...WIRE_SEALED_BIDS[0], amount: '320000' }] }),
+      ),
+    ).toBeNull()
+    expect(
+      readAdminSnapshot(
+        adminSnapshotPayload({ sealed_bids: [{ ...WIRE_SEALED_BIDS[0], nickname: undefined }] }),
+      ),
+    ).toBeNull()
   })
 
   it('applies the same phase↔item invariant to the admin projection', () => {

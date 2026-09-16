@@ -65,8 +65,26 @@ function playerSnapshot(overrides: Partial<PlayerSnapshot> = {}): PlayerSnapshot
     lobby: [{ nickname: 'An', connected: true }],
     leaderboard: [{ rank: 1, nickname: 'An', totalValue: 0, budget: 1_000_000 }],
     item: publicItem(),
+    // Phase 6 (D-116): the player's own count-only counter, an explicit null for
+    // every non-sealed item.
+    sealedProgress: null,
     ...overrides,
   }
+}
+
+/** The sealed LIVE item the decoder admits: a deadline and no ladder at all. */
+function sealedItem(overrides: Partial<PublicItem> = {}): PublicItem {
+  return publicItem({
+    id: 'i1',
+    name: 'Tranh kín',
+    auctionType: 'sealed_first',
+    currentPrice: null,
+    topBidder: null,
+    deadlineAt: TS + 45_000,
+    minNextBid: null,
+    extensionsUsed: null,
+    ...overrides,
+  })
 }
 
 /** The `/screen` projection (D-87/D-88). */
@@ -138,6 +156,7 @@ describe('initialViewState', () => {
       joinUrl: '',
       recentBids: [],
       sealedProgress: null,
+      sealedBids: [],
       config: null,
       players: [],
       joinUrls: [],
@@ -260,6 +279,8 @@ describe('the snapshot rule (RESEARCH Q3/Q4)', () => {
       leaderboard: [],
       joinUrls: ['http://192.168.1.10:8080'],
       selectedJoinUrl: 'http://192.168.1.10:8080',
+      sealedBids: [],
+      sealedProgress: null,
     }
     const state = applied(initialViewState(), { kind: 'admin-snapshot', snapshot: admin })
     expect(state.me).toBeNull()
@@ -427,6 +448,63 @@ describe('the Dutch live overlay (D-94)', () => {
     })
     expect(settled.live).toBeNull()
     expect(settled.item?.settle?.price).toBe(230_000)
+  })
+})
+
+describe('the sealed live overlay (D-116)', () => {
+  /** The view after one sealed snapshot. */
+  function sealed(overrides: Partial<PublicItem> = {}) {
+    return applied(initialViewState(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({ item: sealedItem(overrides) }),
+    })
+  }
+
+  it('seeds a sealed overlay from the deadline alone — no price, no ladder (D-116)', () => {
+    // A sealed run has no price and no minimum (D-116); the only number its body
+    // renders is the countdown anchored on `deadline_at` + the frame's clock. The
+    // overlay is what carries that anchor to the player body and the projector.
+    expect(sealed().live).toEqual({
+      itemId: 'i1',
+      currentPrice: null,
+      minNextBid: 0,
+      deadlineAt: TS + 45_000,
+      topBidder: null,
+      serverTs: TS,
+      startedAt: null,
+    })
+  })
+
+  it('admits no sealed overlay without the deadline its body renders', () => {
+    // The decoder already refuses this shape; the reducer is airtight too, so no
+    // future path can paint a sealed body with a blank clock.
+    expect(sealed({ deadlineAt: null }).live).toBeNull()
+  })
+
+  it('re-anchors a sealed overlay from the submit fan-out and discards it at SETTLED', () => {
+    const reSnapshotted = applied(sealed(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({
+        serverTs: TS + 2_000,
+        item: sealedItem(),
+        sealedProgress: { submitted: 1, total: 3 },
+      }),
+    })
+    expect(reSnapshotted.live?.serverTs).toBe(TS + 2_000)
+    expect(reSnapshotted.live?.deadlineAt).toBe(TS + 45_000)
+
+    const settled = applied(reSnapshotted, {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({
+        phase: 'SETTLED',
+        item: sealedItem({
+          status: 'settled',
+          settle: { outcome: 'sold', winner: 'An', price: 320_000, truthValue: 400_000, budgetDelta: 80_000 },
+        }),
+      }),
+    })
+    expect(settled.live).toBeNull()
+    expect(settled.item?.settle?.price).toBe(320_000)
   })
 })
 
@@ -686,11 +764,21 @@ describe('the projector view (D-87/D-88/D-89)', () => {
     })
     expect(screenView.joinUrl).not.toBe('')
 
-    const player = applied(screenView, { kind: 'player-snapshot', snapshot: playerSnapshot() })
+    const player = applied(screenView, {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({ sealedProgress: { submitted: 1, total: 3 } }),
+    })
     expect(player.me?.id).toBe('p1')
+    // The screen-only extras reset...
     expect(player.joinUrl).toBe('')
     expect(player.recentBids).toEqual([])
-    expect(player.sealedProgress).toBeNull()
+    // ...and the presenter's ledger is the presenter's alone (D-117): a player
+    // snapshot never carries one.
+    expect(player.sealedBids).toEqual([])
+    // D-116 is the exception: the count is the ONE sealed fact every role reads,
+    // so the player branch carries the server's own counter rather than nulling
+    // it (the deliberate move of the Phase-3/4 rule that forced it to null).
+    expect(player.sealedProgress).toEqual({ submitted: 1, total: 3 })
   })
 
   it('patches the standings from a finale frame, in server order', () => {
@@ -751,6 +839,8 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
       leaderboard: [],
       joinUrls: ['http://192.168.1.10:8080', 'http://10.0.0.5:8080'],
       selectedJoinUrl: 'http://10.0.0.5:8080',
+      sealedBids: [],
+      sealedProgress: null,
       ...overrides,
     }
   }
@@ -786,5 +876,45 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
       snapshot: playerSnapshot({ me: me({ rank: 3 }) }),
     })
     expect(state.me?.rank).toBe(3)
+  })
+
+  it('carries the presenter sealed ledger and the server count through an admin snapshot (D-117)', () => {
+    const ledger = [
+      {
+        itemId: 'i6',
+        playerId: 'p1',
+        nickname: 'An',
+        amount: 320_000,
+        submittedAt: TS - 3_000,
+        updatedAt: TS - 3_000,
+      },
+      {
+        itemId: 'i6',
+        playerId: 'p2',
+        nickname: 'Bình',
+        amount: 350_000,
+        submittedAt: TS - 2_000,
+        updatedAt: TS - 1_000,
+      },
+    ]
+    const state = applied(initialViewState(), {
+      kind: 'admin-snapshot',
+      snapshot: presenterSnapshot({
+        sealedBids: ledger,
+        sealedProgress: { submitted: 2, total: 3 },
+      }),
+    })
+    // The rows travel in the server's own order and are carried as sent; the
+    // count is the server's own number, never `rows.length` recomputed here.
+    expect(state.sealedBids).toEqual(ledger)
+    expect(state.sealedProgress).toEqual({ submitted: 2, total: 3 })
+    // The ledger is the presenter's alone: no `me` is invented for the admin.
+    expect(state.me).toBeNull()
+
+    // A non-sealed item's admin snapshot carries the same empty/absent shape —
+    // the ledger is scoped to the current item by the server (D-117).
+    const plain = applied(state, { kind: 'admin-snapshot', snapshot: presenterSnapshot() })
+    expect(plain.sealedBids).toEqual([])
+    expect(plain.sealedProgress).toBeNull()
   })
 })
