@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import LanguageControl from '@/components/LanguageControl'
 import { Card } from '@/components/ui/card'
+import { bidReasonKey } from '@/lib/bid'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
 import {
   openPlayerSocket,
@@ -66,6 +67,36 @@ function errorCopyKey(code: string): CopyKey {
   }
 }
 
+/**
+ * D-53's private refusal, held WITH the item it was refused for.
+ *
+ * The refusal is deliberately not view state (it is feedback, not a patch), so
+ * this route decides when it goes away. D-97 narrows the carried "a rejection
+ * clears on the next snapshot" rule for exactly one reason: the Dutch race
+ * loser's `already_sold` is enqueued AFTER the winner's settle, so the reveal's
+ * own snapshot has already landed by the time it arrives — and a later snapshot
+ * for the same item (a join, a presence change, a resync during the reveal)
+ * must not take the notice away. Carrying the item id is what makes the scope a
+ * fact about the notice rather than a guess about frame order.
+ */
+type HeldRejection = {
+  payload: BidRejected
+  /** the item the refusal belongs to; null before any item is current */
+  itemId: string | null
+}
+
+/**
+ * The next held refusal after one snapshot. Every reason keeps the carried
+ * behaviour (any snapshot clears it); `already_sold` survives exactly while the
+ * same item's SETTLED body is on screen and dies with a phase or item change.
+ */
+function keepRejection(prev: HeldRejection | null, next: PlayerSnapshot): HeldRejection | null {
+  if (prev === null) return null
+  if (bidReasonKey(prev.payload.reason) !== 'reason.alreadySold') return null
+  if (next.phase !== 'SETTLED' || next.item === null || next.item.id !== prev.itemId) return null
+  return prev
+}
+
 function PlayerView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
@@ -79,9 +110,16 @@ function PlayerView() {
   // The phase body's state, reduced from every admitted frame (D-57/D-70).
   const [view, setView] = useState<ViewState>(() => initialViewState())
   // D-53's private refusal, held only long enough for the feedback row: it is
-  // not view state, and it clears on the next edit or the next snapshot.
-  const [rejection, setRejection] = useState<BidRejected | null>(null)
+  // not view state, and it clears on the next edit or the next snapshot — with
+  // ONE narrowing (D-97): the Dutch race loser's `already_sold` notice arrives
+  // after the settle's own snapshot and survives the later snapshots for the
+  // same item. See `keepRejection`.
+  const [rejection, setRejection] = useState<HeldRejection | null>(null)
   const connectionRef = useRef<PlayerConnection | null>(null)
+  // The item the reduced view is on RIGHT NOW. The socket callbacks are created
+  // once (empty deps), so a refusal that has to record its own scope reads the
+  // current item id from here instead of from a stale closure.
+  const itemIdRef = useRef<string | null>(null)
 
   // The socket is created INSIDE this effect and closed in its cleanup. At
   // module scope it would open twice under StrictMode and supersede itself —
@@ -89,15 +127,18 @@ function PlayerView() {
   useEffect(() => {
     const connection = openPlayerSocket({
       onStatus: setStatus,
-      onView: setView,
+      onView: (next) => {
+        itemIdRef.current = next.item?.id ?? null
+        setView(next)
+      },
       onSnapshot: (next) => {
         setSnapshot(next)
         setJoining(false)
         setRestoring(false)
         setErrorKey(null)
-        setRejection(null)
+        setRejection((prev) => keepRejection(prev, next))
       },
-      onBidRejected: setRejection,
+      onBidRejected: (next) => setRejection({ payload: next, itemId: itemIdRef.current }),
       // D-78/D-80: the presenter ended this identity's session (a cleared room
       // or a released row) and the server closed the socket with 4002. The body
       // on screen describes a lobby that no longer exists, so the route returns
@@ -174,6 +215,13 @@ function PlayerView() {
       )
     }
 
+    // A held refusal is only ever visible on the item it was refused for: the
+    // item id it carries is compared with the item on screen now, so a stale
+    // notice cannot paint a later item's body whatever the clear rules did —
+    // the scope is structural, not a matter of frame order.
+    const held =
+      rejection !== null && rejection.itemId === (view.item?.id ?? null) ? rejection.payload : null
+
     switch (view.phase) {
       case 'LIVE':
         // The LIVE body must render `price.tick` and `bid.accepted` updates as
@@ -188,7 +236,7 @@ function PlayerView() {
           <LiveDutch
             view={view}
             status={status}
-            rejection={rejection}
+            rejection={held}
             onClearRejection={() => setRejection(null)}
             onAccept={placeAccept}
           />
@@ -196,13 +244,16 @@ function PlayerView() {
           <LiveEnglish
             view={view}
             status={status}
-            rejection={rejection}
+            rejection={held}
             onClearRejection={() => setRejection(null)}
             onPlaceBid={placeBid}
           />
         )
       case 'SETTLED':
-        return <SettledReveal item={view.item} me={view.me} />
+        // D-97: the race loser's scoped refusal rides the reveal, so the one
+        // surface that can carry "why my tap did not count" is the body that is
+        // actually on screen when the refusal lands.
+        return <SettledReveal item={view.item} me={view.me} rejection={held} />
       case 'FINALE':
         return <Finale view={view} />
       case 'ITEM_INTRO':

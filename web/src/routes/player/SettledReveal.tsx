@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
+import { bidReasonKey } from '@/lib/bid'
 import { formatVND } from '@/lib/format'
 import { useLanguage } from '@/lib/i18n'
-import type { PlayerMe, PublicItem } from '@/ws/protocol'
+import type { BidRejected, PlayerMe, PublicItem } from '@/ws/protocol'
 
 // Screen E of the player route (03-UI-SPEC §Screen E — SETTLED).
 //
@@ -11,6 +12,12 @@ import type { PlayerMe, PublicItem } from '@/ws/protocol'
 // inside the `settle` object at SETTLED (D-67/D-68) — the decoder refuses a
 // payload that carries one earlier, so the leak boundary is the object's
 // presence rather than this component's restraint.
+//
+// Phase 5 adds ONE row and changes nothing else (D-97/05-UI-SPEC §The Dutch
+// race loser's notice): the Dutch accept race loser's `already_sold` sentence,
+// rendered here because the refusal necessarily arrives after the settle's own
+// fan-out — the live body is already gone, so without this row the loser would
+// read only the public reveal and could mistake a lost race for a phantom win.
 
 /** One label/value row: label 14/700, value 16/400, both baseline-aligned. */
 function RevealRow({ label, children }: { label: string; children: ReactNode }) {
@@ -25,9 +32,16 @@ function RevealRow({ label, children }: { label: string; children: ReactNode }) 
 type SettledRevealProps = {
   item: PublicItem | null
   me: PlayerMe | null
+  /**
+   * D-97's race-loss refusal for THIS item, or any other private refusal. Only
+   * `already_sold` renders a notice: the reveal is not a second feedback slot
+   * for the ladder's reasons, and the caller has already scoped it to the item
+   * on screen (`PlayerView`'s `held`), so a stale refusal cannot appear here.
+   */
+  rejection: BidRejected | null
 }
 
-function SettledReveal({ item, me }: SettledRevealProps) {
+function SettledReveal({ item, me, rejection }: SettledRevealProps) {
   const { t } = useLanguage()
   const settle = item?.settle ?? null
 
@@ -38,6 +52,11 @@ function SettledReveal({ item, me }: SettledRevealProps) {
 
   const sold = settle.outcome === 'sold'
   const iWon = sold && settle.winner !== null && settle.winner === me.nickname
+  // The reason string selects the copy through the same map the live bodies use,
+  // so the loser's sentence is the ONE `reason.alreadySold` row rather than a
+  // second wording of it (D-97/D-106).
+  const noticeKey = rejection === null ? null : bidReasonKey(rejection.reason)
+  const alreadySold = noticeKey === 'reason.alreadySold'
 
   return (
     <>
@@ -48,6 +67,15 @@ function SettledReveal({ item, me }: SettledRevealProps) {
         <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
       </div>
 
+      {/* D-97: the first thing the loser reads — directly under the outcome and
+          the item name, before the reveal rows. The carried rejection-row shape
+          (destructive BORDER, near-black copy), because destructive-as-text
+          measures below the 4.5:1 threshold on this surface. */}
+      {alreadySold && (
+        <p role="alert" className="border-2 border-destructive px-2 py-2 text-base leading-[1.5]">
+          {t('reason.alreadySold')}
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         {/* Omitted entirely when there is no winner — which is exactly the
             unsold case (ECON-03): a blank winner slot would read as a missing
