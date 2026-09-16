@@ -88,6 +88,13 @@ const (
 	TypeAdminGameReset    = "admin.game.reset"
 	TypeAdminConfigUpdate = "admin.config.update"
 
+	// Phase 4 (D-80) — the ONE deliberate addition of the whole phase, and it is
+	// client→server only: the console's per-player session release. There is no
+	// server→client counterpart on purpose; the admin learns the outcome from
+	// the ordinary role snapshot every mutation already fans out, so adding a
+	// frame type for it would widen the wire surface for nothing.
+	TypeAdminPlayerRelease = "admin.player.release"
+
 	// server → client
 	TypeHello          = "hello"
 	TypeStateSnapshot  = "state.snapshot"
@@ -161,6 +168,10 @@ var frozenCatalog = [...]string{
 	TypeAdminItemNext,
 	TypeAdminGameReset,
 	TypeAdminConfigUpdate,
+	// Phase 4 (D-80): appended INSIDE the client→server group, so the array's own
+	// "client→server first, then server→client, in catalog order" rule survives
+	// the one addition this phase is allowed to make.
+	TypeAdminPlayerRelease,
 	// server → client
 	TypeHello,
 	TypeStateSnapshot,

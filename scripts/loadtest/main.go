@@ -1036,6 +1036,14 @@ func resolveTarget() string {
 	flag.Parse()
 
 	if arg := flag.Arg(0); arg != "" {
+		// Go's flag package stops at the first non-flag argument, and this
+		// harness takes the URL positionally — so `loadtest ws://… --admin-key K`
+		// would otherwise drop the flag silently and fail the round with a
+		// confusing "no admin capability". The remainder is parsed here, so both
+		// orders mean the same thing.
+		if rest := flag.Args()[1:]; len(rest) > 0 {
+			_ = flag.CommandLine.Parse(rest) // ExitOnError: a bad flag exits here
+		}
 		return arg
 	}
 	if env := os.Getenv("WS_URL"); env != "" {

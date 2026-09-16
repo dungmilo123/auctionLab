@@ -104,15 +104,27 @@ type inbound struct {
 	//            D-52 ladder, not the decoder, owns every refusal (WR-01). The
 	//            hub reads it with amountFromLiteral; a literal that is not a
 	//            whole number reaches the ladder as 0, i.e. `invalid_amount`.
-	//   id     — the item an `admin.item.*` command names.
+	//   id     — the item an `admin.item.*` command names; `admin.player.release`
+	//            (Phase 4) names a player with the same field.
 	//   item   — D-66's full-object upsert payload; nil means the frame carried
 	//            no `item` key at all, which is a bad_message rather than an
 	//            empty create.
 	//   ids    — the complete permutation `admin.item.reorder` demands.
-	Amount json.RawMessage `json:"amount"`
-	ID     string          `json:"id"`
-	Item   *game.ItemInput `json:"item"`
-	IDs    []string        `json:"ids"`
+	//
+	// Phase 4 (D-78/D-81), additive:
+	//
+	//   mode   — `admin.game.reset`'s closed vocabulary; an absent field is a
+	//            bad_message, and the value is validated against D-78's two
+	//            literals before the engine is asked to do anything.
+	//   config — `admin.config.update`'s partial config object; nil means the
+	//            frame carried no `config` key, which is a bad_message rather
+	//            than an empty edit.
+	Amount json.RawMessage   `json:"amount"`
+	ID     string            `json:"id"`
+	Item   *game.ItemInput   `json:"item"`
+	IDs    []string          `json:"ids"`
+	Mode   string            `json:"mode"`
+	Config *game.ConfigInput `json:"config"`
 }
 
 // newClient wires one upgraded connection to the hub.
@@ -263,7 +275,8 @@ func (c *client) handle(payload []byte) {
 	case TypeBidPlace:
 		c.handleBid(in)
 	case TypeAdminItemUpsert, TypeAdminItemDelete, TypeAdminItemReorder,
-		TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext:
+		TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext,
+		TypeAdminGameReset, TypeAdminConfigUpdate, TypeAdminPlayerRelease:
 		c.handleAdmin(in)
 	default:
 		// D-24: the Phase 4–6 commands are already in the catalog, so a client
@@ -335,14 +348,20 @@ func amountFromLiteral(raw json.RawMessage) int64 {
 	return amount
 }
 
-// handleAdmin routes one `admin.item.*` command (D-64/D-65/D-66). Every command
-// is role-gated before it can name a mutation, and every refusal is a private
-// typed error that changes nothing (T-03-07): `not_authorized` for the wrong
-// role, `bad_message` for a phase edge, an unknown id or an invalid item.
+// handleAdmin routes one `admin.*` command (D-64/D-65/D-66, D-78/D-80/D-81).
+// Every command is role-gated before it can name a mutation, and every refusal
+// is a private typed error that changes nothing (T-03-07): `not_authorized` for
+// the wrong role, `bad_message` for a phase edge, an unknown id, an invalid item
+// or a frame whose required field is missing.
 //
 // The engine's own message is carried along for the log and for an operator
 // reading a dev console — the UI maps the CODE to its copy and never renders
 // the server's text (UI-SPEC §Copywriting).
+//
+// Two commands end sockets after a successful commit — clear_players ends every
+// player connection (D-78) and release ends one (D-80) — and both do it AFTER
+// the engine returned, i.e. outside engine.mu: ending a session is a deliberate,
+// bounded act on a socket, not part of the fan-out.
 func (c *client) handleAdmin(in inbound) {
 	if c.role() != RoleAdmin {
 		c.sendError(CodeNotAuthorized, "admin commands need the admin role")
@@ -367,10 +386,60 @@ func (c *client) handleAdmin(in inbound) {
 		err = c.hub.engine.ForceEnd()
 	case TypeAdminItemNext:
 		err = c.hub.engine.NextItem()
+	case TypeAdminGameReset:
+		// D-78: the mode is the wire vocabulary, so the transport edge is where
+		// its shape is checked (an absent or unknown literal never reaches the
+		// engine). The engine keeps its own closed-vocabulary guard for callers
+		// that do not come through here.
+		mode, ok := resetModeOf(in.Mode)
+		if !ok {
+			c.sendError(CodeBadMessage, "admin.game.reset needs mode keep_players|clear_players")
+			return
+		}
+		err = c.hub.engine.Reset(mode)
+		if err == nil && mode == game.ResetClearPlayers {
+			// D-78: the rows are gone and the commit has landed, so every phone
+			// still holding one is sent back to the join form — with the
+			// session-ended code, never 4001 (a player would read that as
+			// "another device took my identity").
+			c.hub.endPlayerSessions()
+		}
+	case TypeAdminConfigUpdate:
+		if in.Config == nil {
+			c.sendError(CodeBadMessage, "admin.config.update needs a config object")
+			return
+		}
+		err = c.hub.engine.UpdateConfig(*in.Config)
+	case TypeAdminPlayerRelease:
+		if in.ID == "" {
+			c.sendError(CodeBadMessage, "admin.player.release needs an id")
+			return
+		}
+		err = c.hub.engine.ReleaseSession(in.ID)
+		if err == nil {
+			// D-80: the token write is what is durable; ending the socket is what
+			// makes the released identity's device notice. An identity with no
+			// live socket is a no-op (endPlayerSession finds nothing).
+			c.hub.endPlayerSession(in.ID)
+		}
 	}
 
 	if err != nil {
 		c.sendError(CodeBadMessage, err.Error())
+	}
+}
+
+// resetModeOf maps `admin.game.reset`'s wire literal onto D-78's closed
+// vocabulary. The two literals are part of the frozen catalog (PLAN.md §6), so
+// this is a vocabulary check at the transport edge rather than a policy: the
+// engine validates the same two values again on its own path, which is what
+// keeps a non-hub caller from slipping an unknown mode through.
+func resetModeOf(raw string) (game.ResetMode, bool) {
+	switch mode := game.ResetMode(raw); mode {
+	case game.ResetKeepPlayers, game.ResetClearPlayers:
+		return mode, true
+	default:
+		return "", false
 	}
 }
 

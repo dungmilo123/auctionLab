@@ -66,6 +66,7 @@ func TestProtocol(t *testing.T) {
 			{"admin.item.next", TypeAdminItemNext},
 			{"admin.game.reset", TypeAdminGameReset},
 			{"admin.config.update", TypeAdminConfigUpdate},
+			{"admin.player.release", TypeAdminPlayerRelease},
 			// server → client
 			{"hello", TypeHello},
 			{"state.snapshot", TypeStateSnapshot},

@@ -46,6 +46,22 @@ const closeCodeSuperseded = 4001
 // observes close code 4001; a wedged one just sees the socket end.
 const supersedeWriteWait = 250 * time.Millisecond
 
+// closeCodeSessionEnded is D-78/D-80's dedicated close code: the PRESENTER ended
+// this session — a cleared room, or one identity released — so the device is
+// expected to return to the join form and may claim its nickname again.
+//
+// It is deliberately not closeCodeSuperseded (4001): a phone that reads "someone
+// signed in on another device" would show the wrong story, and the cleared or
+// released player is not being replaced by anybody (A7).
+const closeCodeSessionEnded = 4002
+
+// endedWriteWait bounds the close frame the deliberate-cleanup paths send. Like
+// supersedeWriteWait it is short, for the same reason: this write is synchronous
+// to the peer, and a wedged phone must not hold the presenter's command for the
+// policy's full WriteWait. Unlike the supersede path these calls run after the
+// engine lock has been released, so a slow peer delays only its own connection.
+const endedWriteWait = 250 * time.Millisecond
+
 // originRejectLogInterval bounds how often the routine cross-origin rejection
 // is logged: /ws is unauthenticated, so once the app is published any scanner
 // can otherwise drive unbounded log writes at one line per 403.
@@ -437,6 +453,45 @@ func (h *Hub) supersede(old *client) {
 		websocket.FormatCloseMessage(closeCodeSuperseded, "this identity joined on another connection"),
 		time.Now().Add(supersedeWriteWait))
 	old.close()
+}
+
+// endSession retires ONE connection because the presenter ended its session
+// (D-78's clear_players, D-80's release). WriteControl is the one write gorilla
+// documents as safe beside the connection's own writer goroutine, and it is
+// flushed synchronously, so the peer observes close code 4002 rather than a
+// silent drop. A socket that is already gone simply answers an error, which the
+// idempotent close below makes harmless.
+//
+// PRECONDITION: engine.mu is NOT held. Every caller runs after the mutation it
+// follows has returned — the opposite of the fan-out's contract — because ending
+// a session is a deliberate per-socket act, not a state change to broadcast.
+func (h *Hub) endSession(c *client) {
+	_ = c.conn.WriteControl(websocket.CloseMessage,
+		websocket.FormatCloseMessage(closeCodeSessionEnded, "this session was ended by the presenter; join again"),
+		time.Now().Add(endedWriteWait))
+	c.close()
+}
+
+// endPlayerSessions ends every connection holding a PLAYER identity — the
+// clear_players half of D-78, where the committed reset already deleted the rows.
+// The registry read is lock-free (a registry snapshot), and neither this call
+// nor the closes it performs takes the engine's lock.
+func (h *Hub) endPlayerSessions() {
+	for _, c := range h.registry.snapshot() {
+		if c.role() == RolePlayer {
+			h.endSession(c)
+		}
+	}
+}
+
+// endPlayerSession ends the one connection holding playerID, if there is one —
+// D-80's release. An identity with no live socket is a no-op: the durable half
+// of a release is the token write, which the engine has already committed, and
+// the presenter may well be releasing a phone that is already gone.
+func (h *Hub) endPlayerSession(playerID string) {
+	if c := h.registry.lookup(playerID); c != nil {
+		h.endSession(c)
+	}
 }
 
 // teardown runs once per connection, after its socket has ended.
