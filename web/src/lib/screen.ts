@@ -1,5 +1,5 @@
 /**
- * The projector's pure logic (D-86/D-88/D-89/D-90).
+ * The projector's pure logic (D-86/D-88/D-89/D-90/D-105).
  *
  * Everything here is a selector: no DOM, no React, no socket, no clock — the
  * convention `lib/admin.ts` and `lib/bid.ts` already follow, and the only way
@@ -62,6 +62,20 @@ export function isSealedAuction(auctionType: string): boolean {
  */
 export function isEnglishAuction(auctionType: string): boolean {
   return auctionType === 'english'
+}
+
+/**
+ * The Dutch arm's selector for Body 2's LIVE state (D-105): a Dutch run renders
+ * the falling price and the floor, and **neither the bidder row nor the feed** —
+ * there is no ladder and no bid for the room to watch, and `live.noBidder`
+ * ("No bids yet") would be a false statement about a run that has nothing to bid
+ * on (05-UI-SPEC §The arm table amendment). Its sibling of the two gates above,
+ * so the arm branches on a pure fact instead of a string compared at the call
+ * site — and the three selectors stay mutually exclusive over the frozen four
+ * types, which `screen.test.ts` pins.
+ */
+export function isDutchAuction(auctionType: string): boolean {
+  return auctionType === 'dutch'
 }
 
 /**

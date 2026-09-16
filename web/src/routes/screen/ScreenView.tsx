@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
+import { anchorDutch, atFloor, dutchPrice, elapsedOf } from '@/lib/dutch'
 import { formatVND } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
 import {
   SCREEN_SCALE_CLASS,
+  isDutchAuction,
   isEnglishAuction,
   isSealedAuction,
   joinUrlInvitable,
@@ -33,10 +35,13 @@ import type { LiveOverlay, ViewState } from '@/ws/view'
 //                       live arm moves the price and counts the window down
 //   SETTLED / FINALE  → the public reveal, the podium and the standings
 //
-// Nothing here derives an auction fact. Every number is a projection field, or
-// the LIVE overlay seeded from one (D-60/D-63), so a reload mid-run paints the
-// whole screen from the trailing snapshot alone — and no client-side sort ever
-// reorders the server's standings (ECON-05).
+// One number is the exception, and only in the Dutch live arm: a falling price
+// has to move between frames, so `DutchWells` re-derives it with the SAME pure
+// module the phone calls (`lib/dutch.ts`, D-105) from the item's public
+// mechanics and the anchor the newest frame carried. Everything else here is a
+// projection field, or the LIVE overlay seeded from one (D-60/D-63), so a reload
+// mid-run paints the whole screen from the trailing snapshot alone — and no
+// client-side sort ever reorders the server's standings (ECON-05).
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
   connecting: 'status.connecting',
@@ -117,6 +122,86 @@ function ScreenCountdown({ deadlineAt, serverTs }: { deadlineAt: number; serverT
     >
       {formatClock(remainingMs(frame.anchor, now))}
     </p>
+  )
+}
+
+/**
+ * The Dutch live arm's own clock and its two wells (D-105, 05-UI-SPEC §The arm
+ * table amendment). It is the exact counterpart of `ScreenCountdown`: ONE
+ * component owns the route's single interval for the arm that is on screen —
+ * the countdown on an English run, this on a Dutch one, mutually exclusive by
+ * item type — and a frame that repeats `started_at`+`server_ts` re-anchors it
+ * during render, the immediate go-LIVE tick included (D-56/D-94), so the number
+ * never blanks and never runs backwards.
+ *
+ * The price is NOT a projection field here: it is `lib/dutch.ts`'s derivation
+ * from the item's own public mechanics — the one module the phone also calls
+ * (D-105/D-91), so the room and the phones can never disagree about the falling
+ * number. Every input is a public projection value: the component has no
+ * access to `truth_value`, a sealed amount or any other secret, and it builds
+ * no frame and mounts no control — the accept lives on the phones.
+ */
+function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
+  const { t } = useLanguage()
+  const now = useNow(COUNTDOWN_INTERVAL_MS)
+
+  // `startedAt` is the Dutch anchor (D-94) and is always present on this arm:
+  // the decoder's Dutch LIVE arm refuses a payload without it, and `overlayFrom`
+  // admits the item on it. The key is the frame's own pair, so a tick that
+  // omits the anchor does not re-anchor (D-94) — and the fallback to 0 exists
+  // only so the anchor stays total for a value that cannot occur.
+  const startedAt = live.startedAt ?? 0
+  const frameKey = `${startedAt}:${live.serverTs}`
+  const [frame, setFrame] = useState(() => ({
+    key: frameKey,
+    anchor: anchorDutch(startedAt, live.serverTs, Date.now()),
+  }))
+
+  // Adjusting state during render is `ScreenCountdown`'s own rule: the anchor
+  // stays in step with the frame without a second pass.
+  if (frame.key !== frameKey) {
+    setFrame({ key: frameKey, anchor: anchorDutch(startedAt, live.serverTs, now) })
+  }
+
+  const mechanics = {
+    startPrice: item.startPrice,
+    floorPrice: item.floorPrice ?? 0,
+    decrementStep: item.decrementStep ?? 0,
+    decrementIntervalMs: item.decrementIntervalMs ?? 0,
+  }
+  const price = dutchPrice(mechanics, elapsedOf(frame.anchor, now))
+
+  return (
+    <>
+      {/* Both wells keep the footprint the intro arm gave them: the transition
+          into LIVE changes numbers, never layout (05-UI-SPEC §arm table). */}
+      <div className="grid shrink-0 grid-cols-2 gap-4">
+        {/* The one accent fill of this screen-state, and the route's only
+            moving number: mono + `tabular-nums` so the digits cannot change
+            width between ticks (D-90's typography rule). */}
+        <div className="border-2 border-border bg-primary px-4 py-2 text-primary-foreground">
+          <p className="text-sm leading-[1.5] font-bold">{t('live.priceLabel')}</p>
+          <p className="font-mono text-display leading-[1.2] font-bold tabular-nums whitespace-nowrap">
+            {formatVND(price)}
+          </p>
+          <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+        </div>
+
+        {/* No clock, no timer role and no drop countdown: the floor is context,
+            not the datum — and it is deliberately not accent. */}
+        <div className="border-2 border-border bg-background px-4 py-2">
+          <p className="text-sm leading-[1.5] font-bold">{t('dutch.floorLabel')}</p>
+          <p className="text-xl leading-[1.2] font-bold">{formatVND(mechanics.floorPrice)}</p>
+          <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+        </div>
+      </div>
+
+      {/* A fact about the price's own movement, not an error: the number has
+          stopped, so the room is told rather than left to infer it. */}
+      {atFloor(price, mechanics.floorPrice) && (
+        <p className="shrink-0 text-base leading-[1.5]">{t('dutch.atFloor')}</p>
+      )}
+    </>
   )
 }
 
@@ -269,10 +354,12 @@ function BidFeed({ bids }: { bids: readonly RecentBid[] }) {
 }
 
 /**
- * Body 2 — ITEM_INTRO and LIVE, one body with two arms (SCRN-02). The item stays
- * in the same geometry while the phase moves, so the projector must not reflow
- * at the moment the run opens: the two arms differ in exactly the cells the
- * UI-SPEC's arm table names, and in nothing else.
+ * Body 2 — ITEM_INTRO and LIVE, one body with three arms (SCRN-02/D-105). The
+ * item stays in the same geometry while the phase moves, so the projector must
+ * not reflow at the moment the run opens: the arms differ in exactly the cells
+ * the UI-SPEC's arm table names, and in nothing else. The English arm's wells
+ * live here; the Dutch arm's live wells are `DutchWells` above, because a
+ * falling price needs the one component that owns its clock.
  */
 function ItemBody({
   item,
@@ -289,13 +376,16 @@ function ItemBody({
 }) {
   const { t } = useLanguage()
   const liveArm = item.status === 'live'
+  // D-105's branch, through the pure selector rather than a literal: the Dutch
+  // live arm is the one arm whose number is derived instead of projected.
+  const dutchArm = liveArm && isDutchAuction(item.auctionType)
   const typeKey = AUCTION_TYPE_KEYS[item.auctionType]
   const hint = hintRange(item)
 
-  // The LIVE price is the newest frame's number (snapshot, then ticks and
-  // accepted bids in arrival order); a non-English run still carries the price
-  // its engine computed — `current_price` is the top bid or the start price
-  // before the first one.
+  // The English LIVE price is the newest frame's number (snapshot, then ticks
+  // and accepted bids in arrival order) — `current_price` is the top bid or the
+  // start price before the first one. The Dutch arm renders `DutchWells`
+  // instead, so this fallback is only ever read by the arms below it.
   const price = liveArm ? (live?.currentPrice ?? item.currentPrice) : item.startPrice
   const topBidder = live?.topBidder ?? item.topBidder
 
@@ -322,46 +412,55 @@ function ItemBody({
         </div>
       </div>
 
-      {/* Both wells keep their footprint in both arms: the transition into LIVE
-          changes numbers, never layout. */}
-      <div className="grid shrink-0 grid-cols-2 gap-4">
-        <div
-          className={`border-2 border-border px-4 py-2 ${
-            liveArm ? 'bg-primary text-primary-foreground' : 'bg-background'
-          }`}
-        >
-          <p className="text-sm leading-[1.5] font-bold">
-            {liveArm ? t('live.priceLabel') : t('intro.startLabel')}
-          </p>
-          {price !== null && (
-            <p className="text-display leading-[1.2] font-bold whitespace-nowrap">
-              {formatVND(price)}
+      {/* Both wells keep their footprint in every arm: the transition into LIVE
+          changes numbers, never layout. The Dutch live arm swaps in its own
+          pair (the derived price and the floor); a Dutch item can only reach
+          the arms below with an overlay, because the decoder's Dutch LIVE arm
+          requires all five numbers and `overlayFrom` admits the item on them. */}
+      {dutchArm && live !== null ? (
+        <DutchWells item={item} live={live} />
+      ) : (
+        <div className="grid shrink-0 grid-cols-2 gap-4">
+          <div
+            className={`border-2 border-border px-4 py-2 ${
+              liveArm ? 'bg-primary text-primary-foreground' : 'bg-background'
+            }`}
+          >
+            <p className="text-sm leading-[1.5] font-bold">
+              {liveArm ? t('live.priceLabel') : t('intro.startLabel')}
             </p>
-          )}
-          <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
-        </div>
+            {price !== null && (
+              <p className="text-display leading-[1.2] font-bold whitespace-nowrap">
+                {formatVND(price)}
+              </p>
+            )}
+            <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+          </div>
 
-        <div className="border-2 border-border bg-background px-4 py-2">
-          {liveArm ? (
-            <>
-              <p className="text-sm leading-[1.5] font-bold">{t('live.timeLabel')}</p>
-              {/* The clock is anchored on a frame that carried timing; a run
-                  whose deadline is absent shows no clock rather than a
-                  placeholder this phase never agreed on. */}
-              {live !== null && live.deadlineAt !== null && (
-                <ScreenCountdown deadlineAt={live.deadlineAt} serverTs={live.serverTs} />
-              )}
-              <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
-            </>
-          ) : (
-            // No label row, no number and no `role="timer"`: there is no clock
-            // yet, so the well is the carried waiting sentence.
-            <p className="text-base leading-[1.5]">{t('intro.waiting')}</p>
-          )}
+          <div className="border-2 border-border bg-background px-4 py-2">
+            {liveArm ? (
+              <>
+                <p className="text-sm leading-[1.5] font-bold">{t('live.timeLabel')}</p>
+                {/* The clock is anchored on a frame that carried timing; a run
+                    whose deadline is absent shows no clock rather than a
+                    placeholder this phase never agreed on. */}
+                {live !== null && live.deadlineAt !== null && (
+                  <ScreenCountdown deadlineAt={live.deadlineAt} serverTs={live.serverTs} />
+                )}
+                <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+              </>
+            ) : (
+              // No label row, no number and no timer role: there is no clock
+              // yet, so the well is the carried waiting sentence.
+              <p className="text-base leading-[1.5]">{t('intro.waiting')}</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {liveArm && (
+      {/* English only (D-105's arm-table amendment): a Dutch run has no bidder,
+          so `live.noBidder` ("No bids yet") would be a false statement about it. */}
+      {liveArm && isEnglishAuction(item.auctionType) && (
         <div className="flex shrink-0 flex-wrap items-baseline gap-2">
           <p className="text-sm leading-[1.5] font-bold">{t('live.topBidderLabel')}</p>
           {topBidder === null ? (

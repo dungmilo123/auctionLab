@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { LeaderEntry, PlayerMe } from '@/ws/protocol'
 import {
   SCREEN_SCALE_CLASS,
+  isDutchAuction,
   isEnglishAuction,
   isSealedAuction,
   joinUrlInvitable,
@@ -114,6 +115,13 @@ describe('the Body 2 type gates (D-88)', () => {
     expect(isEnglishAuction('english')).toBe(true)
     for (const type of ['dutch', 'sealed_first', 'vickrey', '']) {
       expect(isEnglishAuction(type)).toBe(false)
+    }
+  })
+
+  it('branches the falling-price arm for a Dutch run only (D-105)', () => {
+    expect(isDutchAuction('dutch')).toBe(true)
+    for (const type of ['english', 'sealed_first', 'vickrey', '']) {
+      expect(isDutchAuction(type)).toBe(false)
     }
   })
 })
