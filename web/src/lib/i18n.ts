@@ -20,6 +20,13 @@
  * `admin.noKeyNote`: the table ends the phase at the 171 approved keys
  * `i18n.test.ts` asserts.
  *
+ * Phase 5 adds the seven Dutch rows (173 → 178 with the deleted key counted),
+ * and Phase 6 adds the thirteen the sealed surfaces need — eight sealed live
+ * strings, four admin-ledger strings and the one Vickrey rule sentence — for
+ * the 191 keys the suite now asserts. No key is renamed, reworded or removed by
+ * either phase, and `LIVE_PARAM_KEYS` is unchanged: none of the new strings
+ * carries a placeholder.
+ *
  * This module also owns the language context and the `auctionlab.lang` storage
  * key. It is plain TypeScript (no JSX) because the UI-SPEC's file list puts the
  * dictionary in `lib/`; the provider therefore builds its element with
@@ -354,6 +361,41 @@ export const COPY = {
   'admin.err.floorOrder': {
     en: "Floor price can't be above the start price.",
     vi: 'Giá sàn không được lớn hơn giá khởi điểm.',
+  },
+
+  // ---- Phase 6: the sealed live body, the presenter ledger and the Vickrey
+  // line (06-UI-SPEC §Copywriting Contract, D-122) ----
+  // Eight sealed-surface strings, four admin-ledger strings and the one
+  // non-interpolated Vickrey rule sentence. `screen.sealedProgress` (Phase 4) is
+  // reused VERBATIM on all three sealed surfaces — the app's one "X/Y submitted"
+  // sentence — and no new reason key is added: the sealed refusals are the
+  // shipped `reason.*` rows.
+  'sealed.bidLabel': { en: 'Your sealed bid', vi: 'Giá đặt kín của bạn' },
+  'sealed.submit': { en: 'Submit bid', vi: 'Nộp giá' },
+  'sealed.update': { en: 'Update bid', vi: 'Cập nhật giá' },
+  'sealed.sending': { en: 'Sending…', vi: 'Đang gửi…' },
+  'sealed.submittedLabel': { en: 'Submitted bid', vi: 'Giá đã nộp' },
+  'sealed.notSubmitted': { en: 'Not submitted yet', vi: 'Chưa nộp' },
+  'sealed.editable': { en: 'Editable until close', vi: 'Có thể sửa đến khi đóng' },
+  // The disabled form's explanation once the countdown reaches zero — the
+  // carried refusal ROW is not used for it (no box, no border).
+  'sealed.closed': {
+    en: 'Bidding is closed — waiting for the result.',
+    vi: 'Đã đóng nhận giá — chờ kết quả.',
+  },
+  'admin.sealedBidsHeading': { en: 'Sealed bids', vi: 'Giá đặt kín' },
+  'admin.sealedBidsNote': {
+    en: 'Only you see these amounts — they never reach the projector.',
+    vi: 'Chỉ bạn thấy các mức giá này — chúng không bao giờ lên màn chiếu.',
+  },
+  'admin.sealedBidAmount': { en: 'Bid', vi: 'Giá đặt' },
+  'admin.sealedBidTime': { en: 'Updated', vi: 'Sửa lúc' },
+  // A RULE statement, not an equation: the wire carries no bid amount at
+  // SETTLED (D-114), so the line interpolates nothing and reads identically for
+  // the winner and for every loser.
+  'settle.vickreyNote': {
+    en: "Vickrey: the winner pays the second-highest bid — or the start price if they're the only bidder.",
+    vi: 'Vickrey: người thắng trả mức giá cao nhì — hoặc giá khởi điểm nếu chỉ có một người đặt.',
   },
 } as const satisfies Record<string, Copy>
 
