@@ -20,6 +20,9 @@
  *     changes, and reseeded from the new item's own live fields (UI-SPEC §LIVE).
  *   - `me.budget` moves ONLY through a snapshot (Q4): the settle's snapshot
  *     always follows, and no client arithmetic decides what a player can spend.
+ *   - D-88's public feed is seeded whole by a screen snapshot and, while the
+ *     phase is LIVE, prepended by the same `bid.accepted` frame that moves the
+ *     price — a bid produces no snapshot, so the live path cannot wait for one.
  */
 
 import type {
@@ -71,7 +74,11 @@ export type ViewState = {
    * receives one.
    */
   joinUrl: string
-  /** D-88's public feed; empty for every role that is not the screen. */
+  /**
+   * D-88's public feed, newest first. A screen snapshot seeds it whole and an
+   * accepted bid prepends to it in place (capped at `MAX_RECENT_BIDS`); only the
+   * screen renders it, and the player/admin snapshots reset it to empty.
+   */
   recentBids: RecentBid[]
   /** D-88's count-only sealed indicator; null = not a sealed item / not the screen. */
   sealedProgress: SealedProgress | null
@@ -132,6 +139,14 @@ const ITEM_EVENT_PHASE: Readonly<Record<ItemEventType, Phase>> = {
   'item.live': 'LIVE',
   'item.settled': 'LIVE',
 }
+
+/**
+ * D-88's feed cap, in the one place the client can enforce it: the server sends
+ * at most five entries, and every local prepend is trimmed to the same five so
+ * the projector's feed is bounded by construction rather than by the server's
+ * list happening to be short.
+ */
+const MAX_RECENT_BIDS = 5
 
 /**
  * Build the LIVE overlay from a projection's own live fields, or null when it
@@ -268,6 +283,15 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
           topBidder: bid.nickname,
           serverTs: frame.ts,
         },
+        // D-88's feed is patched by the SAME frame that moves the price: a bid
+        // produces no snapshot, so without this the projector shows a live price
+        // beside a feed frozen at the last snapshot (UI-review finding 1). The
+        // row's `ts` is the envelope's server clock — the instant the server's
+        // own snapshot feed stamps — and the newest row is always index 0.
+        recentBids: [
+          { nickname: bid.nickname, amount: bid.amount, ts: frame.ts },
+          ...state.recentBids,
+        ].slice(0, MAX_RECENT_BIDS),
         // The bidder is the new top by definition; anybody else's bid clears my
         // `is_top_bidder` without touching my `last_bid` — which is exactly the
         // pair the D-72 banner is derived from (UI-SPEC §LIVE).

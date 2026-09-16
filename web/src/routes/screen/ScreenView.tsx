@@ -199,13 +199,15 @@ function LobbyBody({ view }: { view: ViewState }) {
         <p className="text-display leading-[1.2] font-bold">{count(view.lobby.length)}</p>
 
         {/* Declared scroll region #1: 20 players fill three columns at
-            1920×1080 and need no scroll; a smaller canvas scrolls here and
-            nowhere else on this half of the screen. */}
-        <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto xl:grid-cols-3">
+            1920×1080 and need no scroll — 7 rows × 76.04px + 6 × 11.34px of
+            `gap-1` is 600.3px inside the 631px box (UI-review finding 2); a
+            smaller canvas scrolls here and nowhere else on this half of the
+            screen. */}
+        <div className="grid min-h-0 grid-cols-2 gap-1 overflow-y-auto xl:grid-cols-3">
           {view.lobby.map((entry) => (
             <div
               key={entry.nickname}
-              className="flex min-h-11 items-center gap-2 border-2 border-border bg-card px-2 py-1"
+              className="flex items-center gap-2 border-2 border-border bg-card px-2 py-0"
             >
               <span
                 aria-hidden="true"
@@ -475,7 +477,11 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
   const { t } = useLanguage()
 
   return (
-    <div className="flex shrink-0 flex-wrap items-stretch gap-4">
+    // `items-end`, not `items-stretch`: the podium is a STEPPED hierarchy, so
+    // each block keeps its own height and sits on the same baseline — rank 1
+    // (Display nickname, `py-6`) is genuinely the tallest, and #2/#3 stay
+    // shorter (UI-review finding 4).
+    <div className="flex shrink-0 flex-wrap items-end gap-4">
       {entries.map((entry, index) => {
         const first = index === 0
         return (
@@ -485,7 +491,7 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
             // while they fit and stack below when they do not, always in rank
             // order in the DOM.
             className={`flex min-w-40 flex-1 basis-0 flex-col gap-1 border-2 border-border ${
-              first ? 'bg-primary px-6 py-6 text-primary-foreground' : 'bg-card px-4 py-3'
+              first ? 'bg-primary px-6 py-6 text-primary-foreground' : 'bg-card px-4 py-4'
             }`}
           >
             <p className={first ? 'text-xl leading-[1.2] font-bold' : 'text-sm leading-[1.5] font-bold'}>
