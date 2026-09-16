@@ -14,6 +14,13 @@
  * looks familiar (research Pitfall 3).
  */
 
+// `isSealedAuction` is the app's ONE definition of the two sealed types (the
+// player body branch, the screen arm, the admin gate and this decoder's LIVE
+// totality arm all read it — UI-SPEC §Requirement Impact 7). The import is one
+// way at runtime: `lib/screen.ts` imports only TYPES from this module, which
+// `verbatimModuleSyntax` erases.
+import { isSealedAuction } from '@/lib/screen'
+
 /** The five frozen envelope keys — the contract, not the field names. */
 export const ENVELOPE_FIELDS = ['type', 'seq', 'rev', 'ts', 'data'] as const
 
@@ -140,6 +147,14 @@ export type PlayerMe = {
    * LeaderEntry carries no id to match a nickname against (research Pitfall 1).
    */
   rank: number
+  /**
+   * Phase 6 (D-115, additive): THIS player's own effective sealed amount while
+   * the current item is a sealed run that is still LIVE, or null. The key is
+   * `my_bid` — never a `sealed_bid*` spelling, which D-26's leak lock rejects at
+   * any depth — and an absent key is the wire's "not submitted". Another
+   * player's amount exists nowhere in a player payload (D-118).
+   */
+  myBid: number | null
 }
 
 /** One lobby row: a nickname and its live presence. No budgets — public (D-25). */
@@ -196,6 +211,12 @@ export type PlayerSnapshot = {
   lobby: LobbyEntry[]
   leaderboard: LeaderEntry[]
   item: PublicItem | null
+  /**
+   * Phase 6 (D-116, additive): the SAME count-only sealed counter the projector
+   * and the presenter carry — the one sealed fact that crosses people, and an
+   * explicit null for every non-sealed item (the server always marshals the key).
+   */
+  sealedProgress: SealedProgress | null
 }
 
 /**
@@ -308,6 +329,11 @@ export function readPlayerSnapshot(data: unknown): PlayerSnapshot | null {
     lobby,
     leaderboard: readLeaderboard(data.leaderboard),
     item,
+    // Phase 6 (D-116): the player's own copy of the count-only counter, decoded
+    // with the projector's shipped helper — one reader for one wire shape. An
+    // explicit null outside a sealed item; a malformed counter reads as absent
+    // (this field is never authoritative for money).
+    sealedProgress: readSealedProgress(data.sealed_progress),
   }
 }
 
@@ -335,6 +361,10 @@ function readPlayerMe(value: unknown): PlayerMe | null {
     lastBid: readInt(value.last_bid),
     isTopBidder: value.is_top_bidder === true,
     rank,
+    // Phase 6 (D-115): the same additive shape — an absent `my_bid` is "not
+    // submitted" (the `last_bid` precedent), and the server emits the key only
+    // for the owner of a sealed run that is still open.
+    myBid: readInt(value.my_bid),
   }
 }
 
@@ -494,8 +524,13 @@ export function itemMatchesPhase(phase: Phase, item: PublicItem | null): boolean
         )
       }
       // H13: an english LIVE item must carry the numbers its bid controls
-      // render; any other type (the two sealed ones) may reach LIVE with fewer
-      // fields and renders `live.typePending` instead of the form.
+      // render. Phase 6 (D-116) narrows this for the two sealed types: the sealed
+      // LIVE body renders its close countdown from `deadline_at`, so an admitted
+      // sealed item must carry one — while `current_price` and `min_next_bid`
+      // stay optional, because a sealed run has no ladder to describe. H13's
+      // leniency now survives only for a type this build does not know at all
+      // (which renders `live.typePending` rather than freezing the screen).
+      if (isSealedAuction(item.auctionType)) return item.deadlineAt !== null
       if (item.auctionType !== 'english') return true
       return item.currentPrice !== null && item.minNextBid !== null && item.deadlineAt !== null
     case 'SETTLED':
@@ -615,6 +650,25 @@ export type AdminPlayer = {
   connected: boolean
 }
 
+/**
+ * One effective sealed bid (D-117) — the presenter's private ledger row, and the
+ * ONE client model that expresses a sealed amount. It is decoded only from the
+ * admin snapshot; the server scopes the rows to the current item, sends them in
+ * arrival order (`submitted_at` ASC → player id ASC, the tie-break's own fields)
+ * and carries the nickname (the `recent_bids` precedent), so the browser never
+ * filters, sorts, joins or counts. `updatedAt` is the one time the card renders
+ * — only an edit moves it — while `submittedAt` is the tie-break truth and is
+ * deliberately not displayed (VID-04 is v2).
+ */
+export type AdminSealedBid = {
+  itemId: string
+  playerId: string
+  nickname: string
+  amount: number
+  submittedAt: number
+  updatedAt: number
+}
+
 /** The admin projection the `/admin` page renders. */
 export type AdminSnapshot = {
   phase: Phase
@@ -625,6 +679,10 @@ export type AdminSnapshot = {
   /** D-80: the named, token-free player rows */
   players: AdminPlayer[]
   items: AdminItem[]
+  /** D-117: the current item's effective sealed rows, in arrival order */
+  sealedBids: AdminSealedBid[]
+  /** D-117: the server's own sealed count — never `rows.length` recomputed here */
+  sealedProgress: SealedProgress | null
   item: PublicItem | null
   lobby: LobbyEntry[]
   leaderboard: LeaderEntry[]
@@ -718,10 +776,16 @@ export function readPhaseChanged(data: unknown): PhaseChanged | null {
 /**
  * Decode the admin `state.snapshot` (D-64/D-66/D-80/D-81/D-83): the catalog the
  * presenter edits, their own row set, the persisted config, the two halves of
- * the Join URLs panel, the current item and the shared public lists. The sealed
- * bids are deliberately NOT decoded — Phase 6 owns that panel and the Phase-3/4
- * one renders neither, so a typed model that cannot express a sealed amount
- * cannot leak one (T-03-10/T-04-04).
+ * the Join URLs panel, the current item and the shared public lists.
+ *
+ * Phase 6 (D-117) decodes the sealed ledger here — a DELIBERATE reversal of the
+ * Phase-3/4 claim that "a typed model that cannot express a sealed amount cannot
+ * leak one". The guarantee moved from this model to the wire: the role
+ * projections never send an amount to a player or the projector, and D-118's
+ * leak suite (`internal/hub/leak_wire_test.go`, over a POPULATED sealed window)
+ * is the authority. Decoding is as strict as `players`/`items`: ONE ill-typed
+ * row rejects the whole snapshot, and an absent (or explicit null) list reads as
+ * "no rows" rather than as a rejection.
  */
 export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   if (!isRecord(data)) return null
@@ -732,6 +796,7 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   const lobby = readLobby(data.lobby)
   const config = readAdminConfig(data.config)
   const players = readAdminPlayers(data.players)
+  const sealedBids = readAdminSealedBids(data.sealed_bids)
   const joinUrls = readJoinUrls(data.join_urls)
   const selectedJoinUrl = readString(data.selected_join_url)
   if (
@@ -742,6 +807,7 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     lobby === null ||
     config === null ||
     players === null ||
+    sealedBids === null ||
     joinUrls === null ||
     selectedJoinUrl === null
   ) {
@@ -754,6 +820,8 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     revision,
     serverTs,
     items,
+    sealedBids,
+    sealedProgress: readSealedProgress(data.sealed_progress),
     item,
     lobby,
     leaderboard: readLeaderboard(data.leaderboard),
@@ -762,6 +830,47 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     joinUrls,
     selectedJoinUrl,
   }
+}
+
+/**
+ * Decode the presenter's sealed ledger (D-117). The rows are the server's own —
+ * scoped to the current item, in arrival order, nickname included — and this
+ * reader neither reorders nor filters them. ONE ill-typed row rejects the
+ * snapshot (the `players`/`items` rule): the card renders the list as a whole,
+ * and a half-decoded ledger is one the presenter cannot trust. An absent or null
+ * key is "this build sends no rows" — the additive-key rule D-24 fixes.
+ */
+function readAdminSealedBids(value: unknown): AdminSealedBid[] | null {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) return null
+  const rows: AdminSealedBid[] = []
+  for (const raw of value) {
+    const row = readAdminSealedBid(raw)
+    if (row === null) return null
+    rows.push(row)
+  }
+  return rows
+}
+
+function readAdminSealedBid(value: unknown): AdminSealedBid | null {
+  if (!isRecord(value)) return null
+  const itemId = readString(value.item_id)
+  const playerId = readString(value.player_id)
+  const nickname = readString(value.nickname)
+  const amount = readInt(value.amount)
+  const submittedAt = readInt(value.submitted_at)
+  const updatedAt = readInt(value.updated_at)
+  if (
+    itemId === null ||
+    playerId === null ||
+    nickname === null ||
+    amount === null ||
+    submittedAt === null ||
+    updatedAt === null
+  ) {
+    return null
+  }
+  return { itemId, playerId, nickname, amount, submittedAt, updatedAt }
 }
 
 /** Decode the persisted config the Setup tab edits (D-81). */

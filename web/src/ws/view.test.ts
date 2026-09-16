@@ -52,6 +52,8 @@ function me(overrides: Partial<PlayerMe> = {}): PlayerMe {
     lastBid: 120_000,
     isTopBidder: true,
     rank: 0,
+    // Phase 6 (D-115): an absent `my_bid` is "not submitted".
+    myBid: null,
     ...overrides,
   }
 }

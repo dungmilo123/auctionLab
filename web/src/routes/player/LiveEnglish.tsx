@@ -115,9 +115,14 @@ function LiveStats({ live }: { live: LiveOverlay }) {
     <div className="grid grid-cols-2 gap-4">
       <div className="border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('live.priceLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold whitespace-nowrap">
-          {formatVND(live.currentPrice)}
-        </p>
+        {/* Phase 6 (D-116) made the overlay's price nullable for a sealed run —
+            which never reaches this body — so the value slot renders only when
+            there is a number, exactly as the deadline below it does. */}
+        {live.currentPrice !== null && (
+          <p className="text-xl leading-[1.2] font-bold whitespace-nowrap">
+            {formatVND(live.currentPrice)}
+          </p>
+        )}
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 

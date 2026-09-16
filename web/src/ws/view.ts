@@ -18,6 +18,8 @@
  *     snapshot seeds and `phase.changed` keeps current).
  *   - The LIVE overlay is discarded when the phase leaves LIVE or the item id
  *     changes, and reseeded from the new item's own live fields (UI-SPEC §LIVE).
+ *     A sealed run is admitted by its DEADLINE alone (D-116) — a scoped third
+ *     arm beside the English and Dutch rules, with a null price and no ladder.
  *   - `me.budget` moves ONLY through a snapshot (Q4): the settle's snapshot
  *     always follows, and no client arithmetic decides what a player can spend.
  *   - D-88's public feed is seeded whole by a screen snapshot and, while the
@@ -29,6 +31,7 @@ import type {
   AdminConfig,
   AdminItem,
   AdminPlayer,
+  AdminSealedBid,
   AdminSnapshot,
   BidAccepted,
   FinaleReveal,
@@ -45,11 +48,19 @@ import type {
   SealedProgress,
 } from './protocol'
 import { isPhase, itemMatchesPhase } from './protocol'
+import { isSealedAuction } from '@/lib/screen'
 
 /** The LIVE overlay (D-60/D-67): the values the bid controls are rendered from. */
 export type LiveOverlay = {
   itemId: string
-  currentPrice: number
+  /**
+   * Phase 6 (D-116): NULL for a sealed run — a sealed item has no price to show
+   * and no ladder to describe (`current_price` is absent by type). The two
+   * open-outcry consumers still read a number: the decoder's English arm
+   * requires it and the Dutch arm derives its own, so the null is unreachable
+   * off the sealed path.
+   */
+  currentPrice: number | null
   minNextBid: number
   deadlineAt: number | null
   topBidder: string | null
@@ -88,6 +99,13 @@ export type ViewState = {
   recentBids: RecentBid[]
   /** D-88's count-only sealed indicator; null = not a sealed item / not the screen. */
   sealedProgress: SealedProgress | null
+  /**
+   * D-117's presenter-only ledger (Phase 6): the current item's effective sealed
+   * rows, in the server's arrival order. Empty for the player and screen roles by
+   * construction — only the admin snapshot ever carries one, and every other
+   * role's snapshot resets it.
+   */
+  sealedBids: AdminSealedBid[]
   /** the presenter's persisted config (D-81); null for every other role */
   config: AdminConfig | null
   /** the presenter's token-free player rows (D-80); empty for every other role */
@@ -127,6 +145,7 @@ export function initialViewState(): ViewState {
     joinUrl: '',
     recentBids: [],
     sealedProgress: null,
+    sealedBids: [],
     config: null,
     players: [],
     joinUrls: [],
@@ -185,12 +204,36 @@ const MAX_RECENT_BIDS = 5
  * ladder minimum then reads as 0 (the wire's own "no ladder" value: the frozen
  * `min_next_bid` field of a Dutch tick carries its zero because it has no
  * `omitempty`), and nothing on the Dutch body reads it.
+ *
+ * Phase 6 (D-116): a SEALED run is the third admission rule, and it is SCOPED to
+ * the two sealed types on purpose — its anchor is `deadlineAt` alone, its price
+ * is null (there is no price to show) and its ladder facts are the wire's own
+ * absent/zero values. A loosened "any timing anchor" rule would have flipped the
+ * shipped Dutch null-price case for no gain (research Pitfall 8), so the priced
+ * path below is left exactly as it was.
  */
 function overlayFrom(item: PublicItem | null, serverTs: number): LiveOverlay | null {
   // Only a LIVE item has an overlay: a settled or intro item carries no window
   // to render, and the phase-level rule ("discarded when the phase leaves LIVE")
   // is then structural here as well.
-  if (item === null || item.status !== 'live' || item.currentPrice === null) return null
+  if (item === null || item.status !== 'live') return null
+  if (isSealedAuction(item.auctionType)) {
+    // The sealed arm sits BEFORE the price guard because a sealed item has no
+    // `current_price` at all (D-116) — the guard would drop every sealed frame.
+    // The body renders one moving number: the close countdown, anchored on this
+    // deadline and the newest frame's clock.
+    if (item.deadlineAt === null) return null
+    return {
+      itemId: item.id,
+      currentPrice: null,
+      minNextBid: 0,
+      deadlineAt: item.deadlineAt,
+      topBidder: null,
+      serverTs,
+      startedAt: null,
+    }
+  }
+  if (item.currentPrice === null) return null
   if (item.minNextBid === null && item.startedAt === null) return null
   return {
     itemId: item.id,
@@ -231,8 +274,10 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
       const snapshot = frame.snapshot
       // Every role-specific extra resets to its empty value: a snapshot that
       // does not carry a field (a player snapshot has no join_url, no feed and
-      // no sealed counter) means "this role does not have one", never "keep the
-      // previous role's".
+      // no sealed ledger) means "this role does not have one", never "keep the
+      // previous role's". The sealed COUNTER is the one exception — it is the
+      // single sealed fact every role reads (D-116), so the player branch
+      // carries the server's own number instead of nulling it.
       return {
         ...initialViewState(),
         phase: snapshot.phase,
@@ -241,6 +286,7 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         leaderboard: snapshot.leaderboard,
         item: snapshot.item,
         live: overlayFrom(snapshot.item, snapshot.serverTs),
+        sealedProgress: snapshot.sealedProgress,
       }
     }
 
@@ -259,7 +305,11 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         // `join_url` (D-84/D-85).
         joinUrl: snapshot.selectedJoinUrl,
         recentBids: [],
-        sealedProgress: null,
+        // D-117: the presenter's own count and ledger, carried as the server
+        // sent them (scoped to the current item, in arrival order). The browser
+        // filters, sorts and counts nothing.
+        sealedProgress: snapshot.sealedProgress,
+        sealedBids: snapshot.sealedBids,
         config: snapshot.config,
         players: snapshot.players,
         joinUrls: snapshot.joinUrls,

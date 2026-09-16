@@ -149,6 +149,8 @@ function me(rank: number): PlayerMe {
     lastBid: null,
     isTopBidder: false,
     rank,
+    // Phase 6 (D-115): only the sealed decode reads this key.
+    myBid: null,
   }
 }
 

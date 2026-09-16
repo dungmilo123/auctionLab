@@ -39,9 +39,13 @@ function snapshot(phase: PlayerSnapshot['phase'], itemId: string | null): Player
       lastBid: null,
       isTopBidder: false,
       rank: 0,
+      // Phase 6 (D-115): only the sealed decode reads this key.
+      myBid: null,
     },
     lobby: [],
     leaderboard: [],
+    // Phase 6 (D-116): only a sealed item carries a counter.
+    sealedProgress: null,
     item:
       itemId === null
         ? null
