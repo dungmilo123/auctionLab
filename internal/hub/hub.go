@@ -201,8 +201,15 @@ func (r *registry) remove(c *client) bool {
 	return true
 }
 
-// lookup finds the live connection for one player id. Unjoined connections have
-// no identity and are never returned.
+// lookup returns the FIRST registered connection for one player id, in
+// registration order, or nil. Unjoined connections have no identity and are
+// never returned.
+//
+// First match, not "the live one" (WR-05): a supersede leaves the old connection
+// REGISTERED until its own teardown runs, so during that window two entries can
+// share an id and the older one may already be closed. The handshake only needs
+// the entry it is replacing, which is exactly the first match; a caller that
+// must reach every holder scans the snapshot instead (endPlayerSession).
 func (r *registry) lookup(playerID string) *client {
 	if playerID == "" {
 		return nil
@@ -493,15 +500,38 @@ func (h *Hub) endSession(c *client) {
 	c.close()
 }
 
-// endPlayerSession ends the one connection holding playerID, if there is one. It
-// is the single "this identity's device must notice" primitive: D-80's release,
-// and D-78's clear_players once per id the commit deleted. An identity with no
-// live socket is a no-op — the durable half of a release is the token write,
-// which the engine has already committed, and a cleared row's phone may well
-// have dropped off the network before the presenter clicked.
+// endPlayerSession ends EVERY connection holding playerID. It is the single
+// "this identity's device must notice" primitive: D-80's release, and D-78's
+// clear_players once per id the commit deleted. An identity with no live socket
+// is a no-op — the durable half of a release is the token write, which the
+// engine has already committed, and a cleared row's phone may well have dropped
+// off the network before the presenter clicked.
+//
+// Every holder, not the first registry match (WR-05). A supersede closes the old
+// connection's socket but leaves it REGISTERED until its own teardown runs
+// (D-31), so for that window the registry holds two connections under one id —
+// and lookup's first match is the OLDEST, i.e. the stale one. A lookup-based
+// primitive would end the dead socket and leave the live successor running: the
+// presenter's clear or release would never reach the device it names, and the
+// successor would keep rendering an identity the commit deleted. endSession is
+// idempotent (closeOnce, and WriteControl answers an error on a dead socket), so
+// ending an already-ended holder costs nothing.
+//
+// An empty id ends nothing: it is what every unjoined, screen and admin
+// connection reports, so the guard is what keeps this scan from closing the
+// room. It is the same rule lookup enforces by refusing "".
+//
+// PRECONDITION: engine.mu is NOT held — the same rule as endSession. The
+// registry is read lock-free, and a phone that joins while this loop runs is a
+// brand-new row the mutation never touched (WR-03).
 func (h *Hub) endPlayerSession(playerID string) {
-	if c := h.registry.lookup(playerID); c != nil {
-		h.endSession(c)
+	if playerID == "" {
+		return
+	}
+	for _, c := range h.registry.snapshot() {
+		if c.playerID() == playerID {
+			h.endSession(c)
+		}
 	}
 }
 

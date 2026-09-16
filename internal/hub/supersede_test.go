@@ -92,6 +92,52 @@ func TestSupersedeTeardownDoesNotEvictSuccessor(t *testing.T) {
 	}
 }
 
+// TestEndPlayerSessionEndsEveryHolder is WR-05's regression: D-78's
+// clear_players and D-80's release end an identity through endPlayerSession,
+// and resolving it by a single registry lookup is not enough — a supersede
+// leaves the old connection REGISTERED until its own teardown runs, so during
+// that window the registry holds two connections under one id and lookup
+// returns the OLDEST, i.e. the socket that is already closed.
+//
+// The duplicate is forced through the white-box identity publish (the entry
+// point the real handshake uses) rather than by racing the real window, which is
+// a goroutine hop wide and cannot be held open from a test: both peers are live
+// sockets that carry the id, and one call must end BOTH. With the pre-fix
+// lookup, only the first — the stale one — observes 4002, and the live phone is
+// left rendering an identity the presenter ended.
+func TestEndPlayerSessionEndsEveryHolder(t *testing.T) {
+	h, _ := newTestHub(t)
+
+	first := dialWS(t, h)
+	anHello, _ := join(t, first, `{"type":"join","role":"player","nickname":"An"}`)
+	anID := frameString(t, frameData(t, anHello), "player")
+
+	second := dialWS(t, h)
+	binhHello, _ := join(t, second, `{"type":"join","role":"player","nickname":"Binh"}`)
+	binhID := frameString(t, frameData(t, binhHello), "player")
+
+	// The state a supersede leaves for the length of the old connection's
+	// teardown hop: two registered connections claiming one identity. The
+	// publish is an atomic store, so forcing it here is race-free.
+	for _, c := range h.registry.snapshot() {
+		if c.playerID() == binhID {
+			c.setIdentity(RolePlayer, anID)
+		}
+	}
+	if got := clientsFor(h, anID); got != 2 {
+		t.Fatalf("the registry holds %d connections for %q, want the forced 2 — the duplicate holder was never published", got, anID)
+	}
+
+	h.endPlayerSession(anID)
+
+	if code := readCloseCode(t, first); code != 4002 {
+		t.Errorf("the older holder observed close code %d, want 4002 (D-78/D-80 deliberate cleanup)", code)
+	}
+	if code := readCloseCode(t, second); code != 4002 {
+		t.Errorf("the newer holder observed close code %d, want 4002: endPlayerSession ended only the first registry match (WR-05)", code)
+	}
+}
+
 // clientsFor counts the registered connections that carry one player id. It is
 // the white-box half of the D-31 contract: the black-box half (the successor
 // keeps receiving fan-out) needs the enqueue path and belongs to the ordering
