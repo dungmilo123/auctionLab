@@ -497,3 +497,291 @@ func TestSealedBidEditKeepsFirstSubmission(t *testing.T) {
 		t.Errorf("sealed.received.submitted = %d after three edits, want 1 — one row, one sheet (D-108)", progress.Submitted)
 	}
 }
+
+// --- D-113/D-114: ONE charged outcome, read by the one settle path -----------
+
+// vickreyFixture is one complete Vickrey item: the same wall-clock window every
+// sealed run carries (D-107), settled by the second-price rule (D-114).
+func vickreyFixture() *item {
+	return &item{
+		id: "it-v1", orderIndex: 0, name: "Đồng hồ", description: "Vickrey lot",
+		auctionType: "vickrey", truthValue: fixtureTruthValue,
+		hintMin: 200_000, hintMax: 500_000, startPrice: 100_000,
+		durationMS: 30_000, antiSnipeMode: "disabled",
+		status: "live",
+	}
+}
+
+// sealedRows returns the effective rows in the order the state holds them. The
+// tie-rung case needs it to prove that order is NOT what decides the winner.
+func (env *testEnv) sealedRows(t *testing.T) []sealedBid {
+	t.Helper()
+
+	env.engine.mu.RLock()
+	defer env.engine.mu.RUnlock()
+	return append([]sealedBid(nil), env.engine.state.sealedBids...)
+}
+
+// settleSealedRun advances the injected clock to the run's own deadline and
+// settles through the PRODUCTION deadline arm (SettleIfDue) — the same arm the
+// ticker and the boot call — so the assertions below are about the one settle
+// path rather than about a test-only shortcut (D-55/D-114).
+func (env *testEnv) settleSealedRun(t *testing.T) *SettleInfo {
+	t.Helper()
+
+	run := env.runOf(t)
+	if run.deadlineAt == 0 {
+		t.Fatal("the sealed fixture carries no deadline: a sealed run always has one (D-107)")
+	}
+	env.clock.t = time.UnixMilli(run.deadlineAt)
+	settled, err := env.engine.SettleIfDue()
+	if err != nil {
+		t.Fatalf("SettleIfDue: %v", err)
+	}
+	if !settled {
+		t.Fatal("SettleIfDue did not settle a due sealed run: the type-agnostic deadline arm must keep settling sealed (D-107/D-116)")
+	}
+	if got := env.engine.Phase(); got != PhaseSettled {
+		t.Fatalf("phase after a due sealed deadline = %s, want SETTLED", got)
+	}
+	reveal := env.runOf(t).settle
+	if reveal == nil {
+		t.Fatal("the sealed settle stored no reveal: the one settle path must publish the charged outcome (D-114)")
+	}
+	return reveal
+}
+
+// assertSealedWinner pins one sold reveal's winner against the player id the
+// case expects, and re-asserts the reveal's budget delta from its own price.
+func assertSealedWinner(t *testing.T, env *testEnv, reveal *SettleInfo, wantPlayerID string, it *item) {
+	t.Helper()
+
+	if reveal.Outcome != "sold" {
+		t.Fatalf("outcome = %q, want sold", reveal.Outcome)
+	}
+	want := env.player(t, wantPlayerID).nickname
+	if reveal.Winner == nil || reveal.Winner.Nickname != want {
+		t.Errorf("winner = %+v, want %s (%s)", reveal.Winner, want, wantPlayerID)
+	}
+	if delta := it.truthValue - reveal.Price; reveal.BudgetDelta != delta {
+		t.Errorf("budget_delta = %d, want truth_value − price = %d", reveal.BudgetDelta, delta)
+	}
+}
+
+// sealedSubmit is one submission in the settle tables: which joined player made
+// it, for how much, and at which offset from the run's start.
+type sealedSubmit struct {
+	player int
+	amount int64
+	at     time.Duration
+}
+
+// TestSealedSettleOutcomeTable is SEAL-03/SEAL-04's contract at the engine
+// boundary: the ONE settle path charges the sealed rule — first price pays the
+// winner's own amount, Vickrey pays max(second_highest, start_price) with the
+// one-bidder case falling out of that max — and the budget moves exactly once,
+// for the winner alone, by the CHARGED price.
+func TestSealedSettleOutcomeTable(t *testing.T) {
+	const startingBudget = int64(1_000_000)
+
+	cases := []struct {
+		name        string
+		auctionType string
+		submits     []sealedSubmit
+		wantWinner  int // index into the two joined players; -1 means unsold
+		wantPrice   int64
+	}{
+		{
+			name:        "zero bids settle unsold and move no budget",
+			auctionType: "sealed_first",
+			wantWinner:  -1,
+		},
+		{
+			name:        "first price charges the winner's own amount",
+			auctionType: "sealed_first",
+			submits: []sealedSubmit{
+				{player: 0, amount: 150_000, at: 1 * time.Second},
+				{player: 1, amount: 220_000, at: 5 * time.Second},
+			},
+			wantWinner: 1, wantPrice: 220_000,
+		},
+		{
+			name:        "first price with one bidder charges that bidder",
+			auctionType: "sealed_first",
+			submits:     []sealedSubmit{{player: 0, amount: 150_000, at: 1 * time.Second}},
+			wantWinner:  0, wantPrice: 150_000,
+		},
+		{
+			name:        "vickrey charges the second highest bid",
+			auctionType: "vickrey",
+			submits: []sealedSubmit{
+				{player: 0, amount: 150_000, at: 1 * time.Second},
+				{player: 1, amount: 220_000, at: 5 * time.Second},
+			},
+			wantWinner: 1, wantPrice: 150_000,
+		},
+		{
+			name:        "vickrey with one bidder charges the start price",
+			auctionType: "vickrey",
+			submits:     []sealedSubmit{{player: 0, amount: 150_000, at: 1 * time.Second}},
+			wantWinner:  0, wantPrice: 100_000,
+		},
+		{
+			name:        "vickrey never charges below the start price",
+			auctionType: "vickrey",
+			submits: []sealedSubmit{
+				{player: 0, amount: 100_000, at: 1 * time.Second},
+				{player: 1, amount: 220_000, at: 5 * time.Second},
+			},
+			wantWinner: 1, wantPrice: 100_000,
+		},
+		{
+			name:        "only the final edit participates (first price)",
+			auctionType: "sealed_first",
+			submits: []sealedSubmit{
+				{player: 0, amount: 400_000, at: 1 * time.Second},
+				{player: 0, amount: 150_000, at: 2 * time.Second},
+				{player: 1, amount: 180_000, at: 3 * time.Second},
+			},
+			wantWinner: 1, wantPrice: 180_000,
+		},
+		{
+			name:        "the second highest reads the last edits too (vickrey)",
+			auctionType: "vickrey",
+			submits: []sealedSubmit{
+				{player: 0, amount: 400_000, at: 1 * time.Second},
+				{player: 0, amount: 150_000, at: 2 * time.Second},
+				{player: 1, amount: 180_000, at: 3 * time.Second},
+			},
+			wantWinner: 1, wantPrice: 150_000,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+			players := []JoinResult{mustJoin(t, env, "An"), mustJoin(t, env, "Bình")}
+			it := sealedFixture()
+			it.auctionType = tc.auctionType
+			mustOpenSealedRun(t, env, it)
+			openedAt := env.clock.now()
+
+			for _, s := range tc.submits {
+				env.clock.t = openedAt.Add(s.at)
+				env.mustSubmitSealed(t, players[s.player].PlayerID, s.amount)
+			}
+
+			reveal := env.settleSealedRun(t)
+
+			if tc.wantWinner < 0 {
+				if reveal.Outcome != "unsold" {
+					t.Errorf("outcome = %q, want unsold: an empty effective set has no winner (ECON-03)", reveal.Outcome)
+				}
+				if reveal.Winner != nil {
+					t.Errorf("an unsold reveal carries a winner: %+v", reveal.Winner)
+				}
+				if reveal.Price != 0 || reveal.BudgetDelta != 0 {
+					t.Errorf("an unsold reveal = price %d delta %d, want 0/0", reveal.Price, reveal.BudgetDelta)
+				}
+			} else {
+				assertSealedWinner(t, env, reveal, players[tc.wantWinner].PlayerID, it)
+				if reveal.Price != tc.wantPrice {
+					t.Errorf("charged price = %d, want %d", reveal.Price, tc.wantPrice)
+				}
+			}
+
+			// ECON-02: the ONE settle path moves the winner's budget, by the
+			// CHARGED price — never by the winner's bid when the type says
+			// otherwise — and leaves everybody else untouched.
+			for i, p := range players {
+				row := env.player(t, p.PlayerID)
+				if i == tc.wantWinner {
+					if want := startingBudget - tc.wantPrice + it.truthValue; row.budget != want {
+						t.Errorf("%s's budget = %d, want budget − charged price + truth_value = %d", row.nickname, row.budget, want)
+					}
+					if row.totalValue != it.truthValue {
+						t.Errorf("%s's total_value = %d, want %d", row.nickname, row.totalValue, it.truthValue)
+					}
+					continue
+				}
+				if row.budget != startingBudget || row.totalValue != 0 {
+					t.Errorf("%s's economics after the settle = %d/%d, want the untouched %d/0", row.nickname, row.budget, row.totalValue, startingBudget)
+				}
+			}
+		})
+	}
+}
+
+// TestSealedSettleTieRungs is SEAL-05/D-113's total order: equal final amounts
+// are decided by the FIRST submission instant, a pair that ties there too is
+// decided by the player id — and the order the rows happen to sit in can never
+// decide either.
+func TestSealedSettleTieRungs(t *testing.T) {
+	const amount = int64(200_000)
+
+	openTie := func(t *testing.T) (*testEnv, []JoinResult, *item) {
+		t.Helper()
+
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		players := []JoinResult{mustJoin(t, env, "An"), mustJoin(t, env, "Bình")}
+		it := vickreyFixture()
+		mustOpenSealedRun(t, env, it)
+		return env, players, it
+	}
+
+	t.Run("equal amounts: the earlier first submission wins", func(t *testing.T) {
+		env, players, it := openTie(t)
+		openedAt := env.clock.now()
+
+		env.clock.t = openedAt.Add(1 * time.Second)
+		env.mustSubmitSealed(t, players[0].PlayerID, amount)
+		env.clock.t = openedAt.Add(5 * time.Second)
+		env.mustSubmitSealed(t, players[1].PlayerID, amount)
+
+		reveal := env.settleSealedRun(t)
+		assertSealedWinner(t, env, reveal, players[0].PlayerID, it)
+		if reveal.Price != amount {
+			t.Errorf("price = %d, want %d: a tie charges the tied amount, never above the winner's own bid (SEAL-04/SEAL-05)", reveal.Price, amount)
+		}
+	})
+
+	t.Run("equal amounts at the same instant: the player id decides", func(t *testing.T) {
+		env, players, it := openTie(t)
+
+		// Both rows carry the SAME submitted_at, so the first two rungs cannot
+		// decide it and the documented last rung must (D-113).
+		instant := env.clock.now().Add(2 * time.Second)
+		env.clock.t = instant
+		env.mustSubmitSealed(t, players[0].PlayerID, amount)
+		env.clock.t = instant
+		env.mustSubmitSealed(t, players[1].PlayerID, amount)
+
+		want := players[0].PlayerID
+		if players[1].PlayerID < want {
+			want = players[1].PlayerID
+		}
+		reveal := env.settleSealedRun(t)
+		assertSealedWinner(t, env, reveal, want, it)
+	})
+
+	t.Run("the rules decide, not the order the rows arrived in", func(t *testing.T) {
+		env, players, it := openTie(t)
+		openedAt := env.clock.now()
+
+		// The LATER submission is appended FIRST, so the slice order is the
+		// reverse of the order the rules produce — a scan that fell back on
+		// insertion order (or a non-total sort) would pick the wrong player.
+		env.clock.t = openedAt.Add(10 * time.Second)
+		env.mustSubmitSealed(t, players[1].PlayerID, amount)
+		env.clock.t = openedAt.Add(2 * time.Second)
+		env.mustSubmitSealed(t, players[0].PlayerID, amount)
+
+		rows := env.sealedRows(t)
+		if len(rows) != 2 || rows[0].playerID != players[1].PlayerID {
+			t.Fatalf("fixture rows = %+v, want %s appended first so the assertion is about the rules", rows, players[1].PlayerID)
+		}
+
+		reveal := env.settleSealedRun(t)
+		assertSealedWinner(t, env, reveal, players[0].PlayerID, it)
+	})
+}

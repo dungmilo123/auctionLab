@@ -374,3 +374,188 @@ func TestBootFailsHardOnBrokenRuntime(t *testing.T) {
 		})
 	}
 }
+
+// --- Phase 6 (D-107/D-114): the sealed resume and its charged reconstruction --
+
+// restartedSealedVickreyRun persists one LIVE sealed run carrying two effective
+// rows — An at 150000, Bình at 220000 — and returns the file plus the
+// identities. Both bids are REAL submissions through the engine's own command,
+// so the rows a restart reads are the rows the production path wrote.
+func restartedSealedVickreyRun(t *testing.T) (path string, it *item, an, binh JoinResult) {
+	t.Helper()
+
+	path = filepath.Join(t.TempDir(), "auction.db")
+	first := newTestEnvAt(t, path, &testClock{t: testStart})
+	an = mustJoin(t, first, "An")
+	binh = mustJoin(t, first, "Bình")
+	it = vickreyFixture()
+	mustOpenSealedRun(t, first, it)
+
+	first.clock.t = testStart.Add(1 * time.Second)
+	first.mustSubmitSealed(t, an.PlayerID, 150_000)
+	first.clock.t = testStart.Add(5 * time.Second)
+	first.mustSubmitSealed(t, binh.PlayerID, 220_000)
+
+	if err := first.store.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+	return path, it, an, binh
+}
+
+// TestBootResumesSealedVickreyRun is D-107/D-110's resume arm for a sealed run:
+// a process that died mid-window comes back with the same item, the same
+// persisted deadline and the effective rows LOADED from disk — so the count is
+// the room's real count and the window still accepts an edit.
+func TestBootResumesSealedVickreyRun(t *testing.T) {
+	path, it, an, binh := restartedSealedVickreyRun(t)
+
+	// Mid-window: five seconds into a thirty-second window.
+	second := newTestEnvAt(t, path, &testClock{t: testStart.Add(10 * time.Second)})
+
+	if got := second.engine.Phase(); got != PhaseLive {
+		t.Fatalf("phase after a mid-window restart = %s, want LIVE", got)
+	}
+	run := second.runOf(t)
+	if run.itemID != it.id {
+		t.Errorf("resumed item = %q, want the persisted %q", run.itemID, it.id)
+	}
+	if want := testStart.Add(30 * time.Second).UnixMilli(); run.deadlineAt != want {
+		t.Errorf("resumed deadline = %d, want the persisted %d (D-107: sealed settles on the wall clock)", run.deadlineAt, want)
+	}
+
+	// The durable effective set came back: one row per player, each carrying
+	// its own amount and its own first-submission instant.
+	if rows := second.sealedRows(t); len(rows) != 2 {
+		t.Fatalf("the resumed engine holds %d effective row(s), want 2 — the boot must load sealed_bids (D-110): %+v", len(rows), rows)
+	}
+	for _, tc := range []struct {
+		player string
+		amount int64
+		at     int64
+	}{
+		{player: an.PlayerID, amount: 150_000, at: testStart.Add(1 * time.Second).UnixMilli()},
+		{player: binh.PlayerID, amount: 220_000, at: testStart.Add(5 * time.Second).UnixMilli()},
+	} {
+		row, ok := second.sealedRowOf(t, it.id, tc.player)
+		if !ok {
+			t.Fatalf("no effective row for %s after the restart", tc.player)
+		}
+		if row.amount != tc.amount || row.submittedAt != tc.at {
+			t.Errorf("resumed row for %s = %+v, want amount %d submitted at %d", tc.player, row, tc.amount, tc.at)
+		}
+	}
+
+	// The count is the same server-owned number the projector renders — the
+	// evidence a late joiner would read from ONE snapshot (D-63/D-88).
+	doc := decodeObject(t, second.engine.Snapshot(RoleScreen, ""))
+	progress := asObject(t, doc["sealed_progress"], "sealed_progress")
+	if progress["submitted"] != float64(2) || progress["total"] != float64(2) {
+		t.Errorf("resumed sealed_progress = %#v, want {submitted:2, total:2}", progress)
+	}
+
+	// The window is still open, and an edit is an edit: the count does not grow.
+	second.clock.t = testStart.Add(12 * time.Second)
+	second.mustSubmitSealed(t, an.PlayerID, 160_000)
+	if row, ok := second.sealedRowOf(t, it.id, an.PlayerID); !ok || row.amount != 160_000 || row.submittedAt != testStart.Add(1*time.Second).UnixMilli() {
+		t.Errorf("row after the post-restart edit = %+v (present=%t), want amount 160000 with the FIRST submission's instant", row, ok)
+	}
+}
+
+// TestBootSettlesSealedRunWhenDue is D-107/D-114's wall-clock arm: a deadline
+// that passed while the process was down settles AT BOOT through the one charged
+// outcome, and a later boot of the settled file rebuilds the IDENTICAL reveal
+// and budget position from the effective rows alone (D-62: reconstructable =
+// written).
+func TestBootSettlesSealedRunWhenDue(t *testing.T) {
+	path, _, an, binh := restartedSealedVickreyRun(t)
+
+	// The deadline passed while the process was down: ten seconds past it.
+	second := newTestEnvAt(t, path, &testClock{t: testStart.Add(40 * time.Second)})
+
+	if got := second.engine.Phase(); got != PhaseSettled {
+		t.Fatalf("phase after a past-deadline boot = %s, want SETTLED (D-107)", got)
+	}
+	reveal := second.runOf(t).settle
+	if reveal == nil {
+		t.Fatal("the boot settle stored no reveal: the one settle path must publish the charged outcome (D-114)")
+	}
+	if reveal.Outcome != "sold" {
+		t.Fatalf("boot settle outcome = %q, want sold", reveal.Outcome)
+	}
+	if reveal.Price != 150_000 {
+		t.Errorf("boot settle price = %d, want the second-highest 150000 (SEAL-04)", reveal.Price)
+	}
+	binhName := second.player(t, binh.PlayerID).nickname
+	if reveal.Winner == nil || reveal.Winner.Nickname != binhName {
+		t.Errorf("boot settle winner = %+v, want %s", reveal.Winner, binhName)
+	}
+	if want := fixtureTruthValue - 150_000; reveal.BudgetDelta != want {
+		t.Errorf("boot settle budget_delta = %d, want %d", reveal.BudgetDelta, want)
+	}
+	if got := second.player(t, binh.PlayerID).budget; got != 1_000_000-150_000+fixtureTruthValue {
+		t.Errorf("the Vickrey winner's budget = %d, want budget − second highest + truth_value", got)
+	}
+	if got := second.player(t, an.PlayerID).budget; got != 1_000_000 {
+		t.Errorf("the runner-up's budget = %d, want the untouched 1000000: only the winner pays (SEAL-03)", got)
+	}
+	settledRev := second.engine.Rev()
+	if err := second.store.Close(); err != nil {
+		t.Fatalf("closing the settled store: %v", err)
+	}
+
+	// A THIRD process derives the same object from the rows alone: the runtime
+	// row persists timing only, so the price can only come from sealed_bids.
+	third := newTestEnvAt(t, path, &testClock{t: testStart.Add(41 * time.Second)})
+	if got := third.engine.Rev(); got != settledRev {
+		t.Errorf("a second boot re-settled: revision = %d, want the unchanged %d (ECON-02 pays once)", got, settledRev)
+	}
+
+	doc := decodeObject(t, third.engine.Snapshot(RoleScreen, ""))
+	item := asObject(t, doc["item"], "item")
+	rebuilt := asObject(t, item["settle"], "item.settle after a restart at SETTLED")
+	if rebuilt["outcome"] != "sold" || rebuilt["price"] != float64(150_000) {
+		t.Errorf("rebuilt settle = %#v, want sold at 150000", rebuilt)
+	}
+	if winner := asObject(t, rebuilt["winner"], "settle.winner"); winner["nickname"] != third.player(t, binh.PlayerID).nickname {
+		t.Errorf("rebuilt settle.winner = %#v, want %s", winner, third.player(t, binh.PlayerID).nickname)
+	}
+	if rebuilt["budget_delta"] != float64(fixtureTruthValue-150_000) {
+		t.Errorf("rebuilt settle.budget_delta = %#v, want truth_value − 150000", rebuilt["budget_delta"])
+	}
+	if got := third.player(t, binh.PlayerID).budget; got != 1_000_000-150_000+fixtureTruthValue {
+		t.Errorf("the winner's budget after the rebuilt boot = %d, want the unchanged charged position", got)
+	}
+	if got := third.player(t, an.PlayerID).budget; got != 1_000_000 {
+		t.Errorf("the runner-up's budget after the rebuilt boot = %d, want the untouched 1000000", got)
+	}
+}
+
+// TestBootFailsHardOnSealedRuntimeWithoutDeadline is D-107's fail-hard half: a
+// LIVE sealed run that lost its persisted deadline could never settle (the
+// ticker's arm reads deadline_at and nothing else), so the boot must refuse it
+// rather than invent a window.
+func TestBootFailsHardOnSealedRuntimeWithoutDeadline(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	env := newTestEnvAt(t, path, &testClock{t: testStart})
+	it := vickreyFixture()
+	mustOpenSealedRun(t, env, it)
+	if err := env.store.Close(); err != nil {
+		t.Fatalf("closing the store: %v", err)
+	}
+
+	st := openTestStore(t, path)
+	if _, err := st.DB.Exec(`UPDATE auction_runtime SET deadline_at = NULL`); err != nil {
+		t.Fatalf("clearing the sealed deadline: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("closing the corrupted file: %v", err)
+	}
+
+	_, err := openEngineAt(t, path, testStart.Add(5*time.Second))
+	if err == nil {
+		t.Fatal("New accepted a LIVE sealed run with no persisted deadline: nothing could ever close that window (D-107)")
+	}
+	if !strings.Contains(err.Error(), it.id) {
+		t.Errorf("boot error %q does not name the sealed item %q, so the operator cannot tell what is wrong", err, it.id)
+	}
+}
