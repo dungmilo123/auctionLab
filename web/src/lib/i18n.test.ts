@@ -322,6 +322,31 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     en: "Floor price can't be above the start price.",
     vi: 'Giá sàn không được lớn hơn giá khởi điểm.',
   },
+
+  // Phase 6 — the sealed live body, the presenter ledger and the Vickrey line
+  // (06-UI-SPEC §Copywriting Contract, D-122)
+  'sealed.bidLabel': { en: 'Your sealed bid', vi: 'Giá đặt kín của bạn' },
+  'sealed.submit': { en: 'Submit bid', vi: 'Nộp giá' },
+  'sealed.update': { en: 'Update bid', vi: 'Cập nhật giá' },
+  'sealed.sending': { en: 'Sending…', vi: 'Đang gửi…' },
+  'sealed.submittedLabel': { en: 'Submitted bid', vi: 'Giá đã nộp' },
+  'sealed.notSubmitted': { en: 'Not submitted yet', vi: 'Chưa nộp' },
+  'sealed.editable': { en: 'Editable until close', vi: 'Có thể sửa đến khi đóng' },
+  'sealed.closed': {
+    en: 'Bidding is closed — waiting for the result.',
+    vi: 'Đã đóng nhận giá — chờ kết quả.',
+  },
+  'admin.sealedBidsHeading': { en: 'Sealed bids', vi: 'Giá đặt kín' },
+  'admin.sealedBidsNote': {
+    en: 'Only you see these amounts — they never reach the projector.',
+    vi: 'Chỉ bạn thấy các mức giá này — chúng không bao giờ lên màn chiếu.',
+  },
+  'admin.sealedBidAmount': { en: 'Bid', vi: 'Giá đặt' },
+  'admin.sealedBidTime': { en: 'Updated', vi: 'Sửa lúc' },
+  'settle.vickreyNote': {
+    en: "Vickrey: the winner pays the second-highest bid — or the start price if they're the only bidder.",
+    vi: 'Vickrey: người thắng trả mức giá cao nhì — hoặc giá khởi điểm nếu chỉ có một người đặt.',
+  },
 }
 
 const KEYS = Object.keys(APPROVED) as CopyKey[]
@@ -364,8 +389,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 178 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch − 1 deleted)', () => {
-    expect(KEYS).toHaveLength(178)
+  it('carries exactly the 191 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch + 13 Phase 6 − 1 deleted)', () => {
+    expect(KEYS).toHaveLength(191)
   })
 })
 
