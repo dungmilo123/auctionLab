@@ -96,6 +96,18 @@ type PublicItem struct {
 	MinNextBid     *int64      `json:"min_next_bid,omitempty"`
 	ExtensionsUsed *int        `json:"extensions_used,omitempty"`
 	Settle         *SettleInfo `json:"settle,omitempty"`
+
+	// Phase 5 (D-94, additive): the Dutch price clock. They are emitted ONLY for
+	// a `dutch` item, so an English item's key set stays exactly what it was
+	// (research Pitfall 1 catches an unconditional addition). A Dutch run has no
+	// ladder, no deadline and no top bidder — instead it carries the instant its
+	// price clock started plus the three mechanics a client needs to re-derive
+	// the falling number itself (D-63: a reload mid-run renders correctly from
+	// the snapshot alone, because `started_at` + the mechanics ARE the clock).
+	StartedAt           *int64 `json:"started_at,omitempty"`
+	FloorPrice          *int64 `json:"floor_price,omitempty"`
+	DecrementStep       *int64 `json:"decrement_step,omitempty"`
+	DecrementIntervalMS *int64 `json:"decrement_interval_ms,omitempty"`
 }
 
 // Bidder is the public identity of the leading (or winning) player: a nickname
@@ -163,6 +175,15 @@ type PriceTick struct {
 	MinNextBid   int64  `json:"min_next_bid"`
 	DeadlineAt   *int64 `json:"deadline_at,omitempty"`
 	RemainingMS  *int64 `json:"remaining_ms,omitempty"`
+
+	// Phase 5 (D-94, additive): the Dutch price clock's anchor. A Dutch run has
+	// no deadline and no remaining to re-anchor on, so `started_at` is what the
+	// client interpolates from. `min_next_bid` is a plain int64 with no
+	// omitempty (the frozen Phase 3 field), so a Dutch tick carries its zero
+	// value while a Dutch PublicItem carries no `min_next_bid` key at all
+	// (D-98) — the ladder minimum exists for the English body, and an absent
+	// key is how a client tells that a run has no ladder.
+	StartedAt *int64 `json:"started_at,omitempty"`
 }
 
 // priceTick builds the D-56 frame from the lock-held state, or reports false
@@ -176,6 +197,23 @@ func (s *state) priceTick(now time.Time) (PriceTick, bool) {
 	if s.phase != PhaseLive || run == nil {
 		return PriceTick{}, false
 	}
+
+	// Phase 5 (D-91/D-94): a Dutch run branches BEFORE the ladder reads. Every
+	// English reader would answer the wrong number here — currentPrice() falls
+	// back to start_price when the trail holds no bid for the run, and a Dutch
+	// run never has one (an acceptance is not a bid, D-98) — so a Dutch tick
+	// would broadcast the start price forever while the server charged a lower
+	// one. The derivation is the same call the projection and the accept make,
+	// and there is no window to describe, so the deadline fields stay nil.
+	if it := s.items[run.itemID]; it != nil && it.auctionType == "dutch" {
+		startedAt := run.startedAt
+		return PriceTick{
+			ItemID:       run.itemID,
+			CurrentPrice: dutchPriceAt(it, startedAt, now.UnixMilli()),
+			StartedAt:    &startedAt,
+		}, true
+	}
+
 	price, ok := s.currentPrice()
 	if !ok {
 		return PriceTick{}, false
@@ -346,7 +384,7 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 		ServerTS:    now.UnixMilli(),
 		Lobby:       s.lobby(),
 		Leaderboard: s.leaderboard(),
-		Item:        s.currentPublicItem(),
+		Item:        s.currentPublicItem(now.UnixMilli()),
 	}
 	if p := s.players[playerID]; p != nil {
 		view.Me = PlayerMe{
@@ -379,7 +417,7 @@ func (s *state) screenView(now time.Time) ScreenView {
 		ServerTS:       now.UnixMilli(),
 		Lobby:          s.lobby(),
 		Leaderboard:    s.leaderboard(),
-		Item:           s.currentPublicItem(),
+		Item:           s.currentPublicItem(now.UnixMilli()),
 		JoinURL:        s.selectedJoinURL(),
 		RecentBids:     s.recentBids(),
 		SealedProgress: s.sealedProgress(),
@@ -401,6 +439,13 @@ func (s *state) recentBids() []RecentBid {
 	}
 	for i := len(s.bids) - 1; i >= 0 && len(feed) < maxRecentBids; i-- {
 		b := s.bids[i]
+		if b.kind != trailBid {
+			// D-98/D-105: the feed is the ENGLISH ladder's story. A Dutch
+			// acceptance rides the same append-only trail with its own kind, and
+			// a projector showing "somebody bid X" for an acceptance would be a
+			// sentence that was never true — the room watched a price fall.
+			continue
+		}
 		if b.itemID != run.itemID || b.createdAt < run.startedAt {
 			continue
 		}
@@ -446,7 +491,7 @@ func (s *state) adminView(now time.Time) AdminView {
 		SealedBids:  make([]AdminSealedBid, 0, len(s.sealedBids)),
 		Lobby:       s.lobby(),
 		Leaderboard: s.leaderboard(),
-		Item:        s.currentPublicItem(),
+		Item:        s.currentPublicItem(now.UnixMilli()),
 	}
 	// D-83/D-84: the two halves of the Join URLs panel. The candidates are the
 	// boot-time proposals; the selection is the URL every QR code is built from.
@@ -586,7 +631,13 @@ func (s *state) rankOf(playerID string) int {
 // (LOBBY, and between items). It is the ONE builder behind all three roles, so a
 // live field is either visible to everyone or to no one by construction —
 // including the settle object, which reaches `/screen` for free (D-69).
-func (s *state) currentPublicItem() *PublicItem {
+//
+// now is the caller's own clock reading in milliseconds: a Dutch price is
+// DERIVED, never stored (DTCH-01), so the builder needs the instant it is
+// projecting at. Every caller already holds that instant — the role views take
+// it as their argument, and the mutation path reads it once for the run and the
+// persistence row — so the whole projection still describes one moment.
+func (s *state) currentPublicItem(now int64) *PublicItem {
 	if s.currentItemID == "" {
 		return nil
 	}
@@ -615,7 +666,7 @@ func (s *state) currentPublicItem() *PublicItem {
 		max := it.hintMax
 		view.HintMax = &max
 	}
-	s.addLiveFields(view, it)
+	s.addLiveFields(view, it, now)
 	return view
 }
 
@@ -651,15 +702,54 @@ func (s *state) settleReveal(it *item) *SettleInfo {
 // so the wire distinguishes "not applicable" from a real 0, and `settle` exists
 // ONLY at SETTLED — the leak boundary is the presence of the whole object, not
 // of any single field inside it.
-func (s *state) addLiveFields(view *PublicItem, it *item) {
+//
+// Phase 5 (D-94): the run's TYPE decides which live fields exist. A Dutch run
+// carries its price clock instead of the ladder's numbers, and it is the one
+// branch where the projection derives a value rather than reading a stored one.
+func (s *state) addLiveFields(view *PublicItem, it *item, now int64) {
 	run := s.currentAuction
 	if run == nil || run.itemID != it.id {
 		return
 	}
 
-	if price, ok := s.currentPrice(); ok {
+	if it.auctionType == "dutch" {
+		// The price at THIS projection's instant — the same derivation the
+		// accept validates against and the tick broadcasts, so the number on
+		// screen is the number the server would charge. Once the run holds an
+		// acceptance the charged price is the real one: a settled Dutch run
+		// re-derives past the floor, and reporting that would make the reveal
+		// disagree with the item it is attached to.
+		if w, ok := s.runAcceptance(); ok {
+			price := w.amount
+			view.CurrentPrice = &price
+		} else {
+			price := dutchPriceAt(it, run.startedAt, now)
+			view.CurrentPrice = &price
+		}
+		startedAt := run.startedAt
+		view.StartedAt = &startedAt
+		// The project's `> 0` convention for an optional number (see adminItem):
+		// D-92 refuses to start a Dutch run without these mechanics, so a live
+		// run always carries all three.
+		if it.floorPrice > 0 {
+			v := it.floorPrice
+			view.FloorPrice = &v
+		}
+		if it.decrementStep > 0 {
+			v := it.decrementStep
+			view.DecrementStep = &v
+		}
+		if it.decrementIntervalMS > 0 {
+			v := it.decrementIntervalMS
+			view.DecrementIntervalMS = &v
+		}
+	} else if price, ok := s.currentPrice(); ok {
 		view.CurrentPrice = &price
 	}
+	// A Dutch item never reaches topBidderNickname's answer: currentPrice and
+	// topBid both filter on the `bid` kind, and the ladder's own window guard
+	// (now >= run.deadlineAt with deadlineAt 0) refuses every bid on a Dutch run
+	// — so an acceptance can never light the outbid banner (D-98).
 	if nickname, ok := s.topBidderNickname(); ok {
 		view.TopBidder = &Bidder{Nickname: nickname}
 	}
@@ -667,10 +757,12 @@ func (s *state) addLiveFields(view *PublicItem, it *item) {
 		deadline := run.deadlineAt
 		view.DeadlineAt = &deadline
 	}
-	if s.phase == PhaseLive {
+	if s.phase == PhaseLive && it.auctionType == "english" {
 		// Only an open window advertises a next bid: after SETTLED there is
 		// nothing to bid on, and a stale minimum would invite a bid the ladder
-		// refuses (D-52 #3).
+		// refuses (D-52 #3). And only a LADDER advertises one at all — for a
+		// Dutch item the minimum is a lie the client could act on (D-98), which
+		// is why the field is absent rather than zero.
 		if min, ok := s.minNextBid(); ok {
 			view.MinNextBid = &min
 		}

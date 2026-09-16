@@ -208,8 +208,13 @@ func nextPendingItemID(s *state) string {
 // phaseChanged is the D-57 `phase.changed` payload: the new phase plus the item
 // it applies to (null when none is current, e.g. FINALE), so the frame alone is
 // enough for a client to patch its view.
-func (s *state) phaseChanged(phase Phase) PhaseChanged {
-	return PhaseChanged{Phase: string(phase), Item: s.currentPublicItem()}
+//
+// now is the mutation's own clock reading: the LIVE edge is packed with the run
+// that just started, and a Dutch run's price is DERIVED at the instant of each
+// frame (D-94), so the phase change has to describe the same moment as its
+// sibling `item.live` frame.
+func (s *state) phaseChanged(phase Phase, now int64) PhaseChanged {
+	return PhaseChanged{Phase: string(phase), Item: s.currentPublicItem(now)}
 }
 
 // ItemUpsert creates (empty ID) or rewrites (known ID) one item (D-66). Only a
@@ -379,8 +384,8 @@ func (e *Engine) StartItem(itemID string) error {
 			s.currentAuction = run
 			s.phase = PhaseLive
 			s.events = append(s.events,
-				Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseLive)},
-				Event{Type: EventItemLive, Data: s.currentPublicItem()},
+				Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseLive, now)},
+				Event{Type: EventItemLive, Data: s.currentPublicItem(now)},
 				Event{Type: EventSnapshot},
 			)
 			return nil
@@ -399,8 +404,8 @@ func (e *Engine) StartItem(itemID string) error {
 		s.currentAuction = nil
 		s.phase = PhaseItemIntro
 		s.events = append(s.events,
-			Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseItemIntro)},
-			Event{Type: EventItemIntro, Data: s.currentPublicItem()},
+			Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseItemIntro, now)},
+			Event{Type: EventItemIntro, Data: s.currentPublicItem(now)},
 			Event{Type: EventSnapshot},
 		)
 		return nil
@@ -443,7 +448,7 @@ func (e *Engine) NextItem() error {
 			s.currentAuction = nil
 			s.phase = PhaseFinale
 			s.events = append(s.events,
-				Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseFinale)},
+				Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseFinale, e.now().UnixMilli())},
 				// D-89: the reserved `finale` frame lands between the phase change
 				// and the snapshot — the snapshot stays LAST because it is what a
 				// client that missed everything else resyncs from (D-41), and the
@@ -462,8 +467,8 @@ func (e *Engine) NextItem() error {
 		s.currentAuction = nil // a new item has no run until it goes LIVE
 		s.phase = PhaseItemIntro
 		s.events = append(s.events,
-			Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseItemIntro)},
-			Event{Type: EventItemIntro, Data: s.currentPublicItem()},
+			Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseItemIntro, e.now().UnixMilli())},
+			Event{Type: EventItemIntro, Data: s.currentPublicItem(e.now().UnixMilli())},
 			Event{Type: EventSnapshot},
 		)
 		return nil

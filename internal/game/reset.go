@@ -101,8 +101,9 @@ func (e *Engine) Reset(mode ResetMode) (ResetResult, error) {
 	}
 
 	var result ResetResult
+	now := e.now().UnixMilli()
 	if err := e.applyLocked(func(s *state) error {
-		if err := s.resetLocked(mode); err != nil {
+		if err := s.resetLocked(mode, now); err != nil {
 			return err
 		}
 		// The ids the store is about to delete, read from the same
@@ -148,7 +149,7 @@ func (s *state) resetIsNoOp() bool {
 // difference between "the run ended" and "the runtime rows must go", so the
 // intent is recorded here and applyLocked translates it into the explicit
 // store.Mutation fields.
-func (s *state) resetLocked(mode ResetMode) error {
+func (s *state) resetLocked(mode ResetMode, now int64) error {
 	if s.phase != PhaseLobby && !CanTransition(s.phase, PhaseLobby) {
 		// Every row of the §6 machine lists LOBBY, so this is a guard against a
 		// future edit rather than a reachable refusal.
@@ -187,7 +188,7 @@ func (s *state) resetLocked(mode ResetMode) error {
 	s.phase = PhaseLobby
 	s.reset = mode
 	s.events = append(s.events,
-		Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseLobby)},
+		Event{Type: EventPhaseChanged, Data: s.phaseChanged(PhaseLobby, now)},
 		Event{Type: EventSnapshot},
 	)
 	return nil

@@ -242,7 +242,7 @@ func (s *state) settleLocked(now int64) error {
 	// reveal, the updated standings, and the authoritative snapshot (which is
 	// what a client that missed a frame resyncs from).
 	s.events = append(s.events,
-		Event{Type: EventItemSettled, Data: s.currentPublicItem()},
+		Event{Type: EventItemSettled, Data: s.currentPublicItem(now)},
 		Event{Type: EventLeaderboard, Data: s.leaderboard()},
 		Event{Type: EventSnapshot},
 	)
