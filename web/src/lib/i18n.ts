@@ -243,6 +243,11 @@ export const COPY = {
     en: "Hint min can't be above hint max.",
     vi: 'Gợi ý thấp nhất không được lớn hơn gợi ý cao nhất.',
   },
+
+  // ---- Phase 4: the shared QR component (04-06, D-85) ----
+  // The QR SVG's accessible name — the only string QrPanel invents; every other
+  // string on the projector comes from the carried Phase-2/3 keys (04-08).
+  'screen.qrTitle': { en: 'Join QR code', vi: 'Mã QR vào phòng' },
 } as const satisfies Record<string, Copy>
 
 export type CopyKey = keyof typeof COPY

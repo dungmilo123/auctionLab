@@ -268,9 +268,27 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
     case 'leaderboard':
       return { ...state, leaderboard: frame.entries }
 
-    case 'screen-snapshot':
+    case 'screen-snapshot': {
+      const snapshot = frame.snapshot
+      return {
+        ...initialViewState(),
+        phase: snapshot.phase,
+        me: null,
+        lobby: snapshot.lobby,
+        leaderboard: snapshot.leaderboard,
+        item: snapshot.item,
+        joinUrl: snapshot.joinUrl,
+        recentBids: snapshot.recentBids,
+        sealedProgress: snapshot.sealedProgress,
+        live: overlayFrom(snapshot.item, snapshot.serverTs),
+      }
+    }
+
     case 'finale':
-      // RED stub: the projector's snapshot and the finale patch land in GREEN.
-      return null
+      // D-89's ceremony frame patches the standings in the server's own order —
+      // the podium is a PREFIX of them, so the two can never disagree — and the
+      // trailing snapshot (D-41's resync anchor) remains the healing source that
+      // replaces the whole view, standings included.
+      return { ...state, leaderboard: frame.payload.standings }
   }
 }

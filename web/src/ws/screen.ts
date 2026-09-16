@@ -1,5 +1,5 @@
 /**
- * The projector's socket (D-87) — RED stub.
+ * The projector's socket (D-87).
  *
  * The screen shares the role-neutral lifecycle `client.ts` extracted
  * (`openSocket`) — the same-origin URL, the per-connection gate, the
@@ -15,10 +15,12 @@
  *     guarantee: no future edit can add a screen control by reaching for a
  *     `send` that exists.
  *
- * The connection is implemented in the GREEN commit; this is the RED contract.
+ * The join is a passive role: the server answers with the role projection on
+ * every mutation, and an `error` frame is logged by `openSocket` and otherwise
+ * ignored — the projector has no error copy to render (UI-SPEC §Screen Route).
  */
 
-import type { ConnectionStatus } from './client'
+import { openSocket, type ConnectionStatus, type Socket } from './client'
 import type { ViewState } from './view'
 
 export type ScreenSocketHandlers = {
@@ -33,8 +35,25 @@ export type ScreenConnection = {
   close(): void
 }
 
-/** Open the screen connection. RED stub: no socket is opened yet. */
+/**
+ * Open the screen connection. The socket is created immediately; the join frame
+ * goes out when the upgrade completes, and every admitted frame is decoded,
+ * reduced and handed to `onView`.
+ */
 export function openScreenSocket(handlers: ScreenSocketHandlers): ScreenConnection {
-  void handlers
-  return { close: () => {} }
+  const socket: Socket = openSocket({
+    role: 'screen',
+    // No identity to restore (D-29/D-87): `readToken` is always empty, so
+    // D-45's resume decision is always `none` and nothing is ever persisted.
+    readToken: () => '',
+    joinFrame: () => ({ type: 'join', role: 'screen' }),
+    onStatus: handlers.onStatus,
+    onView: handlers.onView,
+  })
+
+  return {
+    close(): void {
+      socket.close()
+    },
+  }
 }

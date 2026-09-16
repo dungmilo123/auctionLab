@@ -54,6 +54,7 @@ export const CLIENT_MESSAGE_TYPES = [
   'admin.item.next',
   'admin.game.reset',
   'admin.config.update',
+  'admin.player.release',
 ] as const
 
 /** The complete server→client catalog (D-24). */
@@ -698,8 +699,9 @@ function readAdminItem(value: unknown): AdminItem | null {
 
 // ---------------------------------------------------------------------------
 // Phase 4 (D-87/D-88/D-89). The wire payloads are declared by
-// `internal/game/project.go`; the readers below are RED stubs until the GREEN
-// commit.
+// `internal/game/project.go`; every reader below maps that JSON onto the
+// camelCase the UI renders, and the projector's snapshot keeps the same
+// fail-closed rule the player and admin snapshots follow.
 // ---------------------------------------------------------------------------
 
 /** One entry of D-88's public bid feed: a nickname, an amount and the bid's instant. */
@@ -744,14 +746,101 @@ export type FinaleReveal = {
   standings: LeaderEntry[]
 }
 
-/** Decode the screen `state.snapshot` (D-87/D-88). RED stub: nothing decodes yet. */
-export function readScreenSnapshot(data: unknown): ScreenSnapshot | null {
-  void data
-  return null
+/**
+ * D-88's public feed. The projector must never freeze on a convenience field
+ * (UI-SPEC §Data contract): an entry with a missing or ill-typed field is
+ * DROPPED and the snapshot still applies — the price, the countdown and the
+ * bidder line are the authoritative numbers. An absent key is an empty feed;
+ * the server always sends an array.
+ */
+function readRecentBids(value: unknown): RecentBid[] {
+  if (!Array.isArray(value)) return []
+  const entries: RecentBid[] = []
+  for (const raw of value) {
+    if (!isRecord(raw)) continue
+    const nickname = readString(raw.nickname)
+    const amount = readInt(raw.amount)
+    const ts = readInt(raw.ts)
+    if (nickname === null || amount === null || ts === null) continue
+    entries.push({ nickname, amount, ts })
+  }
+  return entries
 }
 
-/** Decode a `finale` payload (D-89). RED stub: nothing decodes yet. */
+/**
+ * D-88's sealed counter, decoded as optional-null: a record that carries both
+ * counts is the counter, anything else (an explicit null, a missing or
+ * ill-typed payload) is "not a sealed item" and the line simply does not
+ * render. The amounts live only on the admin projection.
+ */
+function readSealedProgress(value: unknown): SealedProgress | null {
+  if (!isRecord(value)) return null
+  const submitted = readInt(value.submitted)
+  const total = readInt(value.total)
+  if (submitted === null || total === null) return null
+  return { submitted, total }
+}
+
+/**
+ * Decode the screen `state.snapshot` (D-87/D-88). Mandatory data is
+ * fail-closed: the phase↔item totality table is enforced HERE, exactly as the
+ * player and admin snapshots enforce it, so the projector's body switch stays
+ * total — an admitted snapshot always carries what its body renders, and a
+ * payload that breaks the table leaves the previous body on screen instead of
+ * rendering blank (T-04-05).
+ *
+ * The two D-88 extras are the declared exception: a malformed feed entry is
+ * dropped and a malformed counter is read as absent, because neither is
+ * authoritative for the price or the reveal.
+ */
+export function readScreenSnapshot(data: unknown): ScreenSnapshot | null {
+  if (!isRecord(data)) return null
+
+  const phase = readPhase(data.phase)
+  const revision = readInt(data.revision)
+  const serverTs = readInt(data.server_ts)
+  // The join URL is required and may be the empty string (the projector then
+  // renders `screen.noJoinUrl`); a missing or non-string key is a payload this
+  // build cannot render, so it is rejected rather than half-applied.
+  const joinUrl = readString(data.join_url)
+  const lobby = readLobby(data.lobby)
+  if (
+    phase === null ||
+    revision === null ||
+    serverTs === null ||
+    joinUrl === null ||
+    lobby === null
+  ) {
+    return null
+  }
+
+  const item = readPublicItem(data.item)
+  if (!itemMatchesPhase(phase, item)) return null
+
+  return {
+    phase,
+    revision,
+    serverTs,
+    joinUrl,
+    lobby,
+    leaderboard: readLeaderboard(data.leaderboard),
+    item,
+    recentBids: readRecentBids(data.recent_bids),
+    sealedProgress: readSealedProgress(data.sealed_progress),
+  }
+}
+
+/**
+ * Decode a `finale` payload (D-89): the podium, a ≤3 prefix of the standings,
+ * plus the complete standings in the server's ONE leaderboard order. Both
+ * lists go through `readLeaderboard`, so there is exactly one place a standing
+ * row is built and the client never re-sorts: the order on the wire is the
+ * order on the projector. A payload that is not the two-list ceremony at all
+ * is rejected; a malformed row inside a list is skipped the same way the
+ * `leaderboard` frame skips one.
+ */
 export function readFinale(data: unknown): FinaleReveal | null {
-  void data
-  return null
+  if (!isRecord(data)) return null
+  if (!Array.isArray(data.podium) || !Array.isArray(data.standings)) return null
+  return { podium: readLeaderboard(data.podium), standings: readLeaderboard(data.standings) }
 }

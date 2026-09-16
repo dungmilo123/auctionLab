@@ -762,15 +762,27 @@ describe('readScreenSnapshot (D-87/D-88)', () => {
 })
 
 describe('readFinale (D-89)', () => {
-  const STANDINGS = [
+  // The wire literals (hand-copied from internal/game/project.go) and their
+  // decoded camelCase shape — the row decoder is readLeaderboard's, so the two
+  // differ only in snake_case/camelCase.
+  const WIRE_STANDINGS = [
     { rank: 1, nickname: 'Bình', total_value: 200_000, budget: 900_000 },
     { rank: 2, nickname: 'An', total_value: 0, budget: 1_000_000 },
     { rank: 3, nickname: 'Cường', total_value: 0, budget: 800_000 },
     { rank: 4, nickname: 'Hạnh', total_value: 0, budget: 700_000 },
   ]
+  const STANDINGS = [
+    { rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 },
+    { rank: 2, nickname: 'An', totalValue: 0, budget: 1_000_000 },
+    { rank: 3, nickname: 'Cường', totalValue: 0, budget: 800_000 },
+    { rank: 4, nickname: 'Hạnh', totalValue: 0, budget: 700_000 },
+  ]
 
   it('decodes the podium prefix and the complete standings in server order', () => {
-    const payload = readFinale({ podium: STANDINGS.slice(0, 3), standings: STANDINGS })
+    const payload = readFinale({
+      podium: WIRE_STANDINGS.slice(0, 3),
+      standings: WIRE_STANDINGS,
+    })
     expect(payload?.podium).toEqual(STANDINGS.slice(0, 3))
     expect(payload?.standings).toEqual(STANDINGS)
   })

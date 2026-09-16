@@ -32,6 +32,7 @@ import {
   BID_REJECTED,
   CODE_TOKEN_INVALID,
   ERROR,
+  FINALE,
   HELLO,
   ITEM_INTRO,
   ITEM_LIVE,
@@ -45,12 +46,14 @@ import {
   readBidAccepted,
   readBidRejected,
   readError,
+  readFinale,
   readHello,
   readLeaderboard,
   readPhaseChanged,
   readPlayerSnapshot,
   readPriceTick,
   readPublicItem,
+  readScreenSnapshot,
   type BidRejected,
   type Envelope,
   type ErrorPayload,
@@ -395,8 +398,16 @@ function decodeFrame(role: SocketRole, envelope: Envelope): ViewFrame | null {
         const snapshot = readAdminSnapshot(data)
         return snapshot === null ? null : { kind: 'admin-snapshot', snapshot }
       }
+      if (role === 'screen') {
+        const snapshot = readScreenSnapshot(data)
+        return snapshot === null ? null : { kind: 'screen-snapshot', snapshot }
+      }
       const snapshot = readPlayerSnapshot(data)
       return snapshot === null ? null : { kind: 'player-snapshot', snapshot }
+    }
+    case FINALE: {
+      const payload = readFinale(data)
+      return payload === null ? null : { kind: 'finale', payload, ts }
     }
     case PHASE_CHANGED: {
       const payload = readPhaseChanged(data)
