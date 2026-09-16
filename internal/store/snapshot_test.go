@@ -280,6 +280,117 @@ func TestAuctionWriteSetRoundTrip(t *testing.T) {
 	})
 }
 
+// TestSealedBidsUpsertPreservesFirstSubmission is D-108/SEAL-05's storage half:
+// `sealed_bids` keeps ONE row per (item, player), an edit rewrites the amount
+// and `updated_at`, and `submitted_at` — the tie-break instant — never moves.
+// The sealed write rides the same transaction as `game.revision` (D-110).
+func TestSealedBidsUpsertPreservesFirstSubmission(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	now := time.UnixMilli(1_700_000_000_000)
+
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open(%q): %v", path, err)
+	}
+	defer func() { _ = st.Close() }()
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema: %v", err)
+	}
+	if err := Bootstrap(st.DB, now); err != nil {
+		t.Fatalf("Bootstrap: %v", err)
+	}
+
+	it := ItemRow{
+		ID: "it-s1", OrderIndex: 0, Name: "Tranh", AuctionType: "sealed_first",
+		TruthValue: 350_000, StartPrice: 100_000, DurationMS: int64Ptr(30_000),
+		AntiSnipeMode: "disabled", Status: "live",
+	}
+	an := PlayerRow{
+		ID: "p-an", Nickname: "An", NicknameKey: "an", Token: strings.Repeat("a", 64),
+		Budget: 1_000_000, JoinedAt: now.UnixMilli(), LastSeenAt: now.UnixMilli(),
+	}
+	startedAt := now.UnixMilli()
+
+	first := startedAt + 1_000
+	if err := st.Commit(Mutation{
+		Phase: "LIVE", CurrentItemID: it.ID, Revision: 2, UpdatedAt: startedAt,
+		Players: []PlayerRow{an}, Items: []ItemRow{it},
+		Runtime: &RuntimeRow{ItemID: it.ID, StartedAt: startedAt, DeadlineAt: int64Ptr(startedAt + 30_000), Revision: 2},
+		SealedBids: []SealedBidRow{{
+			ItemID: it.ID, PlayerID: an.ID, Amount: 150_000, SubmittedAt: first, UpdatedAt: first,
+		}},
+	}); err != nil {
+		t.Fatalf("the first sealed commit: %v", err)
+	}
+
+	// The edit carries the WRONG submitted_at on purpose: the caller hands the
+	// edit's own instant, exactly as a naive submit path would, so a pass can
+	// only come from the statement's omission of that column — never from the
+	// Go side quietly re-sending the old value.
+	edited := first + 4_000
+	if err := st.Commit(Mutation{
+		Phase: "LIVE", CurrentItemID: it.ID, Revision: 3, UpdatedAt: edited,
+		SealedBids: []SealedBidRow{{
+			ItemID: it.ID, PlayerID: an.ID, Amount: 180_000, SubmittedAt: edited, UpdatedAt: edited,
+		}},
+	}); err != nil {
+		t.Fatalf("the edit commit: %v", err)
+	}
+
+	rows, err := st.LoadSealedBids()
+	if err != nil {
+		t.Fatalf("LoadSealedBids: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("sealed_bids holds %d row(s) after an edit, want exactly 1 (D-108): %+v", len(rows), rows)
+	}
+	if rows[0].Amount != 180_000 {
+		t.Errorf("amount = %d after the edit, want the last one 180000 (SEAL-02)", rows[0].Amount)
+	}
+	if rows[0].SubmittedAt != first {
+		t.Errorf("submitted_at = %d after an edit, want the FIRST submission's %d — the tie-break instant never moves (D-108/SEAL-05)", rows[0].SubmittedAt, first)
+	}
+	if rows[0].UpdatedAt != edited {
+		t.Errorf("updated_at = %d after the edit, want %d", rows[0].UpdatedAt, edited)
+	}
+
+	// D-110: the sealed write is part of the mutation, not a second one.
+	game, err := st.LoadGame()
+	if err != nil {
+		t.Fatalf("LoadGame: %v", err)
+	}
+	if game.Revision != 3 {
+		t.Errorf("game revision = %d after the sealed write, want the committed 3 — the row rides the mutation's transaction (D-110)", game.Revision)
+	}
+
+	// A second key is a second row: the upsert is per (item, player), never a
+	// whole-table replace.
+	binh := PlayerRow{
+		ID: "p-binh", Nickname: "Binh", NicknameKey: "binh", Token: strings.Repeat("b", 64),
+		Budget: 1_000_000, JoinedAt: startedAt, LastSeenAt: startedAt,
+	}
+	if err := st.Commit(Mutation{
+		Phase: "LIVE", CurrentItemID: it.ID, Revision: 4, UpdatedAt: edited,
+		Players: []PlayerRow{binh},
+		SealedBids: []SealedBidRow{{
+			ItemID: it.ID, PlayerID: binh.ID, Amount: 200_000, SubmittedAt: edited, UpdatedAt: edited,
+		}},
+	}); err != nil {
+		t.Fatalf("the second player's commit: %v", err)
+	}
+	rows, err = st.LoadSealedBids()
+	if err != nil {
+		t.Fatalf("LoadSealedBids after the second player: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("sealed_bids holds %d row(s) for two players, want 2: %+v", len(rows), rows)
+	}
+	// The loader's order is total: item_id, then submitted_at, then player id.
+	if rows[0].PlayerID != an.ID || rows[1].PlayerID != binh.ID {
+		t.Errorf("loaded order = %s,%s, want the first submission first (total order)", rows[0].PlayerID, rows[1].PlayerID)
+	}
+}
+
 // TestRuntimeRoundTrip pins the nullable half of the runtime row: a row that
 // never settled keeps settled_at NULL (not 0), and an item without a runtime
 // row reports "no row" instead of a zero-valued one.

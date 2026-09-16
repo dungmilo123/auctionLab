@@ -60,6 +60,13 @@ type Mutation struct {
 	Runtime      *RuntimeRow
 	Bids         []BidRow
 
+	// Phase 6 (D-110): the sealed write set — an UPSERT list, in the same
+	// transaction as the revision, because `sealed_bids` holds the effective bid
+	// of one (item, player) and an edit changes the row rather than appending
+	// one. The statement's DO UPDATE deliberately omits `submitted_at`, which is
+	// what keeps SEAL-05's tie-break instant frozen (D-108).
+	SealedBids []SealedBidRow
+
 	// Phase 4 (D-78): the reset write set. Every Phase 3 field above is
 	// growth-only — a nil Runtime means "unchanged", not "removed", and neither
 	// the append-only Bids nor the never-diffed sealed bids can express a

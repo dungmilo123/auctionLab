@@ -276,6 +276,8 @@ func (c *client) handle(payload []byte) {
 		c.handleBid(in)
 	case TypeDutchAccept:
 		c.handleDutchAccept()
+	case TypeSealedSubmit:
+		c.handleSealedSubmit(in)
 	case TypeAdminItemUpsert, TypeAdminItemDelete, TypeAdminItemReorder,
 		TypeAdminItemStart, TypeAdminItemForceEnd, TypeAdminItemNext,
 		TypeAdminGameReset, TypeAdminConfigUpdate, TypeAdminPlayerRelease:
@@ -366,6 +368,16 @@ func (c *client) handleDutchAccept() {
 	}
 	log.Printf("ws: accept from %s: %v", c.describe(), err)
 	c.sendError(CodeBadMessage, "the price could not be accepted")
+}
+
+// handleSealedSubmit routes one `sealed.submit {amount}` (D-111). The role gate
+// comes first, exactly like handleBid and handleDutchAccept: the command is
+// player-only, so a command from the wrong role is a protocol error and never
+// reaches the engine (D-111/H12).
+//
+// RED: not implemented yet.
+func (c *client) handleSealedSubmit(_ inbound) {
+	c.sendError(CodeUnsupported, "sealed.submit is not implemented yet")
 }
 
 // amountFromLiteral reads a `bid.place` amount out of its raw JSON literal

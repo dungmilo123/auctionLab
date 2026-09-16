@@ -50,8 +50,9 @@ type RuntimeRow struct {
 }
 
 // BidRow is one row of the append-only `bids` audit (D-51). Phase 3 writes one
-// row per accepted bid (kind = "bid"); settle itself writes only
-// auction_runtime.settled_at.
+// row per accepted bid (kind = "bid"); Phase 5 adds one `accept` per Dutch
+// acceptance (D-98), and Phase 6 one `sealed_edit` per sealed submit or edit
+// (D-109). Settle itself writes only auction_runtime.settled_at.
 type BidRow struct {
 	ID        int64
 	ItemID    string
@@ -59,6 +60,18 @@ type BidRow struct {
 	Amount    int64
 	Kind      string
 	CreatedAt int64
+}
+
+// SealedBidRow is one row of the `sealed_bids` table (PLAN.md §5) — the
+// EFFECTIVE sealed bid of one player on one item (D-108). All five columns are
+// NOT NULL, so every field is a plain value: `submitted_at` is the FIRST
+// submission's instant and never moves, `updated_at` is the latest edit's.
+type SealedBidRow struct {
+	ItemID      string
+	PlayerID    string
+	Amount      int64
+	SubmittedAt int64
+	UpdatedAt   int64
 }
 
 // LoadItems returns every item row in presentation order (order_index, then id,
@@ -153,4 +166,14 @@ func nullableInt64(v *int64) any {
 		return nil
 	}
 	return *v
+}
+
+// LoadSealedBids returns every effective sealed bid in a TOTAL order —
+// item_id, then the FIRST submission instant, then player id — so a restart
+// reproduces the slice exactly and the tie-break reads the same sequence the
+// live process built (D-108/D-113).
+//
+// RED: not implemented yet.
+func (s *Store) LoadSealedBids() ([]SealedBidRow, error) {
+	return nil, nil
 }

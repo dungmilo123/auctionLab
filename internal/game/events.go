@@ -39,6 +39,13 @@ const (
 	EventLeaderboard  = "leaderboard"   // []LeaderEntry
 	EventPriceTick    = "price.tick"    // PriceTick — built by the hub (D-56), never bumps rev
 
+	// Phase 6 (D-111): the submitter's own confirmation. Its payload is the
+	// count-only SealedProgress the screen already renders (D-88) — the same
+	// shape on one wire, and deliberately no amount (SEAL-01: the confirmation
+	// contains no price). It is PRIVATE: To = the submitting player id, exactly
+	// like `bid.rejected` (D-53).
+	EventSealedReceived = "sealed.received" // SealedProgress — private (To = the submitter)
+
 	// Phase 4 (D-89): the FINALE transition's reveal. The literal is the
 	// server→client type the catalog already reserves (hub.TypeFinale), so this
 	// addition widens no wire surface — it makes the reserved frame reachable,

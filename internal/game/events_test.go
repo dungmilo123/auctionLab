@@ -21,6 +21,10 @@ func TestEventLiteralsMatchTheHubCatalog(t *testing.T) {
 		EventLeaderboard:  "leaderboard",
 		EventPriceTick:    "price.tick",
 		EventFinale:       "finale",
+		// Phase 6 (D-111): the private sealed confirmation. The literal is the
+		// hub's frozen server→client type (hub.TypeSealedReceived), so this
+		// pins the two-sided contract the same way every other row does.
+		EventSealedReceived: "sealed.received",
 	}
 	for got, want := range types {
 		if got != want {
