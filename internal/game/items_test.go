@@ -29,6 +29,19 @@ func validEnglishInput() ItemInput {
 	}
 }
 
+// validDutchInput is one complete D-92 Dutch item: a floor below the start and a
+// positive step and interval. duration_ms stays absent — a Dutch run has no
+// deadline at all (D-93).
+func validDutchInput() ItemInput {
+	return ItemInput{
+		Name: "Đồng hồ", Description: "Dutch lot", AuctionType: "dutch",
+		TruthValue: 350_000,
+		HintMin:    opt(60_000), HintMax: opt(120_000),
+		StartPrice: 100_000,
+		FloorPrice: opt(40_000), DecrementStep: opt(10_000), DecrementIntervalMS: opt(1_000),
+	}
+}
+
 // itemIDs returns the engine's presentation order.
 func (env *testEnv) itemIDs(t *testing.T) []string {
 	t.Helper()
@@ -96,6 +109,10 @@ func TestItemUpsertValidation(t *testing.T) {
 		{"a Dutch floor price above the bound is rejected", func(in *ItemInput) {
 			in.AuctionType = "dutch"
 			in.FloorPrice = opt(1_000_000_000_001)
+		}, "floor_price"},
+		{"a Dutch floor price above the start price is rejected", func(in *ItemInput) {
+			in.AuctionType = "dutch"
+			in.FloorPrice = opt(in.StartPrice + 1)
 		}, "floor_price"},
 	}
 	for _, tc := range cases {
@@ -537,19 +554,22 @@ func TestAdminCommandSemantics(t *testing.T) {
 	})
 }
 
-// TestNoDeadlineNeverGoesLive is WR-02: this phase plays English only, and the
-// whole phase hangs off a live run that can settle ON THE CLOCK — the ticker's
-// settle arm and the boot's resume both require `deadline_at`. A run started
-// without one would sit in LIVE forever (`Force end` its only exit) while the
-// English ladder still accepted bids on it, so the LIVE edge is refused for any
-// row that cannot carry a deadline. The intro and `item.next` stay available:
-// the row is on stage and the presenter skips it the documented way.
+// TestNoDeadlineNeverGoesLive is D-92: the LIVE edge is guarded BY TYPE. An
+// english row still needs its wall-clock deadline, because the whole English
+// phase hangs off a run that can settle ON THE CLOCK (the ticker's settle arm
+// and the boot's resume both require `deadline_at`). A dutch row instead needs
+// its own mechanics — `0 < floor_price <= start_price`, a positive step and a
+// positive interval — and deliberately carries NO deadline, because a Dutch run
+// is re-derived from `started_at` on every read and must never settle on the
+// clock (D-93). A row that cannot satisfy its type's guard stays in intro, and
+// the presenter skips it the documented way.
 func TestNoDeadlineNeverGoesLive(t *testing.T) {
-	t.Run("a dutch item opens its intro but never goes live", func(t *testing.T) {
+	t.Run("a dutch item without its mechanics refuses to go live", func(t *testing.T) {
 		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
 
 		// The natural draft the shipped editor produces: D-66 hides duration_ms
-		// for dutch, so the payload carries null and the row has no window.
+		// for dutch, so the payload carries null and the row has no window — and
+		// an unconfigured row has no floor, step or interval either.
 		dutch := validEnglishInput()
 		dutch.AuctionType = "dutch"
 		dutch.MinIncrement, dutch.DurationMS, dutch.AntiSnipeMode = nil, nil, ""
@@ -566,10 +586,10 @@ func TestNoDeadlineNeverGoesLive(t *testing.T) {
 		revBefore := env.engine.Rev()
 		err := env.engine.StartItem(id)
 		if err == nil {
-			t.Fatal("a dutch item went LIVE: the run would have no deadline and could never settle on the clock (WR-02)")
+			t.Fatal("a dutch item with no floor/step/interval went LIVE: the run would have no derivable price (D-92)")
 		}
-		if !strings.Contains(err.Error(), "english") {
-			t.Errorf("error %q does not name the type at fault, so the presenter cannot act on it", err)
+		if !strings.Contains(err.Error(), "floor_price") {
+			t.Errorf("error %q does not name the mechanics at fault, so the presenter cannot act on it", err)
 		}
 		if got := env.engine.Phase(); got != PhaseItemIntro {
 			t.Errorf("phase = %q after the refused start, want ITEM_INTRO", got)
@@ -596,6 +616,81 @@ func TestNoDeadlineNeverGoesLive(t *testing.T) {
 		}
 		if got := env.engine.Phase(); got != PhaseFinale {
 			t.Errorf("phase = %q, want FINALE with no pending item left", got)
+		}
+	})
+
+	t.Run("a dutch item with floor, step and interval goes LIVE with no deadline", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		id := mustUpsertItem(t, env, validDutchInput())
+
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+		revBefore := env.engine.Rev()
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (ITEM_INTRO → LIVE) for a configured dutch row: %v", err)
+		}
+
+		if got := env.engine.Phase(); got != PhaseLive {
+			t.Fatalf("phase = %q, want LIVE", got)
+		}
+		if got := env.item(t, id).status; got != "live" {
+			t.Errorf("item status = %q, want live", got)
+		}
+		if got := env.engine.Rev(); got != revBefore+1 {
+			t.Errorf("revision = %d across the start, want one bump to %d", got, revBefore+1)
+		}
+
+		now := env.clock.now().UnixMilli()
+		run := env.runOf(t)
+		if run.startedAt != now {
+			t.Errorf("run started_at = %d, want the injected now %d", run.startedAt, now)
+		}
+		if run.deadlineAt != 0 {
+			t.Errorf("a Dutch run carries deadline_at %d: D-93 keeps the column NULL, because nothing may settle Dutch on the clock", run.deadlineAt)
+		}
+
+		// The durable half: a restart must be able to re-derive the clock, and
+		// must NOT find a deadline to settle.
+		rt, ok, err := env.store.LoadRuntime(id)
+		if err != nil {
+			t.Fatalf("LoadRuntime(%q): %v", id, err)
+		}
+		if !ok {
+			t.Fatal("a LIVE Dutch run persisted no auction_runtime row: a restart could not re-derive the price")
+		}
+		if rt.StartedAt != now {
+			t.Errorf("runtime started_at = %d, want %d", rt.StartedAt, now)
+		}
+		if rt.DeadlineAt != nil {
+			t.Errorf("the persisted Dutch runtime row carries deadline_at %d, want SQL NULL (D-93)", *rt.DeadlineAt)
+		}
+		if rt.SettledAt != nil {
+			t.Errorf("a freshly started Dutch run carries settled_at %d", *rt.SettledAt)
+		}
+	})
+
+	t.Run("a sealed item still cannot go live, and the refusal says so", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+		sealed := validEnglishInput()
+		sealed.AuctionType = "sealed_first"
+		sealed.MinIncrement, sealed.DurationMS, sealed.AntiSnipeMode = nil, nil, ""
+		sealed.AntiSnipeWindowMS, sealed.MaxExtensions = nil, nil
+		id := mustUpsertItem(t, env, sealed)
+
+		if err := env.engine.StartItem(id); err != nil {
+			t.Fatalf("item.start (LOBBY → ITEM_INTRO): %v", err)
+		}
+		err := env.engine.StartItem(id)
+		if err == nil {
+			t.Fatal("a sealed item went LIVE: Phase 6 owns that flow")
+		}
+		if !strings.Contains(err.Error(), "sealed_first") {
+			t.Errorf("error %q does not name the type at fault", err)
+		}
+		if strings.Contains(err.Error(), "english") {
+			t.Errorf("the refusal blames the wrong type: %q", err)
 		}
 	})
 

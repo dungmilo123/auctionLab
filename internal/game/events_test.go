@@ -46,6 +46,7 @@ func TestBidReasonLiteralsMatchTheUiSpec(t *testing.T) {
 		ReasonBelowMinimum:   "below_minimum",
 		ReasonExceedsBudget:  "exceeds_budget",
 		ReasonAlreadyLeading: "already_leading",
+		ReasonAlreadySold:    "already_sold",
 	}
 	for got, want := range reasons {
 		if got != want {

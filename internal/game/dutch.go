@@ -13,6 +13,11 @@ import "fmt"
 // settleLocked, which keeps the budget arithmetic and the one reveal
 // constructor in their single home (D-98/D-100).
 
+// ReasonAlreadySold is D-97's payload-level reason ...
+//
+// RED: declared so the reason-order test compiles.
+const ReasonAlreadySold = "already_sold"
+
 // dutchPriceAt is D-91's ONE price derivation, and the only place a Dutch price
 // is ever computed: the projection, the tick frame, the accept validation and
 // the settle all call it at their own instant, and no price is persisted per

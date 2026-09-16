@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -365,4 +366,224 @@ func TestAcceptDutchBudget(t *testing.T) {
 			t.Errorf("a refused accept persisted %d audit row(s), want none: %+v", len(rows), rows)
 		}
 	})
+}
+
+// TestAcceptDutchReasonOrder is D-96/D-97's reconciliation: the refusal reason
+// must name the real situation. A run sold by ANOTHER player's acceptance of the
+// same Dutch item is `already_sold`; every other closed window — a force-ended
+// run, a non-Dutch run, no run at all, a run the presenter already advanced past
+// — stays `window_closed`. Every refusal is a non-mutation: no revision, no
+// event, no audit row.
+func TestAcceptDutchReasonOrder(t *testing.T) {
+	// requireRefusal runs one accept and pins the reason, the derived amount and
+	// the non-mutation. A negative wantAmount means "the derivation is not the
+	// subject of this case" (a run that no longer exists has no clock).
+	requireRefusal := func(t *testing.T, env *testEnv, playerID, wantReason string, wantAmount int64) {
+		t.Helper()
+
+		revBefore := env.engine.Rev()
+		eventsBefore := len(env.lastEvents())
+		rowsBefore, err := env.store.LoadBids()
+		if err != nil {
+			t.Fatalf("loading the bid audit: %v", err)
+		}
+
+		rejection, refused, err := env.acceptDutch(playerID)
+		if !refused {
+			t.Fatalf("the accept was not answered privately (err = %v), want the reason %q", err, wantReason)
+		}
+		if rejection.Reason != wantReason {
+			t.Errorf("refusal reason = %q, want %q (the ORDER is the contract, D-96/D-97)", rejection.Reason, wantReason)
+		}
+		var refusedErr *BidRejectedError
+		if !errors.As(err, &refusedErr) || refusedErr.Reason != wantReason {
+			t.Errorf("AcceptDutch error = %v, want a *BidRejectedError carrying %q", err, wantReason)
+		}
+		if rejection.Amount != wantAmount && wantAmount >= 0 {
+			t.Errorf("refusal amount = %d, want the price this instant derives (%d)", rejection.Amount, wantAmount)
+		}
+		if rejection.MinNextBid != nil {
+			t.Errorf("refusal min_next_bid = %d, want null: a Dutch price has no ladder (D-96)", *rejection.MinNextBid)
+		}
+		if got := env.engine.Rev(); got != revBefore {
+			t.Errorf("revision = %d after a refusal, want the unchanged %d", got, revBefore)
+		}
+		if got := len(env.lastEvents()); got != eventsBefore {
+			t.Errorf("a refused accept left %d event(s), want the unchanged %d", got, eventsBefore)
+		}
+		rowsAfter, err := env.store.LoadBids()
+		if err != nil {
+			t.Fatalf("loading the bid audit: %v", err)
+		}
+		if len(rowsAfter) != len(rowsBefore) {
+			t.Errorf("a refused accept appended %d audit row(s), want none", len(rowsAfter)-len(rowsBefore))
+		}
+	}
+
+	t.Run("sold by another accept is already_sold, never a phantom win", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		binh := mustJoin(t, env, "Bình")
+		it := dutchFixture()
+		mustOpenDutchRun(t, env, it)
+		env.clock.t = env.clock.t.Add(3 * time.Second)
+
+		if _, refused, err := env.acceptDutch(an.PlayerID); err != nil || refused {
+			t.Fatalf("the first accept was refused: err = %v, refusal = %+v", err, refused)
+		}
+		requireRefusal(t, env, binh.PlayerID, ReasonAlreadySold, 70_000)
+	})
+
+	t.Run("a force-ended Dutch run is window_closed", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := dutchFixture()
+		mustOpenDutchRun(t, env, it)
+		env.clock.t = env.clock.t.Add(3 * time.Second)
+
+		if err := env.engine.ForceEnd(); err != nil {
+			t.Fatalf("ForceEnd: %v", err)
+		}
+		// The settle is unsold, so this is NOT the already_sold situation: the
+		// window closed without a winner (D-102).
+		if got := env.runOf(t).settle; got == nil || got.Outcome != "unsold" {
+			t.Fatalf("the force-ended reveal is %+v, want unsold", got)
+		}
+		requireRefusal(t, env, an.PlayerID, ReasonWindowClosed, 70_000)
+	})
+
+	t.Run("an english run is window_closed", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		it := englishFixture()
+		it.antiSnipeMode = "disabled"
+		mustOpenLiveRun(t, env, it)
+
+		// No run of this item is Dutch, so the price derivation is the start
+		// price the accept would have been refused at anyway.
+		requireRefusal(t, env, an.PlayerID, ReasonWindowClosed, it.startPrice)
+	})
+
+	t.Run("no run at all is window_closed", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+
+		requireRefusal(t, env, an.PlayerID, ReasonWindowClosed, 0)
+	})
+
+	t.Run("a run the presenter advanced past is window_closed", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		first := dutchFixture()
+		mustOpenDutchRun(t, env, first)
+		env.clock.t = env.clock.t.Add(3 * time.Second)
+		if _, refused, err := env.acceptDutch(an.PlayerID); err != nil || refused {
+			t.Fatalf("the first accept was refused: err = %v, refusal = %+v", err, refused)
+		}
+
+		mustUpsertItem(t, env, validDutchInput())
+		if err := env.engine.NextItem(); err != nil {
+			t.Fatalf("item.next after the settle: %v", err)
+		}
+		requireRefusal(t, env, an.PlayerID, ReasonWindowClosed, -1)
+	})
+}
+
+// TestAcceptDutchRaceHasExactlyOneWinner is DTCH-02's race drill: concurrent
+// accepts on one Dutch run produce exactly one winner, exactly one settle and
+// ONE revision increment, one private `already_sold` for every loser, and no
+// player charged twice.
+func TestAcceptDutchRaceHasExactlyOneWinner(t *testing.T) {
+	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+
+	names := []string{"An", "Bình", "Cường", "Dũng", "Em", "Phương"}
+	racers := len(names)
+	players := make([]JoinResult, racers)
+	for i, name := range names {
+		players[i] = mustJoin(t, env, name)
+	}
+
+	it := dutchFixture()
+	mustOpenDutchRun(t, env, it)
+	env.clock.t = env.clock.t.Add(3 * time.Second)
+	const wantPrice = int64(70_000)
+
+	revBefore := env.engine.Rev()
+	budgetBefore := env.player(t, players[0].PlayerID).budget
+
+	type outcome struct {
+		rejection BidRejection
+		refused   bool
+		err       error
+	}
+	outcomes := make([]outcome, racers)
+
+	var wg sync.WaitGroup
+	gate := make(chan struct{})
+	for i, p := range players {
+		wg.Add(1)
+		go func(i int, playerID string) {
+			defer wg.Done()
+			<-gate // every accept is in flight at the same moment
+			rejection, refused, err := env.acceptDutch(playerID)
+			outcomes[i] = outcome{rejection: rejection, refused: refused, err: err}
+		}(i, p.PlayerID)
+	}
+	close(gate)
+	wg.Wait()
+
+	winners, losers := 0, 0
+	for i, out := range outcomes {
+		var refused *BidRejectedError
+		switch {
+		case out.err == nil && !out.refused:
+			winners++
+		case errors.As(out.err, &refused) && out.refused && out.rejection.Reason == ReasonAlreadySold:
+			if out.rejection.Amount != wantPrice {
+				t.Errorf("racer %d: refusal amount = %d, want the derived %d", i, out.rejection.Amount, wantPrice)
+			}
+			losers++
+		default:
+			t.Errorf("racer %d: err = %v, refusal = %+v — want either a win or an explicit already_sold", i, out.err, out.rejection)
+		}
+	}
+	if winners != 1 {
+		t.Errorf("the race produced %d winner(s), want exactly 1 (DTCH-02: first accept wins)", winners)
+	}
+	if losers != racers-1 {
+		t.Errorf("the race produced %d already_sold refusal(s), want %d — every loser must be told explicitly", losers, racers-1)
+	}
+
+	// One settle: one revision increment and one accepted row.
+	if got := env.engine.Rev(); got != revBefore+1 {
+		t.Errorf("revision = %d across the race, want exactly one bump to %d", got, revBefore+1)
+	}
+	rows, err := env.store.LoadBids()
+	if err != nil {
+		t.Fatalf("loading the bid audit: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Kind != "accept" {
+		t.Fatalf("the race persisted %+v, want exactly one kind=accept row (D-98)", rows)
+	}
+	if rows[0].Amount != wantPrice {
+		t.Errorf("the accepted row holds %d, want the derived %d", rows[0].Amount, wantPrice)
+	}
+
+	// No double charge: the room's total is the starting sum plus ONE
+	// truth_value minus ONE price.
+	total := int64(0)
+	for _, p := range players {
+		total += env.player(t, p.PlayerID).budget
+	}
+	if want := budgetBefore*int64(racers) - wantPrice + it.truthValue; total != want {
+		t.Errorf("the room's budgets sum to %d, want %d: exactly one player pays", total, want)
+	}
+
+	run := env.runOf(t)
+	if run.settle == nil || run.settle.Outcome != "sold" || run.settle.Price != wantPrice {
+		t.Fatalf("the race's reveal is %+v, want sold at %d", run.settle, wantPrice)
+	}
+	if run.settle.Winner == nil {
+		t.Fatal("the race's reveal has no winner")
+	}
 }
