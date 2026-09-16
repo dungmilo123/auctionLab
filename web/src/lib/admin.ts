@@ -23,6 +23,7 @@ import type { AdminItem, AdminPlayer, Phase, PublicItem } from '@/ws/protocol'
 import { parseBidAmount } from './bid'
 import { formatVND } from './format'
 import type { CopyKey } from './i18n'
+import { isSealedAuction } from './screen'
 
 export const MAX_ITEM_NAME_RUNES = 80
 
@@ -106,15 +107,26 @@ export function visibleFields(
   }
 }
 
-/** A required field is one the server's own validation would refuse as absent. */
+/**
+ * A required field is one the server's own validation would refuse as absent.
+ *
+ * Phase 6 (D-107): `durationMs` is required for the two SEALED types as well —
+ * the field is already visible for a sealed row (`visibleFields`' `timed` flag)
+ * and the server's sealed arm refuses `duration_ms < 1`, so an empty box must
+ * report its own message and disable Save rather than round-trip into the
+ * generic `admin.actionRejected` row. `minIncrement` stays English-only: the
+ * form does not render it for a sealed row, so a rule there could only strand an
+ * invisible error.
+ */
 function isRequired(key: NumberField, fields: DraftFields): boolean {
   switch (key) {
     case 'truthValue':
     case 'startPrice':
       return true
     case 'minIncrement':
-    case 'durationMs':
       return fields.auctionType === 'english'
+    case 'durationMs':
+      return fields.auctionType === 'english' || isSealedAuction(fields.auctionType)
     case 'antiSnipeWindowMs':
       return fields.auctionType === 'english' && fields.antiSnipeMode === 'extend'
     default:
@@ -235,7 +247,12 @@ export function draftPayload(draft: EditorDraft): Record<string, unknown> {
     // loaded from another type). The server refuses the field outright; every
     // other type keeps the value it was shown (the sealed types are timed too).
     duration_ms: fields.auctionType === 'dutch' ? null : num('durationMs'),
-    anti_snipe_mode: fields.antiSnipeMode,
+    // D-107's mirror, the sealed twin of the line above: the anti-snipe control
+    // is invisible for a sealed row (`visibleFields` keeps it English-only), so
+    // a leftover `extend` — a draft loaded from an English item, or a type switch
+    // in the editor — would be an unfixable refusal. The payload emits the value
+    // the type can have; the server's sealed arm requires exactly `disabled`.
+    anti_snipe_mode: isSealedAuction(fields.auctionType) ? 'disabled' : fields.antiSnipeMode,
     anti_snipe_window_ms: num('antiSnipeWindowMs'),
     max_extensions: num('maxExtensions'),
   }
