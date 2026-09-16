@@ -312,7 +312,9 @@ function readPlayerMe(value: unknown): PlayerMe | null {
   }
   // `last_bid`/`is_top_bidder` are Phase 3's additive keys (D-67): a row that
   // predates them reads as "never bid", never as a rejection. `rank` (D-89) is
-  // the same shape — its decode lands in the GREEN commit.
+  // the same shape of additive key.
+  const rank = readRank(value.rank)
+  if (rank === null) return null
   return {
     id,
     nickname,
@@ -321,8 +323,23 @@ function readPlayerMe(value: unknown): PlayerMe | null {
     connected,
     lastBid: readInt(value.last_bid),
     isTopBidder: value.is_top_bidder === true,
-    rank: 0,
+    rank,
   }
+}
+
+/**
+ * Read `me.rank` (D-89/ECON-05). The key is always present on the Phase-4 wire
+ * as a plain int, so a row that predates it reads as 0 — "no standing", the
+ * value the finale body omits the block for — exactly the way a missing
+ * `last_bid` reads as "never bid". A rank that IS present but is not a
+ * non-negative integer (a string, a negative, a fraction, a null, a
+ * non-finite) is a malformed projection, so the whole `me` row is rejected
+ * rather than silently reporting "unranked" for a ranked player.
+ */
+function readRank(value: unknown): number | null {
+  if (value === undefined) return 0
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null
+  return value
 }
 
 function readLobby(value: unknown): LobbyEntry[] | null {
@@ -649,10 +666,12 @@ export function readPhaseChanged(data: unknown): PhaseChanged | null {
 }
 
 /**
- * Decode the admin `state.snapshot` (D-64/D-66): the catalog the presenter
- * edits, the current item and the shared public lists. The player/sealed-bid
- * rows are deliberately NOT decoded — the Phase-3 panel renders neither, and a
- * typed model that cannot express a token cannot leak one (T-03-10).
+ * Decode the admin `state.snapshot` (D-64/D-66/D-80/D-81/D-83): the catalog the
+ * presenter edits, their own row set, the persisted config, the two halves of
+ * the Join URLs panel, the current item and the shared public lists. The sealed
+ * bids are deliberately NOT decoded — Phase 6 owns that panel and the Phase-3/4
+ * one renders neither, so a typed model that cannot express a sealed amount
+ * cannot leak one (T-03-10/T-04-04).
  */
 export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   if (!isRecord(data)) return null
@@ -661,7 +680,21 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   const serverTs = readInt(data.server_ts)
   const items = readAdminItems(data.items)
   const lobby = readLobby(data.lobby)
-  if (phase === null || revision === null || serverTs === null || items === null || lobby === null) {
+  const config = readAdminConfig(data.config)
+  const players = readAdminPlayers(data.players)
+  const joinUrls = readJoinUrls(data.join_urls)
+  const selectedJoinUrl = readString(data.selected_join_url)
+  if (
+    phase === null ||
+    revision === null ||
+    serverTs === null ||
+    items === null ||
+    lobby === null ||
+    config === null ||
+    players === null ||
+    joinUrls === null ||
+    selectedJoinUrl === null
+  ) {
     return null
   }
   const item = readPublicItem(data.item)
@@ -674,13 +707,78 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     item,
     lobby,
     leaderboard: readLeaderboard(data.leaderboard),
-    // RED sentinels: the presenter rows and the two URL halves are declared,
-    // their decode lands in the GREEN commit.
-    config: { startingBudget: 0, currency: '' },
-    players: [],
-    joinUrls: [],
-    selectedJoinUrl: '',
+    config,
+    players,
+    joinUrls,
+    selectedJoinUrl,
   }
+}
+
+/** Decode the persisted config the Setup tab edits (D-81). */
+function readAdminConfig(value: unknown): AdminConfig | null {
+  if (!isRecord(value)) return null
+  const startingBudget = readInt(value.starting_budget)
+  const currency = readString(value.currency)
+  if (startingBudget === null || currency === null) return null
+  return { startingBudget, currency }
+}
+
+/**
+ * Decode the presenter's player rows, narrow by construction: `token` and
+ * `nickname_key` are on the wire and are simply not fields of this model, so
+ * the Players tab cannot render, copy or spread a secret it never received
+ * (T-04-04). ONE ill-typed row rejects the snapshot, the same rule the catalog
+ * follows: the panel renders the list as a whole, and the server's rows are
+ * always well-formed.
+ */
+function readAdminPlayers(value: unknown): AdminPlayer[] | null {
+  if (!Array.isArray(value)) return null
+  const players: AdminPlayer[] = []
+  for (const raw of value) {
+    const player = readAdminPlayer(raw)
+    if (player === null) return null
+    players.push(player)
+  }
+  return players
+}
+
+function readAdminPlayer(value: unknown): AdminPlayer | null {
+  if (!isRecord(value)) return null
+  const id = readString(value.id)
+  const nickname = readString(value.nickname)
+  const budget = readInt(value.budget)
+  const totalValue = readInt(value.total_value)
+  const joinedAt = readInt(value.joined_at)
+  const lastSeenAt = readInt(value.last_seen_at)
+  const connected = typeof value.connected === 'boolean' ? value.connected : null
+  if (
+    id === null ||
+    nickname === null ||
+    budget === null ||
+    totalValue === null ||
+    joinedAt === null ||
+    lastSeenAt === null ||
+    connected === null
+  ) {
+    return null
+  }
+  return { id, nickname, budget, totalValue, joinedAt, lastSeenAt, connected }
+}
+
+/**
+ * Decode the boot-time join-URL candidates (D-83). Every entry is a string; the
+ * list may be empty (the "this page's URL" fallback is a client-side row), and
+ * the client never re-ranks it — the wire order is the rank order.
+ */
+function readJoinUrls(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null
+  const urls: string[] = []
+  for (const raw of value) {
+    const url = readString(raw)
+    if (url === null) return null
+    urls.push(url)
+  }
+  return urls
 }
 
 /**

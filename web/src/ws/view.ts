@@ -201,13 +201,15 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         item: snapshot.item,
         items: snapshot.items,
         live: overlayFrom(snapshot.item, snapshot.serverTs),
-        joinUrl: '',
+        // The QR is built from the SELECTED url, whichever role supplied it —
+        // the admin's `selected_join_url` is the same fact as the screen's
+        // `join_url` (D-84/D-85).
+        joinUrl: snapshot.selectedJoinUrl,
         recentBids: [],
         sealedProgress: null,
-        // RED sentinels: the presenter rows land in the GREEN commit.
-        config: null,
-        players: [],
-        joinUrls: [],
+        config: snapshot.config,
+        players: snapshot.players,
+        joinUrls: snapshot.joinUrls,
       }
     }
 
