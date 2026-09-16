@@ -118,18 +118,32 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
   // of those four (05-UI-SPEC §ACCEPT, research Pitfall 14).
   const [submitted, setSubmitted] = useState<string | null>(null)
 
-  // Defensive gate: `PlayerView` routes a Dutch item here, and the decoder
-  // refuses a Dutch LIVE payload without its mechanics — so this body renders
-  // the sealed types' pending sentence rather than a price it could not derive.
-  if (item === null || live === null || me === null || item.auctionType !== 'dutch') {
+  // Defensive gate: `PlayerView` routes a Dutch item here, and every admitted
+  // Dutch LIVE payload carries its mechanics — a snapshot through
+  // `itemMatchesPhase`, and an `item.*` event through the same predicate in
+  // `reduceView` (WR-03). The gate names those fields anyway, so this body
+  // renders the sealed types' pending sentence rather than a price it could not
+  // derive — the `?? 0` fallbacks below are gone because a fallback would print
+  // a number the server is not charging and disable the CTA behind it.
+  if (
+    item === null ||
+    live === null ||
+    me === null ||
+    item.auctionType !== 'dutch' ||
+    item.currentPrice === null ||
+    item.startedAt === null ||
+    item.floorPrice === null ||
+    item.decrementStep === null ||
+    item.decrementIntervalMs === null
+  ) {
     return <PendingLive item={item} live={live} />
   }
 
   const mechanics = {
     startPrice: item.startPrice,
-    floorPrice: item.floorPrice ?? 0,
-    decrementStep: item.decrementStep ?? 0,
-    decrementIntervalMs: item.decrementIntervalMs ?? 0,
+    floorPrice: item.floorPrice,
+    decrementStep: item.decrementStep,
+    decrementIntervalMs: item.decrementIntervalMs,
   }
   // The player's own row, read once: the gate above proved it is there.
   const budget = me.budget

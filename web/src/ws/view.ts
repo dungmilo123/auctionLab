@@ -44,7 +44,7 @@ import type {
   ScreenSnapshot,
   SealedProgress,
 } from './protocol'
-import { isPhase } from './protocol'
+import { isPhase, itemMatchesPhase } from './protocol'
 
 /** The LIVE overlay (D-60/D-67): the values the bid controls are rendered from. */
 export type LiveOverlay = {
@@ -144,6 +144,27 @@ const ITEM_EVENT_PHASE: Readonly<Record<ItemEventType, Phase>> = {
   'item.intro': 'ITEM_INTRO',
   'item.live': 'LIVE',
   'item.settled': 'LIVE',
+}
+
+/**
+ * The phase whose §Phase-body totality rules an item event's PAYLOAD must
+ * satisfy — `itemMatchesPhase`, the very predicate a snapshot is admitted
+ * through. It differs from `ITEM_EVENT_PHASE` only for `item.settled`, whose
+ * payload is already the settled item the reveal belongs to while the view that
+ * receives it is still LIVE.
+ *
+ * Without this check, "an event can never patch the view into a body a snapshot
+ * would have been rejected for" was an assumption: Phase 5 is the first phase
+ * whose body DERIVES a number from the payload (the Dutch price clock), and an
+ * `item.live` frame carrying only some of those fields would pin the phone's
+ * price and its ACCEPT predicate on a number the server is not charging
+ * (WR-03). The decoder has already dropped everything it can prove invalid —
+ * this is the phase-aware half only the reducer can decide.
+ */
+const ITEM_EVENT_PAYLOAD_PHASE: Readonly<Record<ItemEventType, Phase>> = {
+  'item.intro': 'ITEM_INTRO',
+  'item.live': 'LIVE',
+  'item.settled': 'SETTLED',
 }
 
 /**
@@ -263,6 +284,11 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
     case 'item': {
       if (state.phase !== ITEM_EVENT_PHASE[frame.type]) return null
       if (state.item === null || state.item.id !== frame.item.id) return null
+      // The payload goes through the SAME totality predicate a snapshot does:
+      // the body this event is about to patch renders from fields the payload
+      // must therefore carry (Phase 5's Dutch arm derives its price from them),
+      // and a snapshot missing any of them would have been refused outright.
+      if (!itemMatchesPhase(ITEM_EVENT_PAYLOAD_PHASE[frame.type], frame.item)) return null
       return {
         ...state,
         item: frame.item,

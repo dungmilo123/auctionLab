@@ -498,6 +498,53 @@ describe('phase.changed and the item events (Q3)', () => {
     expect(reduceView(live(), { kind: 'item', type: 'item.live', item: other, ts: TS })).toBeNull()
   })
 
+  it('refuses an item.live payload a snapshot would have been refused for (WR-03)', () => {
+    // A complete Dutch LIVE payload — the only shape the decoder and the
+    // projector ever admit — seeds the view.
+    const dutch = publicItem({
+      auctionType: 'dutch',
+      currentPrice: 100_000,
+      topBidder: null,
+      minNextBid: null,
+      deadlineAt: null,
+      startedAt: TS,
+      floorPrice: 40_000,
+      decrementStep: 10_000,
+      decrementIntervalMs: 1_000,
+    })
+    const state = applied(initialViewState(), {
+      kind: 'player-snapshot',
+      snapshot: playerSnapshot({ item: dutch }),
+    })
+
+    // The event's payload lost the mechanics the Dutch body derives its price
+    // and its ACCEPT predicate from: reducing it would fall back to `?? 0` and
+    // pin the phone on a number the server is not charging.
+    const broken = publicItem({
+      ...dutch,
+      floorPrice: null,
+      decrementStep: null,
+      decrementIntervalMs: null,
+    })
+    expect(reduceView(state, { kind: 'item', type: 'item.live', item: broken, ts: TS })).toBeNull()
+
+    // Nor may an event hand a Dutch item the deadline the type cannot have —
+    // CR-01's freeze arrived through exactly this shape.
+    const withDeadline = publicItem({ ...dutch, deadlineAt: TS + 30_000 })
+    expect(reduceView(state, { kind: 'item', type: 'item.live', item: withDeadline, ts: TS })).toBeNull()
+
+    // The gate is not a blanket refusal: the complete payload still patches.
+    const patched = applied(state, { kind: 'item', type: 'item.live', item: dutch, ts: TS })
+    expect(patched.item?.floorPrice).toBe(40_000)
+  })
+
+  it('refuses an item.settled payload that carries no reveal', () => {
+    // SETTLED is the phase whose totality the payload must satisfy: a settled
+    // item with no reveal would paint a reveal body with a hole in it.
+    const noReveal = publicItem({ status: 'settled', minNextBid: null, settle: null })
+    expect(reduceView(live(), { kind: 'item', type: 'item.settled', item: noReveal, ts: TS })).toBeNull()
+  })
+
   it('ignores a phase.changed that names no known phase', () => {
     expect(
       reduceView(live(), {

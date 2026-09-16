@@ -462,8 +462,13 @@ function readPhase(value: unknown): Phase | null {
  * snapshot's phase always carries what its body renders. `settle` may exist
  * only at SETTLED — a settle object on any other phase is the leak boundary
  * itself (D-67), so it is rejected rather than ignored.
+ *
+ * Exported because `reduceView` applies the SAME predicate to every `item.*`
+ * event's payload, so an event can never patch the view into a body a snapshot
+ * would have been rejected for (WR-03). A caller that knows the phase whose
+ * totality an item must satisfy is the only kind of caller this has.
  */
-function itemMatchesPhase(phase: Phase, item: PublicItem | null): boolean {
+export function itemMatchesPhase(phase: Phase, item: PublicItem | null): boolean {
   switch (phase) {
     case 'LOBBY':
     case 'FINALE':
