@@ -176,6 +176,40 @@ describe('the item draft (D-82b)', () => {
     const sealed = draftPayload(filled({ auctionType: 'sealed_first', minIncrement: '', durationMs: '45000' }))
     expect(sealed.duration_ms).toBe(45_000)
   })
+
+  it('requires a duration for both sealed types, exactly as the server does (D-107)', () => {
+    // The sealed arm of `validateItemInput` refuses `duration_ms < 1`, and the
+    // field IS visible for a sealed row (`visibleFields`' `timed` flag) — so an
+    // empty box must report its own message and disable Save rather than
+    // round-trip into the generic `admin.actionRejected` row.
+    for (const auctionType of ['sealed_first', 'vickrey'] as const) {
+      const empty = filled({ auctionType, minIncrement: '', durationMs: '' })
+      expect(validateDraft(empty).durationMs).toBe('admin.err.positive')
+      expect(draftValid(empty)).toBe(false)
+      // The same row with a duration is valid: the rule is the duration alone.
+      expect(draftValid(filled({ auctionType, minIncrement: '', durationMs: '45000' }))).toBe(true)
+    }
+  })
+
+  it('sends anti_snipe_mode disabled for a sealed payload, whatever the draft carries (D-107)', () => {
+    // D-93's Dutch mirror, applied to the other type-specific field: the
+    // anti-snipe control is invisible for a sealed row (`visibleFields` keeps it
+    // English-only), so an inherited `extend` would be an unfixable refusal —
+    // the payload emits the value the type can have.
+    const sealed = draftPayload(
+      filled({ auctionType: 'sealed_first', minIncrement: '', antiSnipeMode: 'extend', durationMs: '45000' }),
+    )
+    expect(sealed.anti_snipe_mode).toBe('disabled')
+    const vickrey = draftPayload(
+      filled({ auctionType: 'vickrey', minIncrement: '', antiSnipeMode: 'extend', durationMs: '45000' }),
+    )
+    expect(vickrey.anti_snipe_mode).toBe('disabled')
+
+    // Every other type still sends what the presenter set (the English control
+    // is the one that renders).
+    expect(draftPayload(filled({ antiSnipeMode: 'extend' })).anti_snipe_mode).toBe('extend')
+    expect(draftPayload(filled({ antiSnipeMode: 'disabled' })).anti_snipe_mode).toBe('disabled')
+  })
 })
 
 describe('the socket gate (D-82a)', () => {
