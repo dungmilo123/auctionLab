@@ -434,9 +434,10 @@ func TestAdminJoinAuthorization(t *testing.T) {
 // TestAdminReset pins D-78/ADMN-03 at the transport edge: `admin.game.reset` is
 // routed for an authorized admin only, `keep_players` returns a played room to
 // LOBBY through one revision without touching a socket, and `clear_players`
-// deletes the room and then closes every player connection with the dedicated
-// session-ended code — after the commit, never before it, and never with the
-// supersede code a phone would read as "another device took over".
+// deletes the room and then closes the sockets of exactly the identities that
+// commit deleted, with the dedicated session-ended code — after the commit,
+// never before it, and never with the supersede code a phone would read as
+// "another device took over".
 func TestAdminReset(t *testing.T) {
 	t.Run("keep_players returns the room to LOBBY and keeps every socket", func(t *testing.T) {
 		h, engine := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
@@ -549,6 +550,22 @@ func TestAdminReset(t *testing.T) {
 		}
 		if code := readCloseCode(t, binh); code != 4002 {
 			t.Errorf("the second cleared player observed close code %d, want 4002", code)
+		}
+
+		// The close set is the ids THIS commit deleted, never "every connection
+		// that is a player when the loop runs" (WR-03): a phone that joins after
+		// the reset is a brand-new row the commit never touched, so its socket
+		// stays — and a resync on it answers (a closed socket would end the
+		// read). Reintroducing the role-wide sweep would kick this identity
+		// while its row survived, and CR-01 would then land it on a join form
+		// whose nickname its own row still holds.
+		late := dialWS(t, h)
+		lateHello, _ := join(t, late, `{"type":"join","role":"player","nickname":"Cuong"}`)
+		lateID := frameString(t, frameData(t, lateHello), "player")
+
+		writeFrame(t, late, `{"type":"resync"}`)
+		if got := meOf(t, readType(t, late, TypeStateSnapshot)).ID; got != lateID {
+			t.Errorf("the late joiner's own snapshot carries id %q, want %q: its socket was closed with the cleared room", got, lateID)
 		}
 	})
 

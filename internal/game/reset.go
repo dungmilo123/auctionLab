@@ -26,8 +26,9 @@ const (
 	// `config.starting_budget` with `total_value` back to 0.
 	ResetKeepPlayers ResetMode = "keep_players"
 	// ResetClearPlayers does everything keep_players does and deletes every
-	// player row as well; the hub answers that by closing the players' sockets,
-	// so their devices land back on the join form.
+	// player row as well; the hub answers that by closing the sockets of exactly
+	// the identities this commit deleted, so their devices land back on the join
+	// form while a phone that joined after the commit keeps its socket.
 	ResetClearPlayers ResetMode = "clear_players"
 )
 
@@ -52,6 +53,21 @@ func releasedToken(playerID string) string { return releasedTokenPrefix + player
 // treats the row as claimable.
 func isReleasedToken(token string) bool { return strings.HasPrefix(token, releasedTokenPrefix) }
 
+// ResetResult reports what one `admin.game.reset` did.
+type ResetResult struct {
+	// Changed reports whether the command committed. A keep_players reset of an
+	// already-fresh lobby is D-78's no-op: nothing is persisted, nothing is
+	// fanned out, and the transport edge answers the presenter's own connection
+	// instead — the panel's in-flight flag is derived from a snapshot.
+	Changed bool
+	// Cleared lists the player ids the commit deleted (clear_players only), in
+	// the order the committed state held them. The hub ends exactly these
+	// sockets: it reads a registry snapshot, so "every connection that is a
+	// player by now" would also close a phone that joined while the presenter
+	// was clicking Reset — a new row this commit never touched.
+	Cleared []string
+}
+
 // Reset is `admin.game.reset {mode}` (D-78): ONE applyLocked mutation that
 // removes the bid trail, the sealed bids and the runtime rows, restores every
 // budget, puts every item back to `pending`, clears the current item and returns
@@ -62,19 +78,17 @@ func isReleasedToken(token string) bool { return strings.HasPrefix(token, releas
 // An unknown mode is refused before anything is touched, so the closed
 // vocabulary is the validator (T-04-03).
 //
-// The bool reports whether the command WROTE. A keep_players reset of an
-// already-fresh lobby is D-78's no-op: it commits nothing and fans out nothing
-// (asserted by TestResetPhaseEdges), and the transport edge needs to know that
-// silence so it can answer the presenter's own connection instead of leaving
-// the panel's in-flight flag waiting for a frame that will never come.
-func (e *Engine) Reset(mode ResetMode) (changed bool, err error) {
+// The result carries the two facts the transport edge cannot derive from the
+// frame stream: whether the command wrote at all, and — when it did — exactly
+// which identities it deleted.
+func (e *Engine) Reset(mode ResetMode) (ResetResult, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	switch mode {
 	case ResetKeepPlayers, ResetClearPlayers:
 	default:
-		return false, fmt.Errorf("game: reset mode %q is not one of keep_players|clear_players", mode)
+		return ResetResult{}, fmt.Errorf("game: reset mode %q is not one of keep_players|clear_players", mode)
 	}
 
 	// D-78: keep_players over an already-fresh lobby repairs nothing, so it
@@ -83,15 +97,25 @@ func (e *Engine) Reset(mode ResetMode) (changed bool, err error) {
 	// is deliberately exempt, because a lobby full of phones has a room to clear
 	// even though no item has played.
 	if mode == ResetKeepPlayers && e.state.resetIsNoOp() {
-		return false, nil
+		return ResetResult{}, nil
 	}
 
+	var result ResetResult
 	if err := e.applyLocked(func(s *state) error {
-		return s.resetLocked(mode)
+		if err := s.resetLocked(mode); err != nil {
+			return err
+		}
+		// The ids the store is about to delete, read from the same
+		// scratch-vs-committed diff applyLocked uses for the DeletedPlayers
+		// write set, so the sockets the hub ends are exactly the rows this
+		// commit removed — not "whoever is a player when the loop runs".
+		result.Cleared = s.deletedPlayers(e.state)
+		return nil
 	}, true, nil); err != nil {
-		return false, err
+		return ResetResult{}, err
 	}
-	return true, nil
+	result.Changed = true
+	return result, nil
 }
 
 // resetIsNoOp reports whether the committed state is already exactly what a

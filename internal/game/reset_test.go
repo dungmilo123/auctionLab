@@ -230,12 +230,15 @@ func TestResetKeepPlayers(t *testing.T) {
 	events, revs := env.publishedFrames()
 
 	// --- the reset -----------------------------------------------------------
-	wrote, err := env.engine.Reset(ResetKeepPlayers)
+	result, err := env.engine.Reset(ResetKeepPlayers)
 	if err != nil {
 		t.Fatalf("Reset(keep_players): %v", err)
 	}
-	if !wrote {
+	if !result.Changed {
 		t.Error("Reset(keep_players) over a played room reported no write; the transport edge answers no-ops from that flag")
+	}
+	if result.Cleared != nil {
+		t.Errorf("Reset(keep_players) reported cleared ids %v; it keeps every identity", result.Cleared)
 	}
 
 	if got := env.engine.Rev(); got != revBefore+1 {
@@ -399,10 +402,17 @@ func TestResetClearPlayers(t *testing.T) {
 	revBefore := env.engine.Rev()
 	events, revs := env.publishedFrames()
 
-	if wrote, err := env.engine.Reset(ResetClearPlayers); err != nil {
+	if result, err := env.engine.Reset(ResetClearPlayers); err != nil {
 		t.Fatalf("Reset(clear_players): %v", err)
-	} else if !wrote {
-		t.Error("Reset(clear_players) reported no write; a lobby full of phones has a room to clear")
+	} else {
+		if !result.Changed {
+			t.Error("Reset(clear_players) reported no write; a lobby full of phones has a room to clear")
+		}
+		// The ids the hub has to close are the ones THIS commit deleted, in the
+		// order the committed state held them (WR-03).
+		if got := strings.Join(result.Cleared, ","); got != an.PlayerID+","+binh.PlayerID {
+			t.Errorf("Reset(clear_players) reported cleared ids %q, want %q", got, an.PlayerID+","+binh.PlayerID)
+		}
 	}
 
 	if got := env.engine.Rev(); got != revBefore+1 {
@@ -454,10 +464,17 @@ func TestResetClearPlayers(t *testing.T) {
 
 	revBefore = env.engine.Rev()
 	events, revs = env.publishedFrames()
-	if wrote, err := env.engine.Reset(ResetClearPlayers); err != nil {
+	if result, err := env.engine.Reset(ResetClearPlayers); err != nil {
 		t.Fatalf("clear_players in LOBBY: %v", err)
-	} else if !wrote {
-		t.Error("clear_players in LOBBY reported no write: the phones joined, so there is something to clear")
+	} else {
+		if !result.Changed {
+			t.Error("clear_players in LOBBY reported no write: the phones joined, so there is something to clear")
+		}
+		// The two phones that joined AFTER the first reset are exactly the ones
+		// this commit deletes — a second clear_players must name them too.
+		if got := strings.Join(result.Cleared, ","); got != two.PlayerID+","+three.PlayerID {
+			t.Errorf("cleared ids = %q, want %q", got, two.PlayerID+","+three.PlayerID)
+		}
 	}
 	if got := env.engine.Rev(); got != revBefore+1 {
 		t.Errorf("revision after a LOBBY clear_players = %d, want %d: the phones joined, so there is something to clear", got, revBefore+1)
@@ -493,12 +510,12 @@ func TestResetPhaseEdges(t *testing.T) {
 	phaseBefore := env.engine.Phase()
 	events, revs := env.publishedFrames()
 
-	wrote, err := env.engine.Reset(ResetMode("reset_everything"))
+	result, err := env.engine.Reset(ResetMode("reset_everything"))
 	if err == nil {
 		t.Fatal("Reset(reset_everything) was accepted; the mode vocabulary must be closed")
 	}
-	if wrote {
-		t.Error("a refused mode reported a write; nothing was committed")
+	if result.Changed || result.Cleared != nil {
+		t.Error("a refused mode reported work; nothing was committed")
 	}
 	if !strings.Contains(err.Error(), "reset_everything") {
 		t.Errorf("refusal %q does not name the rejected mode, so the presenter cannot act on it", err)
@@ -534,9 +551,9 @@ func TestResetPhaseEdges(t *testing.T) {
 		t.Fatalf("phase before the FINALE reset = %q, want FINALE", got)
 	}
 
-	if wrote, err := env.engine.Reset(ResetKeepPlayers); err != nil {
+	if result, err := env.engine.Reset(ResetKeepPlayers); err != nil {
 		t.Fatalf("Reset(keep_players) from FINALE: %v", err)
-	} else if !wrote {
+	} else if !result.Changed {
 		t.Error("Reset(keep_players) from FINALE reported no write; a played game has a timeline to clear")
 	}
 	if got := env.engine.Phase(); got != PhaseLobby {
@@ -554,12 +571,12 @@ func TestResetPhaseEdges(t *testing.T) {
 	// --- a keep_players reset of an already-fresh lobby is a no-op ----------
 	revBefore = env.engine.Rev()
 	events, revs = env.publishedFrames()
-	wrote, err = env.engine.Reset(ResetKeepPlayers)
+	result, err = env.engine.Reset(ResetKeepPlayers)
 	if err != nil {
 		t.Fatalf("Reset(keep_players) in LOBBY: %v", err)
 	}
-	if wrote {
-		t.Error("a no-op keep_players reset reported a write; nothing was committed")
+	if result.Changed || result.Cleared != nil {
+		t.Error("a no-op keep_players reset reported work; nothing was committed")
 	}
 	if got := env.engine.Rev(); got != revBefore {
 		t.Errorf("revision after a LOBBY keep_players reset = %d, want the unchanged %d: there is nothing to reset, so there is nothing to persist", got, revBefore)

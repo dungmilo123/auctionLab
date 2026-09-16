@@ -493,22 +493,12 @@ func (h *Hub) endSession(c *client) {
 	c.close()
 }
 
-// endPlayerSessions ends every connection holding a PLAYER identity — the
-// clear_players half of D-78, where the committed reset already deleted the rows.
-// The registry read is lock-free (a registry snapshot), and neither this call
-// nor the closes it performs takes the engine's lock.
-func (h *Hub) endPlayerSessions() {
-	for _, c := range h.registry.snapshot() {
-		if c.role() == RolePlayer {
-			h.endSession(c)
-		}
-	}
-}
-
-// endPlayerSession ends the one connection holding playerID, if there is one —
-// D-80's release. An identity with no live socket is a no-op: the durable half
-// of a release is the token write, which the engine has already committed, and
-// the presenter may well be releasing a phone that is already gone.
+// endPlayerSession ends the one connection holding playerID, if there is one. It
+// is the single "this identity's device must notice" primitive: D-80's release,
+// and D-78's clear_players once per id the commit deleted. An identity with no
+// live socket is a no-op — the durable half of a release is the token write,
+// which the engine has already committed, and a cleared row's phone may well
+// have dropped off the network before the presenter clicked.
 func (h *Hub) endPlayerSession(playerID string) {
 	if c := h.registry.lookup(playerID); c != nil {
 		h.endSession(c)

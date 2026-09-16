@@ -358,10 +358,11 @@ func amountFromLiteral(raw json.RawMessage) int64 {
 // reading a dev console — the UI maps the CODE to its copy and never renders
 // the server's text (UI-SPEC §Copywriting).
 //
-// Two commands end sockets after a successful commit — clear_players ends every
-// player connection (D-78) and release ends one (D-80) — and both do it AFTER
-// the engine returned, i.e. outside engine.mu: ending a session is a deliberate,
-// bounded act on a socket, not part of the fan-out.
+// Two commands end sockets after a successful commit — clear_players ends the
+// connections whose rows the commit deleted (D-78) and release ends the one
+// connection holding the named id (D-80) — and both do it AFTER the engine
+// returned, i.e. outside engine.mu: ending a session is a deliberate, bounded
+// act on a socket, not part of the fan-out.
 func (c *client) handleAdmin(in inbound) {
 	if c.role() != RoleAdmin {
 		c.sendError(CodeNotAuthorized, "admin commands need the admin role")
@@ -396,17 +397,25 @@ func (c *client) handleAdmin(in inbound) {
 			c.sendError(CodeBadMessage, "admin.game.reset needs mode keep_players|clear_players")
 			return
 		}
-		changed, resetErr := c.hub.engine.Reset(mode)
+		result, resetErr := c.hub.engine.Reset(mode)
 		err = resetErr
 		if err == nil {
 			if mode == game.ResetClearPlayers {
-				// D-78: the rows are gone and the commit has landed, so every phone
-				// still holding one is sent back to the join form — with the
+				// D-78: the rows are gone and the commit has landed, so the
+				// phones that held them are sent back to the join form — with the
 				// session-ended code, never 4001 (a player would read that as
 				// "another device took my identity").
-				c.hub.endPlayerSessions()
+				//
+				// Only the ids THIS commit deleted: the registry is read
+				// lock-free, outside the engine lock, so a phone that taps Join
+				// while the loop runs is a brand-new row the reset never touched,
+				// and closing "every player connection" would kick a valid
+				// identity (WR-03).
+				for _, id := range result.Cleared {
+					c.hub.endPlayerSession(id)
+				}
 			}
-			if !changed {
+			if !result.Changed {
 				// D-78's no-op (a keep_players reset of an already-fresh lobby)
 				// fans out nothing, so the presenter's panel would keep waiting
 				// for the snapshot its in-flight flag is derived from. Answer
