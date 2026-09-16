@@ -1127,3 +1127,218 @@ func TestLeaderboardTieBreak(t *testing.T) {
 		}
 	})
 }
+
+// finaleFixture drives one real engine to FINALE: players on the starting budget
+// (nobody bids, so every economics key ties and the standing is decided by
+// joined_at), one item that runs and settles, then the `admin.item.next` that
+// finds nothing pending left. It returns the engine and the finale-transition
+// event list, so a case can assert on what the room actually published. The path
+// is the caller's, because the restart case reopens the SAME file.
+func finaleFixture(t *testing.T, path string, clock *testClock) (*testEnv, []Event) {
+	t.Helper()
+
+	env := newTestEnvAt(t, path, clock)
+	mustJoin(t, env, "An")
+	env.clock.t = env.clock.t.Add(1 * time.Second)
+	mustJoin(t, env, "Bình")
+
+	itemID := mustUpsertItem(t, env, validEnglishInput())
+	mustOpenLive(t, env, itemID)
+	if err := env.engine.ForceEnd(); err != nil {
+		t.Fatalf("ForceEnd: %v", err)
+	}
+	if err := env.engine.NextItem(); err != nil {
+		t.Fatalf("NextItem into FINALE: %v", err)
+	}
+	if got := env.engine.Phase(); got != PhaseFinale {
+		t.Fatalf("phase = %q after the last item, want FINALE", got)
+	}
+	return env, env.lastEvents()
+}
+
+// equalLeaderRow reports whether two decoded standing rows carry the same rank
+// and the same public numbers. The podium is a SLICE of the standings, so any
+// drift between them is a second ranking rule — which is exactly what ECON-05
+// forbids.
+func equalLeaderRow(a, b map[string]any) bool {
+	for _, key := range []string{"rank", "nickname", "total_value", "budget"} {
+		if a[key] != b[key] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestFinaleProjection is D-89/ECON-05 at the engine: the FINALE transition
+// publishes one `finale` payload — the top three of the ONE standing plus the
+// complete standing — beside the phase frame and the snapshot, the snapshot a
+// late joiner or a resync reads derives the same podium from its own
+// leaderboard, and a zero-player finale is an empty podium rather than an
+// invented placement. The wire literal "finale" is asserted instead of the Go
+// constant on purpose: a rename of an identifier must not be able to move the
+// protocol silently (the freeze file's rule).
+func TestFinaleProjection(t *testing.T) {
+	t.Run("the FINALE transition emits the podium, the standings and the snapshot", func(t *testing.T) {
+		env, events := finaleFixture(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart})
+
+		if len(events) != 3 || events[0].Type != EventPhaseChanged || events[1].Type != "finale" || events[2].Type != EventSnapshot {
+			t.Fatalf("entering FINALE emitted %+v, want phase.changed, finale then snapshot (the snapshot stays last)", events)
+		}
+		doc := decodeObject(t, events[1].Data)
+		assertNoSecrets(t, "finale", doc)
+
+		standings := asArray(t, doc["standings"], "standings")
+		podium := asArray(t, doc["podium"], "podium")
+		if len(standings) != 2 {
+			t.Fatalf("standings has %d entries, want every player (2)", len(standings))
+		}
+		if len(podium) != 2 {
+			t.Fatalf("podium has %d entries, want the min(3, players) top of the standing", len(podium))
+		}
+
+		wantOrder := []string{"An", "Bình"}
+		for i, entry := range standings {
+			row := asObject(t, entry, "standings entry")
+			assertKeySet(t, "standings entry", row, "rank", "nickname", "total_value", "budget")
+			if row["nickname"] != wantOrder[i] || row["rank"] != float64(i+1) {
+				t.Errorf("standings[%d] = %#v, want %q at rank %d (joined_at ASC when the economics tie)", i, row, wantOrder[i], i+1)
+			}
+		}
+		for i, entry := range podium {
+			if !equalLeaderRow(asObject(t, entry, "podium entry"), asObject(t, standings[i], "standings entry")) {
+				t.Errorf("podium[%d] = %#v, want the first %d rows of the same standing", i, entry, len(podium))
+			}
+		}
+
+		// The snapshot is the healing path: a projector that resyncs or arrives
+		// after the finale derives the identical podium from its own leaderboard.
+		snap := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+		assertNoSecrets(t, "finale screen", snap)
+		board := asArray(t, snap["leaderboard"], "leaderboard")
+		if len(board) != len(standings) {
+			t.Fatalf("the FINALE snapshot carries %d standings, want %d", len(board), len(standings))
+		}
+		for i, entry := range podium {
+			if !equalLeaderRow(asObject(t, entry, "podium entry"), asObject(t, board[i], "snapshot leaderboard entry")) {
+				t.Errorf("podium[%d] = %#v, want the snapshot's own row %#v: one ranking rule, two delivery paths", i, entry, board[i])
+			}
+		}
+	})
+
+	t.Run("a third and fourth player exercise the three-row podium cap and the id rung", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		an := mustJoin(t, env, "An")
+		env.clock.t = testStart.Add(1 * time.Second)
+		binh := mustJoin(t, env, "Bình")
+		env.clock.t = testStart.Add(2 * time.Second)
+		cuong := mustJoin(t, env, "Cường")
+		dung := mustJoin(t, env, "Dung") // the SAME instant as Cường
+
+		itemID := mustUpsertItem(t, env, validEnglishInput())
+		mustOpenLive(t, env, itemID)
+		if err := env.engine.ForceEnd(); err != nil {
+			t.Fatalf("ForceEnd: %v", err)
+		}
+		if err := env.engine.NextItem(); err != nil {
+			t.Fatalf("NextItem into FINALE: %v", err)
+		}
+
+		doc := decodeObject(t, env.lastEvents()[1].Data)
+		standings := asArray(t, doc["standings"], "standings")
+		podium := asArray(t, doc["podium"], "podium")
+		if len(podium) != 3 {
+			t.Fatalf("podium has %d entries with four players, want the cap at three", len(podium))
+		}
+		if len(standings) != 4 {
+			t.Fatalf("standings has %d entries, want all four players", len(standings))
+		}
+
+		wantOrder := []string{"An", "Bình"}
+		if cuong.PlayerID < dung.PlayerID {
+			wantOrder = append(wantOrder, "Cường", "Dung")
+		} else {
+			wantOrder = append(wantOrder, "Dung", "Cường")
+		}
+		for i, entry := range standings {
+			row := asObject(t, entry, "standings entry")
+			if row["nickname"] != wantOrder[i] {
+				t.Errorf("standings[%d] = %#v, want %q (equal joined_at falls through to the id rung)", i, row["nickname"], wantOrder[i])
+			}
+		}
+
+		// The player half: every FINALE snapshot carries its own place, so the
+		// body never matches an identity against a public list (D-89).
+		for i, id := range []string{an.PlayerID, binh.PlayerID, cuong.PlayerID, dung.PlayerID} {
+			me := asObject(t, decodeObject(t, env.engine.Snapshot(RolePlayer, id))["me"], "me")
+			if me["rank"] != float64(i+1) {
+				t.Errorf("%s's me.rank at FINALE = %#v, want %d", id, me["rank"], i+1)
+			}
+		}
+	})
+
+	t.Run("a restart at FINALE derives the same podium from its snapshot", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		first, events := finaleFixture(t, path, &testClock{t: testStart})
+		published := decodeObject(t, events[1].Data)
+		podium := asArray(t, published["podium"], "podium")
+		standings := asArray(t, published["standings"], "standings")
+		if err := first.store.Close(); err != nil {
+			t.Fatalf("closing the store: %v", err)
+		}
+
+		second := newTestEnvAt(t, path, &testClock{t: testStart.Add(time.Minute)})
+		if got := second.engine.Phase(); got != PhaseFinale {
+			t.Fatalf("phase after a restart on the FINALE file = %q, want FINALE", got)
+		}
+
+		snap := decodeObject(t, second.engine.Snapshot(RoleScreen, ""))
+		assertNoSecrets(t, "restarted FINALE screen", snap)
+		board := asArray(t, snap["leaderboard"], "leaderboard")
+		if len(board) != len(standings) {
+			t.Fatalf("the restarted snapshot carries %d standings, want %d", len(board), len(standings))
+		}
+		for i, entry := range podium {
+			if !equalLeaderRow(asObject(t, entry, "podium entry"), asObject(t, board[i], "restarted leaderboard entry")) {
+				t.Errorf("podium[%d] = %#v after a restart, want the snapshot's row %#v", i, entry, board[i])
+			}
+		}
+
+		// A player joining the restarted finale reads the same order and its own
+		// rank from that snapshot alone.
+		late := mustJoin(t, second, "Khánh")
+		me := asObject(t, decodeObject(t, second.engine.Snapshot(RolePlayer, late.PlayerID))["me"], "me")
+		if me["rank"] != float64(len(board)+1) {
+			t.Errorf("a late joiner's me.rank at the restarted FINALE = %#v, want %d", me["rank"], len(board)+1)
+		}
+	})
+
+	t.Run("a zero-player finale publishes an empty podium and an empty standing", func(t *testing.T) {
+		env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
+		itemID := mustUpsertItem(t, env, validEnglishInput())
+		mustOpenLive(t, env, itemID)
+		if err := env.engine.ForceEnd(); err != nil {
+			t.Fatalf("ForceEnd: %v", err)
+		}
+		if err := env.engine.NextItem(); err != nil {
+			t.Fatalf("NextItem into FINALE: %v", err)
+		}
+
+		doc := decodeObject(t, env.lastEvents()[1].Data)
+		if got := len(asArray(t, doc["podium"], "podium")); got != 0 {
+			t.Errorf("a zero-player finale published %d podium rows, want none", got)
+		}
+		if got := len(asArray(t, doc["standings"], "standings")); got != 0 {
+			t.Errorf("a zero-player finale published %d standings, want none", got)
+		}
+
+		// The snapshot agrees, and an empty standing is an empty LIST — the
+		// finale body renders an empty block, never a null it has to guard.
+		snap := decodeObject(t, env.engine.Snapshot(RoleScreen, ""))
+		if got := len(asArray(t, snap["leaderboard"], "leaderboard")); got != 0 {
+			t.Errorf("the zero-player FINALE snapshot carries %d standings, want none", got)
+		}
+		if got := len(asArray(t, snap["recent_bids"], "recent_bids")); got != 0 {
+			t.Errorf("the zero-player FINALE snapshot carries %d feed rows, want none", got)
+		}
+	})
+}

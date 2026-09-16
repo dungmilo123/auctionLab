@@ -620,3 +620,127 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 		t.Errorf("FINALE snapshot item = %s, want an explicit null", raw)
 	}
 }
+
+// leaderRow is one public standing row as it reaches the wire, shared by the
+// `finale` payload and the snapshot's own leaderboard: rank, nickname,
+// total_value, budget and nothing else (D-25).
+type leaderRow struct {
+	Rank       int64  `json:"rank"`
+	Nickname   string `json:"nickname"`
+	TotalValue int64  `json:"total_value"`
+	Budget     int64  `json:"budget"`
+}
+
+// leaderboardOf decodes a snapshot's public standing.
+func leaderboardOf(t *testing.T, snapshot frame) []leaderRow {
+	t.Helper()
+
+	var rows []leaderRow
+	if err := json.Unmarshal(dataField(t, snapshot, "leaderboard"), &rows); err != nil {
+		t.Fatalf("the snapshot's leaderboard is not a list of standing rows: %v (%s)", err, snapshot.Data)
+	}
+	return rows
+}
+
+// TestFinaleFrame is SCRN-03/D-89/D-90 at the transport boundary: the FINALE
+// transition fans the catalog's reserved `finale` frame out beside the phase
+// frame and the snapshot, the TWO projectors receive byte-identical finale
+// payloads (the phase's concrete reading of "multiple screen clients work
+// through the existing fan-out"), and a role that arrives afterwards derives the
+// same podium and its own rank from its snapshot alone — the resync/restart
+// healing path that keeps the finale event-driven without being event-only.
+func TestFinaleFrame(t *testing.T) {
+	h, _ := newTestHubWithPolicy(t, testPolicyWithBuffer(64))
+
+	admin := joinRole(t, h, RoleAdmin)
+	screenOne := joinRole(t, h, RoleScreen)
+	screenTwo := joinRole(t, h, RoleScreen)
+
+	an, _ := joinPlayer(t, h, "An")
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo}, TypeStateSnapshot)
+	binh, _ := joinPlayer(t, h, "Bình")
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo, an}, TypeStateSnapshot)
+	cuong, _ := joinPlayer(t, h, "Cường")
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo, an, binh}, TypeStateSnapshot)
+
+	id := createItem(t, admin)
+	expectAll(t, []*websocket.Conn{screenOne, screenTwo, an, binh, cuong}, TypeStateSnapshot)
+
+	startItem(t, admin, id)
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo, an, binh, cuong}, TypePhaseChanged, TypeItemIntro, TypeStateSnapshot)
+
+	startItem(t, admin, id)
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo, an, binh, cuong}, TypePhaseChanged, TypeItemLive, TypeStateSnapshot, TypePriceTick)
+
+	// Nobody bids: the settle is unsold, and every player stays on the starting
+	// budget, so the finale standing is decided by join order.
+	writeFrame(t, admin, `{"type":"admin.item.force_end"}`)
+	expectAll(t, []*websocket.Conn{admin, screenOne, screenTwo, an, binh, cuong}, TypeItemSettled, TypeLeaderboard, TypeStateSnapshot)
+
+	// FINALE: the phase frame, the reserved finale frame, then the snapshot —
+	// the snapshot stays LAST, because it is the frame a client that missed
+	// everything else resyncs from (D-41).
+	writeFrame(t, admin, `{"type":"admin.item.next"}`)
+	screens := expectAll(t, []*websocket.Conn{screenOne, screenTwo}, TypePhaseChanged, TypeFinale, TypeStateSnapshot)
+
+	if got := string(screens[0][1].Data); got != string(screens[1][1].Data) {
+		t.Errorf("the two projectors received different finale payloads:\n%s\n%s", got, screens[1][1].Data)
+	}
+	if screens[0][1].Rev != screens[1][1].Rev {
+		t.Errorf("the two projectors' finale frames disagree on the revision: %d vs %d", screens[0][1].Rev, screens[1][1].Rev)
+	}
+
+	var published struct {
+		Podium    []leaderRow `json:"podium"`
+		Standings []leaderRow `json:"standings"`
+	}
+	if err := json.Unmarshal(screens[0][1].Data, &published); err != nil {
+		t.Fatalf("the finale payload is not {podium, standings}: %v (%s)", err, screens[0][1].Data)
+	}
+	if len(published.Standings) != 3 {
+		t.Fatalf("the finale carried %d standings, want all three players", len(published.Standings))
+	}
+	if len(published.Podium) != 3 {
+		t.Fatalf("the finale carried %d podium rows, want the top three", len(published.Podium))
+	}
+	want := []string{"An", "Bình", "Cường"}
+	for i, row := range published.Standings {
+		if row.Nickname != want[i] || row.Rank != int64(i+1) {
+			t.Errorf("standings[%d] = %+v, want %q at rank %d", i, row, want[i], i+1)
+		}
+	}
+	for i, row := range published.Podium {
+		if row != published.Standings[i] {
+			t.Errorf("podium[%d] = %+v, want the standing's own row %+v (one ranking rule)", i, row, published.Standings[i])
+		}
+	}
+
+	// The healing path: a late joiner at FINALE renders the same podium — and its
+	// own rank — from its snapshot alone.
+	_, snapshot := joinPlayer(t, h, "Dung")
+	if got := frameString(t, frameData(t, snapshot), "phase"); got != "FINALE" {
+		t.Fatalf("late-join snapshot phase = %q, want FINALE", got)
+	}
+	me := dataObject(t, snapshot, "me")
+	if got := frameString(t, me, "id"); got == "" {
+		t.Fatal("the late joiner's snapshot carries no identity")
+	}
+	board := leaderboardOf(t, snapshot)
+	if len(board) != 4 {
+		t.Fatalf("the FINALE snapshot carries %d standings, want four players", len(board))
+	}
+	for i, row := range published.Podium {
+		if board[i] != row {
+			t.Errorf("the late joiner's standing row %d = %+v, want the finale's %+v", i, board[i], row)
+		}
+	}
+	rank := int64(0)
+	for i, row := range board {
+		if row.Nickname == "Dung" {
+			rank = int64(i + 1)
+		}
+	}
+	if got := objectInt(t, me, "rank"); got != rank {
+		t.Errorf("the late joiner's me.rank = %d, want %d — server-computed, not a client-side match (D-89)", got, rank)
+	}
+}
