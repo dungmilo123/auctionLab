@@ -1,6 +1,9 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // This file is ADMN-03's reset contract (D-78): `admin.game.reset {mode}` is an
 // ordinary applyLocked mutation that returns a played game to LOBBY. The
@@ -28,6 +31,27 @@ const (
 	ResetClearPlayers ResetMode = "clear_players"
 )
 
+// releasedTokenPrefix marks a player row whose session the presenter released
+// (D-80). NewToken mints 64 lowercase hex characters, so ':' can never appear in
+// a live token: the sentinel is impossible to mint, and — because it carries the
+// player id — two released rows hold two DIFFERENT values in a column that is
+// `NOT NULL UNIQUE`. An empty string could not: the second release would collide
+// with the first and be refused (research Pitfall 7).
+//
+// Reversibility: costly. This value is persisted in players.token, so changing
+// the sentinel later means recognising the old form during a migration — it is an
+// internal persistence contract, not a constant to refactor freely.
+const releasedTokenPrefix = "released:"
+
+// releasedToken is the value a released row's `token` column holds.
+func releasedToken(playerID string) string { return releasedTokenPrefix + playerID }
+
+// isReleasedToken reports whether a persisted (or submitted) token is the D-80
+// sentinel. It is the ONE test the three carrier sites share: the token lookup
+// skips released rows, the resume arm answers token_invalid, and the nickname arm
+// treats the row as claimable.
+func isReleasedToken(token string) bool { return strings.HasPrefix(token, releasedTokenPrefix) }
+
 // Reset is `admin.game.reset {mode}` (D-78): ONE applyLocked mutation that
 // removes the bid trail, the sealed bids and the runtime rows, restores every
 // budget, puts every item back to `pending`, clears the current item and returns
@@ -42,9 +66,18 @@ func (e *Engine) Reset(mode ResetMode) error {
 	defer e.mu.Unlock()
 
 	switch mode {
-	case ResetKeepPlayers:
+	case ResetKeepPlayers, ResetClearPlayers:
 	default:
 		return fmt.Errorf("game: reset mode %q is not one of keep_players|clear_players", mode)
+	}
+
+	// D-78: keep_players over an already-fresh lobby repairs nothing, so it
+	// writes nothing. The test is on what a reset would CHANGE rather than on the
+	// phase alone, so a reset with anything left to do always runs; clear_players
+	// is deliberately exempt, because a lobby full of phones has a room to clear
+	// even though no item has played.
+	if mode == ResetKeepPlayers && e.state.resetIsNoOp() {
+		return nil
 	}
 
 	return e.applyLocked(func(s *state) error {
@@ -52,28 +85,25 @@ func (e *Engine) Reset(mode ResetMode) error {
 	}, true, nil)
 }
 
-// ReleaseSession is `admin.player.release {id}` (D-80): the presenter's insurance
-// against a device that can no longer be reached — a phone that changed networks,
-// a browser that lost its storage, an origin-scoped token after the tunnel URL
-// rotated. Releasing writes the row's token to a sentinel no mint can produce, so
-// the token that device still holds can never resume the identity again (D-30
-// (1) is gone for that row), and the row's nickname becomes claimable by the next
-// device that types it.
-//
-// The write is durable, so it bumps the revision and ends with the role snapshot
-// (D-35) — the admin's Players tab learns about it from the same fan-out as
-// everything else. Releasing an already-released row is a no-op.
-func (e *Engine) ReleaseSession(playerID string) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	p := e.state.players[playerID]
-	if p == nil {
-		return fmt.Errorf("game: player.release %q does not exist", playerID)
+// resetIsNoOp reports whether the committed state is already exactly what a
+// keep_players reset produces: LOBBY, nothing to clear, every item pending and
+// every identity on the starting budget.
+func (s *state) resetIsNoOp() bool {
+	if s.phase != PhaseLobby || len(s.bids) > 0 || len(s.sealedBids) > 0 || s.currentAuction != nil {
+		return false
 	}
-
-	// RED-phase stub: nothing is persisted and the caller is told so.
-	return fmt.Errorf("game: player.release %q is not implemented yet", playerID)
+	for _, id := range s.itemOrder {
+		if s.items[id].status != "pending" {
+			return false
+		}
+	}
+	for _, id := range s.order {
+		p := s.players[id]
+		if p.budget != s.config.StartingBudget || p.totalValue != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // resetLocked rewrites the scratch state into a fresh lobby. It runs inside
@@ -103,12 +133,22 @@ func (s *state) resetLocked(mode ResetMode) error {
 		s.items[id].status = "pending"
 	}
 
-	// Every identity starts the new round on the configured budget. The player
-	// row itself — id, nickname, token, joined_at — is untouched.
-	for _, id := range s.order {
-		p := s.players[id]
-		p.budget = s.config.StartingBudget
-		p.totalValue = 0
+	if mode == ResetClearPlayers {
+		// The room goes with the timeline. The store deletes the player rows
+		// only after it has emptied bids and sealed_bids, because both reference
+		// them (T-04-05); in memory the presence map goes too, so no ghost
+		// connection can keep a deleted identity "connected".
+		s.players = make(map[string]*player)
+		s.order = nil
+		s.connected = make(map[string]bool)
+	} else {
+		// Every identity starts the new round on the configured budget. The row
+		// itself — id, nickname, token, joined_at — is untouched.
+		for _, id := range s.order {
+			p := s.players[id]
+			p.budget = s.config.StartingBudget
+			p.totalValue = 0
+		}
 	}
 
 	s.phase = PhaseLobby
@@ -118,4 +158,39 @@ func (s *state) resetLocked(mode ResetMode) error {
 		Event{Type: EventSnapshot},
 	)
 	return nil
+}
+
+// ReleaseSession is `admin.player.release {id}` (D-80): the presenter's insurance
+// against a device that can no longer be reached — a phone that changed networks,
+// a browser that lost its storage, an origin-scoped token after the tunnel URL
+// rotated. Releasing writes the row's token to the sentinel above, so the token
+// that device still holds can never resume the identity again (D-30 (1) is gone
+// for that row) and the row's nickname becomes claimable by the next device that
+// types it.
+//
+// The write is durable, so it bumps the revision and ends with the role snapshot
+// (D-35): the admin's Players tab learns about it from the same fan-out as
+// everything else, and the released player's own socket is the hub's to close.
+// Releasing an already-released row is a no-op.
+func (e *Engine) ReleaseSession(playerID string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	p := e.state.players[playerID]
+	if p == nil {
+		return fmt.Errorf("game: player.release %q does not exist", playerID)
+	}
+	if isReleasedToken(p.token) {
+		return nil // already released: nothing left to write, no revision move
+	}
+
+	return e.applyLocked(func(s *state) error {
+		s.players[playerID].token = releasedToken(playerID)
+		// Presence is in-memory and rides the current revision, but a released
+		// identity must not read as "connected" to the admin while the hub is
+		// still tearing its socket down.
+		s.connected[playerID] = false
+		s.events = append(s.events, Event{Type: EventSnapshot})
+		return nil
+	}, true, nil)
 }

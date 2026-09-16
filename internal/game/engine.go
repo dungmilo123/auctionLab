@@ -512,11 +512,16 @@ func (e *Engine) newPlayerLocked(req JoinRequest, emit func(Hello, any)) (JoinRe
 		}
 	}
 	key := NicknameKey(normalized)
-	if e.state.playerByNicknameKey(key) != nil {
+	if existing := e.state.playerByNicknameKey(key); existing != nil {
 		// D-32: a nickname is reserved by its row. A connected owner cannot
 		// prove ownership (no auth by design), and a disconnected one keeps the
-		// name — so both cases are the same rejection.
-		return JoinResult{}, &JoinError{Code: CodeNicknameTaken, Message: "that nickname is already taken"}
+		// name — so both cases are the same rejection. D-80 adds exactly one
+		// exception: a row the presenter RELEASED is claimable by the next device
+		// that types its nickname, because its token can never resume it again.
+		if !isReleasedToken(existing.token) {
+			return JoinResult{}, &JoinError{Code: CodeNicknameTaken, Message: "that nickname is already taken"}
+		}
+		return e.claimReleasedLocked(existing, emit)
 	}
 
 	id, err := newPlayerID()
@@ -562,6 +567,51 @@ func (e *Engine) newPlayerLocked(req JoinRequest, emit func(Hello, any)) (JoinRe
 		if store.IsUniqueViolation(err) {
 			return JoinResult{}, &JoinError{Code: CodeNicknameTaken, Message: "that nickname is already taken"}
 		}
+		return JoinResult{}, err
+	}
+	return JoinResult{Role: RolePlayer, PlayerID: id, Token: token, Rev: e.state.revision}, nil
+}
+
+// claimReleasedLocked is D-80's reclaim arm: the device that types a released
+// row's nickname takes that row over. The identity is the SAME player — id, the
+// display nickname, budget, total value and joined_at all survive, which is what
+// makes the release cheap insurance rather than a quiet deletion of someone's
+// economics — and the token is a fresh mint, because the device that used to hold
+// it must not be able to resume a session the presenter deliberately ended.
+//
+// Rewriting the row is a durable mutation, so it bumps the revision and emits the
+// fresh identity's hello plus its own role snapshot inside the same critical
+// section (D-23/D-35). The claim deliberately reports Resumed == false: this is a
+// registration, not a token resume, and the device stores the new token exactly
+// as it would after any other join.
+func (e *Engine) claimReleasedLocked(p *player, emit func(Hello, any)) (JoinResult, error) {
+	id := p.id
+	nickname := p.nickname
+
+	token, err := NewToken()
+	if err != nil {
+		return JoinResult{}, err
+	}
+	now := e.now().UnixMilli()
+
+	err = e.applyLocked(func(s *state) error {
+		mine := s.players[id]
+		mine.token = token
+		mine.lastSeenAt = now
+		s.connected[id] = true
+		return nil
+	}, true, func(v View) {
+		if emit != nil {
+			emit(Hello{
+				Role:     RolePlayer,
+				PlayerID: id,
+				Nickname: nickname,
+				Token:    token,
+				Rev:      v.Rev(),
+			}, v.Snapshot(RolePlayer, id))
+		}
+	})
+	if err != nil {
 		return JoinResult{}, err
 	}
 	return JoinResult{Role: RolePlayer, PlayerID: id, Token: token, Rev: e.state.revision}, nil
@@ -872,9 +922,12 @@ func (s *state) bidTail(prev *state) []store.BidRow {
 }
 
 // playerByToken resolves D-30 (1). The empty token never matches: "no token" is
-// a fresh join, not a resume of a player whose token is empty.
+// a fresh join, not a resume of a player whose token is empty. A released row is
+// refused as well (D-80): the value it now holds is the sentinel, and a client
+// that echoed the sentinel back must not be able to resume the identity it used
+// to protect.
 func (s *state) playerByToken(token string) *player {
-	if token == "" {
+	if token == "" || isReleasedToken(token) {
 		return nil
 	}
 	for _, id := range s.order {
