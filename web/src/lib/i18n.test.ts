@@ -211,7 +211,10 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     en: 'The server refused that — check the values and try again.',
     vi: 'Máy chủ từ chối — kiểm tra lại giá trị rồi thử lại.',
   },
-  'admin.notAuthorized': { en: "This connection isn't authorized.", vi: 'Kết nối này không có quyền.' },
+  'admin.notAuthorized': {
+    en: "This connection isn't authorized — reopen the admin link from the server log.",
+    vi: 'Kết nối này không có quyền — mở lại link quản trị trong log máy chủ.',
+  },
   'admin.err.name': { en: 'Enter 1 to 80 characters.', vi: 'Nhập từ 1 đến 80 ký tự.' },
   'admin.err.notNegative': { en: 'Enter a whole number of 0 or more.', vi: 'Nhập số nguyên từ 0 trở lên.' },
   'admin.err.positive': { en: 'Enter a whole number of 1 or more.', vi: 'Nhập số nguyên từ 1 trở lên.' },
@@ -260,8 +263,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 131 approved keys (25 carried + 105 Phase 3 + 1 Phase 4)', () => {
-    expect(KEYS).toHaveLength(131)
+  it('carries exactly the 171 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 − 1 deleted)', () => {
+    expect(KEYS).toHaveLength(171)
   })
 })
 

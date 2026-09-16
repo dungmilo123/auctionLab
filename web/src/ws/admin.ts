@@ -29,9 +29,37 @@ export type AdminSocketHandlers = {
   onError?(error: ErrorPayload): void
 }
 
+/** D-78's two reset modes — the closed vocabulary `admin.game.reset` carries. */
+export type ResetMode = 'keep_players' | 'clear_players'
+
+/**
+ * D-81/D-84's partial config payload: an absent field means "leave it alone",
+ * so the Setup tab's two actions (budget, URL) send one command with one field.
+ */
+export type AdminConfigInput = {
+  starting_budget?: number
+  join_url?: string
+}
+
+/**
+ * Every frame the presenter's panel can send (D-65/D-78/D-80/D-81/D-84). The
+ * union is the page's whole command surface: a call site cannot send a type the
+ * server does not know, and `AdminView` never passes a bare object.
+ */
+export type AdminCommand =
+  | { type: 'admin.item.upsert'; item: Record<string, unknown> }
+  | { type: 'admin.item.reorder'; ids: string[] }
+  | { type: 'admin.item.start'; id: string }
+  | { type: 'admin.item.force_end' }
+  | { type: 'admin.item.next' }
+  | { type: 'admin.item.delete'; id: string }
+  | { type: 'admin.game.reset'; mode: ResetMode }
+  | { type: 'admin.config.update'; config: AdminConfigInput }
+  | { type: 'admin.player.release'; id: string }
+
 /** The presenter's handle: the D-65 command frames go out through `send`. */
 export type AdminConnection = {
-  send(frame: unknown): void
+  send(frame: AdminCommand): void
   close(): void
 }
 
@@ -53,7 +81,7 @@ export function openAdminSocket(handlers: AdminSocketHandlers): AdminConnection 
   })
 
   return {
-    send(frame: unknown): void {
+    send(frame: AdminCommand): void {
       socket.send(frame)
     },
     close(): void {
