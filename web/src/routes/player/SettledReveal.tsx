@@ -102,6 +102,15 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
         </RevealRow>
       </div>
 
+      {/* D-122: the ONE type-conditional line on this body. A Vickrey winner
+          pays the second-highest bid (or the start price when alone), and the
+          wire carries no amount at SETTLED (D-114) — so the line is a RULE
+          statement that reads identically for the winner and every loser. A
+          plain sentence: no box, no fill, no heading, no `role="alert"`. */}
+      {sold && item.auctionType === 'vickrey' && (
+        <p className="text-base leading-[1.5]">{t('settle.vickreyNote')}</p>
+      )}
+
       {iWon && <p className="text-base leading-[1.5]">{t('settle.youWon')}</p>}
 
       {/* ECON-02: only the winner's budget moved. `budget_delta` is an
