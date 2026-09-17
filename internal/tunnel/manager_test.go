@@ -184,6 +184,24 @@ func urlLine(host string) string {
 	return `echo "ERR |  https://` + host + `.trycloudflare.com  |" >&2`
 }
 
+// firstArgs waits for the argv a stub recorded and returns it. Each spawn
+// rewrites the file with the same arguments, so any read is one generation's
+// argv — which is what the --protocol cases assert on.
+func firstArgs(t *testing.T, path string) string {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if raw, err := os.ReadFile(path); err == nil {
+			return string(raw)
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the stub never recorded its arguments in %s", path)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 // baseConfig is the smallest working configuration: a temp home (so the
 // config-conflict scan finds nothing) and a logger.
 func baseConfig(t *testing.T, rec *statusRecorder, logs *logRecorder) Config {
@@ -660,6 +678,61 @@ while :; do sleep 0.05; done
 		recovered := rec.await(t, func(s Status) bool { return s.Healthy })
 		if recovered.URL != announced.URL {
 			t.Fatalf("recovered status named %q, want %q", recovered.URL, announced.URL)
+		}
+	})
+
+	t.Run("an unknown protocol is dropped before it reaches --protocol", func(t *testing.T) {
+		// D-126's escape hatch is passed as a single argv element, and cloudflared
+		// exits on a value it does not know — at EVERY spawn, which turns an
+		// operator typo into a restart loop against the creation endpoint. So the
+		// value is validated before use and a bad one keeps cloudflared's default.
+		dir := t.TempDir()
+		argsFile := filepath.Join(dir, "args")
+		bin := stubBin(t, dir, fmt.Sprintf("printf '%%s\\n' \"$@\" > %q\nexit 1\n", argsFile))
+
+		rec := newStatusRecorder()
+		logs := &logRecorder{}
+		cfg := baseConfig(t, rec, logs)
+		cfg.Bin = bin
+		cfg.Protocol = "htpp2" // a typo, not one of the two known literals
+		cfg.BackoffBase = 10 * time.Millisecond
+		cfg.BackoffCap = 20 * time.Millisecond
+		cfg.Jitter = func(d time.Duration) time.Duration { return d }
+
+		m := New(cfg)
+		m.Start()
+		t.Cleanup(m.Close)
+
+		got := firstArgs(t, argsFile)
+		if strings.Contains(got, "--protocol") {
+			t.Fatalf("an unknown protocol reached the child:\n%s", got)
+		}
+		if !strings.Contains(got, "--url") || !strings.Contains(got, "--no-autoupdate") {
+			t.Fatalf("the child was not started the way cloudflared is:\n%s", got)
+		}
+	})
+
+	t.Run("a known protocol is passed through to --protocol", func(t *testing.T) {
+		dir := t.TempDir()
+		argsFile := filepath.Join(dir, "args")
+		bin := stubBin(t, dir, fmt.Sprintf("printf '%%s\\n' \"$@\" > %q\nexit 1\n", argsFile))
+
+		rec := newStatusRecorder()
+		logs := &logRecorder{}
+		cfg := baseConfig(t, rec, logs)
+		cfg.Bin = bin
+		cfg.Protocol = "http2" // the #1652 escape hatch itself
+		cfg.BackoffBase = 10 * time.Millisecond
+		cfg.BackoffCap = 20 * time.Millisecond
+		cfg.Jitter = func(d time.Duration) time.Duration { return d }
+
+		m := New(cfg)
+		m.Start()
+		t.Cleanup(m.Close)
+
+		got := firstArgs(t, argsFile)
+		if !strings.Contains(got, "--protocol") || !strings.Contains(got, ProtocolHTTP2) {
+			t.Fatalf("the documented escape hatch did not reach the child:\n%s", got)
 		}
 	})
 

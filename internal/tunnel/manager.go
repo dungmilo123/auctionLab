@@ -81,7 +81,8 @@ type Config struct {
 	// Protocol, when non-empty, is passed through as `--protocol` (D-126's
 	// TUNNEL_PROTOCOL escape hatch for cloudflared #1652). The flag is
 	// undocumented in `--help` on 2026.9.1 but accepted; leaving it empty keeps
-	// cloudflared's own default (quic).
+	// cloudflared's own default (quic). New normalizes it, so only quic and
+	// http2 survive (NormalizeProtocol).
 	Protocol string
 	// Publish receives every status change. Required.
 	Publish PublishFunc
@@ -181,6 +182,11 @@ func New(cfg Config) *Manager {
 			cfg.Home = home
 		}
 	}
+	// The TUNNEL_PROTOCOL boundary (WR-02): a value cloudflared does not accept
+	// is dropped here rather than passed through, so every caller — the boot
+	// included — is covered by the one rule. The boot's own planTunnel logs the
+	// dropped value so the operator learns why the option had no effect.
+	cfg.Protocol = NormalizeProtocol(cfg.Protocol)
 	return &Manager{
 		cfg:      cfg,
 		done:     make(chan struct{}),
@@ -197,6 +203,32 @@ func FullJitter(delay time.Duration) time.Duration {
 		return 0
 	}
 	return time.Duration(rand.Int64N(int64(delay) + 1))
+}
+
+// The only `--protocol` values cloudflared accepts for a quick tunnel (verified
+// on 2026.9.1). They are the whole vocabulary D-126's TUNNEL_PROTOCOL escape
+// hatch may pass through.
+const (
+	ProtocolQUIC  = "quic"
+	ProtocolHTTP2 = "http2"
+)
+
+// NormalizeProtocol returns the value to hand to `--protocol`, or "" to keep
+// cloudflared's own default. Any other value is DROPPED here — the sink, so a
+// caller that is not cmd/server cannot inject one either — because cloudflared
+// exits on an unknown --protocol at every spawn: the supervisor would restart
+// in a loop against Cloudflare's creation endpoint, which is exactly the
+// 429-creating cycle PITFALLS 7 and D-125 exist to keep rare (07-RESEARCH.md's
+// V5/command-injection rows: validate against the two known literals before
+// use). The boot reports a dropped value in its own log line, next to the other
+// environment names it resolves.
+func NormalizeProtocol(protocol string) string {
+	switch protocol {
+	case ProtocolQUIC, ProtocolHTTP2:
+		return protocol
+	default:
+		return ""
+	}
 }
 
 // Start launches the supervisor goroutine. It returns immediately: the URL

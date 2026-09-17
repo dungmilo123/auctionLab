@@ -356,6 +356,15 @@ func planTunnel(enabled bool, flagBin string, getenv func(string) string, lookPa
 	if names := proxyEnvName(getenv); names != "" {
 		logs = append(logs, fmt.Sprintf("tunnel: %s is set — the cloudflared process and the health probe follow it, so a venue proxy can reroute them", names))
 	}
+	// D-126's TUNNEL_PROTOCOL escape hatch is validated, not passed through
+	// (WR-02): cloudflared exits on a value it does not know at every spawn, so
+	// a typo would put the supervisor in a restart loop against the creation
+	// endpoint. The variable is named and the accepted literals are printed —
+	// never the value (the boot log's rule for the environment, T-04-04).
+	if proto := getenv("TUNNEL_PROTOCOL"); proto != "" && tunnel.NormalizeProtocol(proto) == "" {
+		logs = append(logs, fmt.Sprintf("tunnel: TUNNEL_PROTOCOL is set to a value that is neither %s nor %s — ignoring it and using cloudflared's default (cloudflared exits on an unknown --protocol, so passing it through would restart every spawn)",
+			tunnel.ProtocolQUIC, tunnel.ProtocolHTTP2))
+	}
 	if path, found := tunnel.ConfigConflict(home); found {
 		logs = append(logs, fmt.Sprintf("tunnel: %s exists — cloudflared quick tunnels are unsupported while it does; remove or rename it if the tunnel refuses to start", path))
 	}

@@ -282,6 +282,34 @@ func TestTunnelPlan(t *testing.T) {
 		}
 	})
 
+	t.Run("an unknown TUNNEL_PROTOCOL is dropped with a warning that names the variable", func(t *testing.T) {
+		plan := planTunnel(true, "/usr/local/bin/cloudflared", env(map[string]string{
+			"TUNNEL_PROTOCOL": "htpp2",
+		}), found("/usr/local/bin/cloudflared"), t.TempDir())
+		if !plan.Start {
+			t.Fatal("a bad protocol must warn, never refuse to start")
+		}
+		log := joined(plan)
+		for _, want := range []string{"TUNNEL_PROTOCOL", "quic", "http2"} {
+			if !strings.Contains(log, want) {
+				t.Errorf("the warning does not mention %q:\n%s", want, log)
+			}
+		}
+		if strings.Contains(log, "htpp2") {
+			t.Errorf("the boot log echoed the value:\n%s", log)
+		}
+
+		// The two known literals are the documented escape hatch and stay silent.
+		for _, ok := range []string{"quic", "http2"} {
+			plan := planTunnel(true, "/usr/local/bin/cloudflared", env(map[string]string{
+				"TUNNEL_PROTOCOL": ok,
+			}), found("/usr/local/bin/cloudflared"), t.TempDir())
+			if strings.Contains(joined(plan), "TUNNEL_PROTOCOL") {
+				t.Errorf("a valid TUNNEL_PROTOCOL=%s was warned about:\n%s", ok, joined(plan))
+			}
+		}
+	})
+
 	t.Run("a cloudflared config file is reported with its path", func(t *testing.T) {
 		home := t.TempDir()
 		dir := filepath.Join(home, ".cloudflared")
