@@ -280,8 +280,8 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   'admin.resetConfirm': { en: 'Reset game', vi: 'Đặt lại ván' },
   'admin.resetCancel': { en: 'Keep playing', vi: 'Tiếp tục chơi' },
   'admin.offlineNote': {
-    en: "Controls are off while the connection is down — reload the page when it's back.",
-    vi: 'Điều khiển tạm tắt khi mất kết nối — tải lại trang khi kết nối trở lại.',
+    en: "Controls are off while the connection is down — retry below, or reload the page when it's back.",
+    vi: 'Điều khiển tạm tắt khi mất kết nối — bấm thử lại bên dưới, hoặc tải lại trang khi kết nối trở lại.',
   },
   'admin.winnerBudgetLabel': { en: "Winner's budget now", vi: 'Ngân sách người thắng hiện tại' },
 
@@ -347,6 +347,35 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     en: "Vickrey: the winner pays the second-highest bid — or the start price if they're the only bidder.",
     vi: 'Vickrey: người thắng trả mức giá cao nhì — hoặc giá khởi điểm nếu chỉ có một người đặt.',
   },
+
+  // Phase 7 — the reconnect/tunnel rows (07-UI-SPEC §Copywriting Contract)
+  'status.reconnecting': { en: 'Reconnecting…', vi: 'Đang kết nối lại…' },
+  'status.retry': { en: 'Retry now', vi: 'Thử lại ngay' },
+  'session.supersededNote': {
+    en: 'This session is open on another device.',
+    vi: 'Phiên này đang mở trên thiết bị khác.',
+  },
+  'session.useThisDevice': { en: 'Use this device', vi: 'Dùng thiết bị này' },
+  'session.restoreNote': {
+    en: 'Saved session not restored yet — retry, or join with a nickname.',
+    vi: 'Chưa khôi phục được phiên đã lưu — thử lại, hoặc vào bằng nickname.',
+  },
+  'session.retry': { en: 'Retry saved session', vi: 'Thử lại phiên đã lưu' },
+  'admin.tunnelLabel': { en: 'Tunnel', vi: 'Tunnel' },
+  'admin.tunnelHealthy': { en: 'Healthy', vi: 'Hoạt động tốt' },
+  'admin.tunnelUnhealthy': { en: 'Unhealthy', vi: 'Không hoạt động' },
+  'admin.tunnelWaiting': { en: 'Waiting for the tunnel URL…', vi: 'Đang chờ địa chỉ tunnel…' },
+  'admin.urlSourcePublic': { en: 'PUBLIC_URL', vi: 'PUBLIC_URL' },
+  'admin.urlSourceSaved': { en: 'Saved', vi: 'Đã lưu' },
+  'admin.urlSourceAuto': { en: 'Auto', vi: 'Tự động' },
+  'admin.urlOverrideNote': {
+    en: 'PUBLIC_URL is set — it overrides the tunnel and any saved choice.',
+    vi: 'PUBLIC_URL đang được đặt — ghi đè tunnel và mọi lựa chọn đã lưu.',
+  },
+  'admin.urlTunnelNote': {
+    en: 'The healthy tunnel is the QR link — your saved choice is the fallback if it drops.',
+    vi: 'Tunnel đang hoạt động là link QR — lựa chọn đã lưu là phương án dự phòng khi tunnel mất.',
+  },
 }
 
 const KEYS = Object.keys(APPROVED) as CopyKey[]
@@ -389,8 +418,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 191 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch + 13 Phase 6 − 1 deleted)', () => {
-    expect(KEYS).toHaveLength(191)
+  it('carries exactly the 206 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch + 13 Phase 6 − 1 deleted + 15 Phase 7)', () => {
+    expect(KEYS).toHaveLength(206)
   })
 })
 

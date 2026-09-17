@@ -27,6 +27,16 @@
  * either phase, and `LIVE_PARAM_KEYS` is unchanged: none of the new strings
  * carries a placeholder.
  *
+ * Phase 7 adds the fifteen the reconnect/tunnel surfaces need — the two status
+ * rows (`status.reconnecting`, `status.retry`), the four player recovery rows
+ * (`session.supersededNote`, `session.useThisDevice`, `session.restoreNote`,
+ * `session.retry`) and the nine admin tunnel/source rows (the label, the three
+ * health/waiting words, the three source tags and the two notes) — and rewording
+ * exactly one carried key (`admin.offlineNote`, the Phase 4 `admin.notAuthorized`
+ * precedent: the note now names the retry that sits under it) for the 206 keys
+ * the suite asserts. `LIVE_PARAM_KEYS` is unchanged again: a source tag and a
+ * retry label carry no placeholder.
+ *
  * This module also owns the language context and the `auctionlab.lang` storage
  * key. It is plain TypeScript (no JSX) because the UI-SPEC's file list puts the
  * dictionary in `lib/`; the provider therefore builds its element with
@@ -320,8 +330,8 @@ export const COPY = {
   'admin.resetConfirm': { en: 'Reset game', vi: 'Đặt lại ván' },
   'admin.resetCancel': { en: 'Keep playing', vi: 'Tiếp tục chơi' },
   'admin.offlineNote': {
-    en: "Controls are off while the connection is down — reload the page when it's back.",
-    vi: 'Điều khiển tạm tắt khi mất kết nối — tải lại trang khi kết nối trở lại.',
+    en: "Controls are off while the connection is down — retry below, or reload the page when it's back.",
+    vi: 'Điều khiển tạm tắt khi mất kết nối — bấm thử lại bên dưới, hoặc tải lại trang khi kết nối trở lại.',
   },
   'admin.winnerBudgetLabel': { en: "Winner's budget now", vi: 'Ngân sách người thắng hiện tại' },
 
@@ -396,6 +406,53 @@ export const COPY = {
   'settle.vickreyNote': {
     en: "Vickrey: the winner pays the second-highest bid — or the start price if they're the only bidder.",
     vi: 'Vickrey: người thắng trả mức giá cao nhì — hoặc giá khởi điểm nếu chỉ có một người đặt.',
+  },
+
+  // ---- Phase 7: the reconnect indicator, the player's two recovery rows and
+  // the admin tunnel/source read-out (07-UI-SPEC §Copywriting Contract, D-130/
+  // D-131/D-134/CONN-01). `status.connecting` (carried) stays reachable as the
+  // pre-first-open sub-case of `reconnecting` (G-1), so the split adds one word
+  // here and leaves the carried one in place. `PUBLIC_URL` and `Tunnel` are the
+  // two rows whose columns are deliberately identical: an environment variable
+  // name and a product noun must match the server log, not a translation.
+  'status.reconnecting': { en: 'Reconnecting…', vi: 'Đang kết nối lại…' },
+  // The one new control on `/` and `/admin`, rendered in the `offline` state
+  // only. It names its own object — the socket — like its two siblings below.
+  'status.retry': { en: 'Retry now', vi: 'Thử lại ngay' },
+  // The player's terminal 4001 notice and its one deliberate rejoin (D-131).
+  'session.supersededNote': {
+    en: 'This session is open on another device.',
+    vi: 'Phiên này đang mở trên thiết bị khác.',
+  },
+  'session.useThisDevice': { en: 'Use this device', vi: 'Dùng thiết bị này' },
+  // The session block's sentence once the bound or the first failure has ended
+  // the restoring line (D-134) — never a form-less dead end.
+  'session.restoreNote': {
+    en: 'Saved session not restored yet — retry, or join with a nickname.',
+    vi: 'Chưa khôi phục được phiên đã lưu — thử lại, hoặc vào bằng nickname.',
+  },
+  'session.retry': { en: 'Retry saved session', vi: 'Thử lại phiên đã lưu' },
+  // The admin tunnel read-out (D-123/CONN-01): a label, the health word beside
+  // the presence dot, and the wait state of a tunnel that is off/restarting.
+  'admin.tunnelLabel': { en: 'Tunnel', vi: 'Tunnel' },
+  'admin.tunnelHealthy': { en: 'Healthy', vi: 'Hoạt động tốt' },
+  'admin.tunnelUnhealthy': { en: 'Unhealthy', vi: 'Không hoạt động' },
+  'admin.tunnelWaiting': { en: 'Waiting for the tunnel URL…', vi: 'Đang chờ địa chỉ tunnel…' },
+  // G-6's closed source-tag vocabulary: one word per rung of D-127's
+  // precedence chain. `Tunnel` reuses `admin.tunnelLabel` rather than adding a
+  // fifth tag key.
+  'admin.urlSourcePublic': { en: 'PUBLIC_URL', vi: 'PUBLIC_URL' },
+  'admin.urlSourceSaved': { en: 'Saved', vi: 'Đã lưu' },
+  'admin.urlSourceAuto': { en: 'Auto', vi: 'Tự động' },
+  // G-7's mutually exclusive notes: the override REPLACES `admin.urlNote`, the
+  // tunnel note renders under the list (the carried note stays true there).
+  'admin.urlOverrideNote': {
+    en: 'PUBLIC_URL is set — it overrides the tunnel and any saved choice.',
+    vi: 'PUBLIC_URL đang được đặt — ghi đè tunnel và mọi lựa chọn đã lưu.',
+  },
+  'admin.urlTunnelNote': {
+    en: 'The healthy tunnel is the QR link — your saved choice is the fallback if it drops.',
+    vi: 'Tunnel đang hoạt động là link QR — lựa chọn đã lưu là phương án dự phòng khi tunnel mất.',
   },
 } as const satisfies Record<string, Copy>
 

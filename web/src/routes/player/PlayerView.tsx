@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { ConnectionLine } from '@/components/ConnectionLine'
 import LanguageControl from '@/components/LanguageControl'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
 import { keepRejection, type HeldRejection } from '@/lib/rejection'
@@ -11,6 +13,7 @@ import {
   type PlayerConnection,
 } from '@/ws/client'
 import type { ErrorPayload, PlayerSnapshot } from '@/ws/protocol'
+import { RESTORE_BOUND_MS, restoreActive, type RestoreSignal } from '@/ws/reconnect'
 import { initialViewState, type ViewState } from '@/ws/view'
 import Finale from './Finale'
 import ItemIntro from './ItemIntro'
@@ -23,10 +26,11 @@ import SettledReveal from './SettledReveal'
 
 // The player route (02/03-UI-SPEC.md §Player Route & Interaction Contract).
 //
-// One card, one header row, one polite status line, and a body that switches on
-// the phase of the reduced socket state (D-70). Everything the player sees is
-// either the dictionary (bilingual, EN default) or a value the server sent —
-// never a server message and never a string invented at the call site.
+// One card, one header row, one shared status line, the two D-131/D-134
+// recovery rows, and a body that switches on the phase of the reduced socket
+// state (D-70). Everything the player sees is either the dictionary (bilingual,
+// EN default) or a value the server sent — never a server message and never a
+// string invented at the call site.
 //
 // Two socket callbacks feed this route, and they are the same decoded frame:
 //   - `onView` is the authoritative reduction (`ViewState`) and the ONLY source
@@ -36,26 +40,11 @@ import SettledReveal from './SettledReveal'
 //     Phase 2 screen stays byte-identical).
 // Both are set from one frame in one React batch, so they can never disagree.
 
-const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  reconnecting: 'status.connecting',
-  live: 'status.open',
-  offline: 'status.lost',
-  superseded: 'status.superseded',
-}
-
-// The square's fill is a cue, never the message: the state text always sits
-// beside it. The 2px outline is what keeps the accent fill perceivable against
-// the page, so the square is never rendered as a bare accent block.
-const STATUS_FILL: Record<ConnectionStatus, string> = {
-  reconnecting: 'bg-muted-foreground',
-  live: 'bg-primary',
-  offline: 'bg-destructive',
-  superseded: 'bg-destructive',
-}
-
 // `error.code` selects the copy; the server's `message` is never rendered
 // (T-02-01). An unexpected code falls through to the generic sentence rather
-// than showing the player a protocol string.
+// than showing the player a protocol string. `rate_limited` never reaches here:
+// the socket layer keeps the informational bucket answer at the console
+// (D-138/T-07-11), so no route can paint a row for it.
 function errorCopyKey(code: string): CopyKey {
   switch (code) {
     case 'nickname_taken':
@@ -80,11 +69,16 @@ function errorCopyKey(code: string): CopyKey {
 function PlayerView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
+  // G-1: the machine's own first-open boolean, mirrored here only so the word
+  // can split `reconnecting` into `Connecting…` / `Reconnecting…`. The rule
+  // itself stays in `reconnect.ts` (`connectionWord`).
+  const [lastOpenAt, setLastOpenAt] = useState<number | null>(null)
   const [nickname, setNickname] = useState('')
   const [joining, setJoining] = useState(false)
-  // A stored token means the session can be restored, so the form must not
-  // flash before the server has answered the resume attempt (D-30).
-  const [restoring, setRestoring] = useState(() => readStoredToken() !== '')
+  // A stored token means the session can be restored, so the join form must not
+  // flash before the server has answered the resume attempt (D-30) — and D-134
+  // bounds that wait rather than letting it become a dead end.
+  const [hasToken, setHasToken] = useState(() => readStoredToken() !== '')
   const [errorKey, setErrorKey] = useState<CopyKey | null>(null)
   const [snapshot, setSnapshot] = useState<PlayerSnapshot | null>(null)
   // The phase body's state, reduced from every admitted frame (D-57/D-70).
@@ -95,6 +89,15 @@ function PlayerView() {
   // after the settle's own snapshot and survives the later snapshots for the
   // same item. See `keepRejection`.
   const [rejection, setRejection] = useState<HeldRejection | null>(null)
+  // D-134's bound: the instant it is measured from, the clock it is read
+  // against, and the FIRST clearing signal that arrived (the closed vocabulary
+  // `RESTORE_CLEARING_SIGNALS` declares). The pure rule both read is
+  // `restoreActive`; the timer below is what advances `restoreNow` to the bound.
+  const [mountedAt] = useState(() => Date.now())
+  const [restoreNow, setRestoreNow] = useState(mountedAt)
+  const [restoreClearedBy, setRestoreClearedBy] = useState<RestoreSignal | null>(null)
+  // Mirrors `lastOpenAt` for the callback closure, which is created once.
+  const openedRef = useRef(false)
   const connectionRef = useRef<PlayerConnection | null>(null)
   // The item the reduced view is on RIGHT NOW. The socket callbacks are created
   // once (empty deps), so a refusal that has to record its own scope reads the
@@ -106,7 +109,20 @@ function PlayerView() {
   // and the superseded connection's 4001 must never surface as an error.
   useEffect(() => {
     const connection = openPlayerSocket({
-      onStatus: setStatus,
+      onStatus: (next) => {
+        if (next === 'live') {
+          openedRef.current = true
+          setLastOpenAt(Date.now())
+        } else if (openedRef.current) {
+          // D-134: the FIRST close after an open ends the restoring line early
+          // — the first failure. A page that never opened is bounded by the
+          // timer alone; the machine deliberately reports the same
+          // `reconnecting` for both, so this is the one close a route can
+          // observe without a second socket capability.
+          setRestoreClearedBy((prev) => prev ?? 'close')
+        }
+        setStatus(next)
+      },
       onView: (next) => {
         itemIdRef.current = next.item?.id ?? null
         setView(next)
@@ -114,7 +130,7 @@ function PlayerView() {
       onSnapshot: (next) => {
         setSnapshot(next)
         setJoining(false)
-        setRestoring(false)
+        setRestoreClearedBy((prev) => prev ?? 'snapshot')
         setErrorKey(null)
         setRejection((prev) => keepRejection(prev, next))
       },
@@ -122,19 +138,26 @@ function PlayerView() {
       // D-78/D-80: the presenter ended this identity's session (a cleared room
       // or a released row) and the server closed the socket with 4002. The body
       // on screen describes a lobby that no longer exists, so the route returns
-      // to the join form's entry state. The status line then reports the closed
-      // socket, and reload is the recovery (the phase's accepted one).
+      // to the join form's entry state. The token is gone with the identity, so
+      // the session block must not offer to restore it.
       onSessionEnded: () => {
+        setHasToken(false)
+        setRestoreClearedBy((prev) => prev ?? 'session_ended')
         setView(initialViewState())
         setSnapshot(null)
         setJoining(false)
-        setRestoring(false)
         setErrorKey(null)
         setRejection(null)
       },
       onError: (error: ErrorPayload) => {
+        // D-30 (3): `token_invalid` deletes the stored token and the session
+        // block disappears with it — the form's `error.sessionExpired` line is
+        // the explanation and the form is the path.
+        if (error.code === 'token_invalid') setHasToken(false)
+        setRestoreClearedBy(
+          (prev) => prev ?? (error.code === 'token_invalid' ? 'token_invalid' : 'error'),
+        )
         setJoining(false)
-        setRestoring(false)
         setErrorKey(errorCopyKey(error.code))
       },
     })
@@ -145,6 +168,39 @@ function PlayerView() {
       connection.close()
     }
   }, [])
+
+  // D-134's bound line: true only while the mount is younger than
+  // `RESTORE_BOUND_MS` and no clearing signal has arrived. The session block
+  // renders only while the block itself is visible (a stored token, no snapshot
+  // yet, not superseded), and the timer is cleared whenever the line stops
+  // rendering — the effect's own cleanup, plus the unmount case.
+  const sessionBlockVisible = view.me === null && hasToken && status !== 'superseded'
+  const restoringLine =
+    sessionBlockVisible &&
+    restoreActive({
+      mountedAt,
+      now: restoreNow,
+      clearedBy: restoreClearedBy,
+    })
+
+  useEffect(() => {
+    if (!restoringLine) return
+    const remaining = Math.max(0, mountedAt + RESTORE_BOUND_MS - Date.now())
+    const id = window.setTimeout(() => setRestoreNow(Date.now()), remaining)
+    return () => window.clearTimeout(id)
+  }, [restoringLine, mountedAt])
+
+  // G-8's single ordering: the session block's retry WINS when it is present,
+  // so the socket retry renders only while the state is offline AND no session
+  // block owns the recovery — at most one retry control per screen-state.
+  const socketRetryVisible = status === 'offline' && !sessionBlockVisible
+
+  function retrySocket() {
+    // One capability, three call sites: the offline retry, the session block's
+    // retry and the superseded notice's "Use this device" all reach the same
+    // `retry()` — reset the backoff, connect now, re-send the stored token.
+    connectionRef.current?.retry()
+  }
 
   function changeNickname(value: string) {
     setNickname(value)
@@ -187,18 +243,47 @@ function PlayerView() {
 
   function renderBody() {
     // No snapshot has been applied yet: the player has not joined (or is
-    // resuming), so the join screen is the only body that exists.
+    // resuming), so the join column is the only body that exists.
     if (view.me === null) {
-      if (restoring) return <p className="text-base leading-[1.5]">{t('session.restoring')}</p>
+      // D-134's bound: while it runs, the restoring line stands INSTEAD of the
+      // form (the carried D-30 shape — the form must not flash before the
+      // server has answered) but always with an attempt in flight and for at
+      // most `RESTORE_BOUND_MS`. After the bound (or the first failure) the
+      // normal join form plus the session retry render — there is no state in
+      // which the player has no path forward.
+      if (restoringLine) {
+        return <p className="text-base leading-[1.5]">{t('session.restoring')}</p>
+      }
       return (
-        <JoinForm
-          open={status === 'live'}
-          joining={joining}
-          nickname={nickname}
-          onNicknameChange={changeNickname}
-          onSubmit={submitJoin}
-          errorKey={errorKey}
-        />
+        <>
+          {sessionBlockVisible && (
+            <>
+              <p className="text-sm leading-[1.5] text-muted-foreground">
+                {t('session.restoreNote')}
+              </p>
+              {/* Disabled only while the socket is already open: the retry is
+                  the path when the resume attempt has failed or is still
+                  silent, and there is nothing to reset once it is live. */}
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full"
+                disabled={status === 'live'}
+                onClick={retrySocket}
+              >
+                {t('session.retry')}
+              </Button>
+            </>
+          )}
+          <JoinForm
+            open={status === 'live'}
+            joining={joining}
+            nickname={nickname}
+            onNicknameChange={changeNickname}
+            onSubmit={submitJoin}
+            errorKey={errorKey}
+          />
+        </>
       )
     }
 
@@ -261,11 +346,11 @@ function PlayerView() {
     }
 
     // LOBBY keeps its shipped Phase-2 body, rendered from the snapshot it was
-    // written for. The last known body deliberately stays on screen through a
-    // `lost` or `superseded` connection: a phone that lost signal must not lose
-    // the room it is in. (The `null` arm is unreachable — `me` and the snapshot
-    // arrive from the same frame — and is written out only to keep this
-    // function total.)
+    // written for. The last known body deliberately stays on screen through an
+    // `offline` or `superseded` connection: a phone that lost signal must not
+    // lose the room it is in. (The `null` arm is unreachable — `me` and the
+    // snapshot arrive from the same frame — and is written out only to keep
+    // this function total.)
     return snapshot === null ? null : <Lobby snapshot={snapshot} />
   }
 
@@ -279,14 +364,40 @@ function PlayerView() {
         </div>
 
         {/* One polite live region for the whole status line, so a state change
-            is announced — not just shown by the square's colour. */}
-        <div role="status" aria-live="polite" className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`inline-block size-3 border-2 border-border ${STATUS_FILL[status]}`}
-          />
-          <p className="text-sm leading-[1.5] font-bold">{t(STATUS_COPY[status])}</p>
-        </div>
+            is announced — not just shown by the square's colour. D-130's retry
+            renders here only while the join column below does not own it (G-8). */}
+        <ConnectionLine
+          status={status}
+          lastOpenAt={lastOpenAt}
+          region
+          onRetry={socketRetryVisible ? retrySocket : undefined}
+        />
+
+        {/* D-131: the terminal 4001 notice and its one deliberate rejoin. The
+            stored token is KEPT (it is the identity the action re-claims), the
+            last known body stays on screen, and this row plus the action under
+            it are the only way back on this page instance. Player-only by
+            construction: 4001 is token-scoped, so no other role can reach it
+            (G-10). The notice is assertive — a terminal fact the player's next
+            action depends on. */}
+        {status === 'superseded' && (
+          <>
+            <p
+              role="alert"
+              className="border-2 border-destructive px-2 py-2 text-base leading-[1.5]"
+            >
+              {t('session.supersededNote')}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full"
+              onClick={retrySocket}
+            >
+              {t('session.useThisDevice')}
+            </Button>
+          </>
+        )}
 
         {renderBody()}
       </Card>
