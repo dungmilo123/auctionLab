@@ -9,8 +9,10 @@
 # Options:
 #   --sha256 <value>     REQUIRED (or set CLOUDFLARED_SHA256): the SHA-256
 #                        Cloudflare publishes for the release asset, as 64 hex
-#                        characters or as an http(s) URL serving metadata that
-#                        contains it.
+#                        characters or as an https URL serving metadata that
+#                        contains it. A plaintext http:// source is refused:
+#                        the digest is only a control if the transport that
+#                        carries it is authenticated too.
 #   --version <tag>      release tag, e.g. 2026.9.1
 #                        (default: CLOUDFLARED_VERSION, else the latest release)
 #   --os <goos>          override the detected OS (linux, darwin, windows)
@@ -24,10 +26,12 @@
 #   -h, --help           this text
 #
 # Why the checksum is mandatory: the script downloads an executable from the
-# internet. Verifying the published digest BEFORE chmod +x is the only step
-# that stands between "the presenter installed a tunnel client" and "the
-# presenter ran whatever the network served". A mismatch is a hard failure, and
-# the download is deleted.
+# internet, and https is required for the digest source as much as for the
+# asset — a plaintext digest can be served by the same attacker who serves a
+# trojaned binary, and the verification would then pass. Verifying the
+# published digest BEFORE chmod +x is the only step that stands between "the
+# presenter installed a tunnel client" and "the presenter ran whatever the
+# network served". A mismatch is a hard failure, and the download is deleted.
 #
 # Exit codes: 0 installed, 1 usage/verification failure, 2 missing prerequisite.
 
@@ -37,7 +41,7 @@ OFFICIAL_BASE="https://github.com/cloudflare/cloudflared/releases/download"
 PROG="install-cloudflared"
 
 usage() {
-    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 fail() {
@@ -167,17 +171,24 @@ fi
 
 fetch() {
     # fetch <url> <destination>
+    #
+    # https is required for the ASSET and for the published DIGEST alike: the
+    # digest is this script's only control, so the transport that carries it
+    # must be authenticated too — otherwise a venue hotspot or a hostile proxy
+    # can serve a trojaned cloudflared and the matching checksum, and the
+    # verification below passes on an attacker-controlled chain. The refusal is
+    # unconditional, on both downloaders, for both call sites.
+    case "$1" in
+    http://*) fail "refusing a plaintext download from $1; use https" 1 ;;
+    esac
+
     if [ "$DOWNLOADER" = "curl" ]; then
         case "$1" in
-        https://*) curl -fsSL --proto '=https' --tlsv1.2 -o "$2" "$1" ;;
         file://*) curl -fsSL -o "$2" "$1" ;;
-        *) curl -fsSL -o "$2" "$1" ;;
+        *) curl -fsSL --proto '=https' --tlsv1.2 -o "$2" "$1" ;;
         esac
     else
-        case "$1" in
-        http://*) fail "refusing a plaintext download from $1; use https" 1 ;;
-        *) wget -q -O "$2" "$1" ;;
-        esac
+        wget -q -O "$2" "$1"
     fi
 }
 
