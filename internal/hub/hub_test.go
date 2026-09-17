@@ -35,6 +35,25 @@ func TestDefaultPolicyPinsTheD40Numbers(t *testing.T) {
 		t.Errorf("ping period %s is not well under the pong window %s: a healthy peer would be reclaimed between pings",
 			DefaultPolicy.PingPeriod, DefaultPolicy.PongWait)
 	}
+	// Phase 7 (D-132): the application-level beat has its own knob, at the same
+	// cadence as the ping by design — the client force-closes after 60 s of
+	// silence, which is 2.4 periods of this number.
+	if got := DefaultPolicy.HeartbeatPeriod; got != 25*time.Second {
+		t.Errorf("DefaultPolicy.HeartbeatPeriod = %s, want 25s (D-132: the client's 60 s stale window must be a small multiple)", got)
+	}
+	if DefaultPolicy.HeartbeatPeriod >= DefaultPolicy.PongWait {
+		t.Errorf("heartbeat period %s is not well under the pong window %s: a client would be told the socket is alive after the server had already reclaimed it",
+			DefaultPolicy.HeartbeatPeriod, DefaultPolicy.PongWait)
+	}
+	// Phase 7 (D-138): the inbound bucket is deliberately generous — a false
+	// refusal on a legitimate rapid-fire bid is a correctness bug, not a tuning
+	// preference — and the acceptance loadtest is what validates the sizing.
+	if got := DefaultPolicy.CommandRate; got != 20 {
+		t.Errorf("DefaultPolicy.CommandRate = %v, want 20 commands/second (D-138)", got)
+	}
+	if got := DefaultPolicy.CommandBurst; got != 40 {
+		t.Errorf("DefaultPolicy.CommandBurst = %d, want 40 (D-138: a human sequence of joins or bids never comes close)", got)
+	}
 }
 
 // TestKeepaliveReclaimsASilentPeer pins D-40's mechanism, not its numbers: a

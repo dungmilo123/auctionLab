@@ -77,6 +77,14 @@ func testPolicyWithBuffer(depth int) Policy {
 		// cadence — a fast beat keeps the ticker cases well under the read
 		// budget instead of sleeping on 250 ms (H16).
 		TickPeriod: 10 * time.Millisecond,
+		// Phase 7: the heartbeat period is a value no case waits out (the beat
+		// cases call heartbeat() directly or inject their own period), and the
+		// command bucket is set far above anything a case sends — so the
+		// transport contract under test is always the only thing in play
+		// (D-132/D-138).
+		HeartbeatPeriod: time.Hour,
+		CommandRate:     100_000,
+		CommandBurst:    100_000,
 	}
 }
 

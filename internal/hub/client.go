@@ -85,6 +85,12 @@ type client struct {
 	// rejectedJoins counts D-23 rejections on this connection. It lives in the
 	// read pump's goroutine and dies with the connection.
 	rejectedJoins int
+
+	// commands is D-138's per-connection inbound bucket. It is touched only by
+	// the read pump goroutine — one reader per connection is what makes the
+	// bucket lock-free — and it dies with the connection with no shared state to
+	// clear.
+	commands *commandBucket
 }
 
 // inbound is the union of the client→server fields the hub needs to route a
@@ -130,10 +136,11 @@ type inbound struct {
 // newClient wires one upgraded connection to the hub.
 func newClient(h *Hub, conn *websocket.Conn) *client {
 	return &client{
-		hub:  h,
-		conn: conn,
-		send: make(chan Envelope, h.policy.SendBuffer),
-		done: make(chan struct{}),
+		hub:      h,
+		conn:     conn,
+		send:     make(chan Envelope, h.policy.SendBuffer),
+		done:     make(chan struct{}),
+		commands: newCommandBucket(h.policy, h.now()),
 	}
 }
 
@@ -222,6 +229,13 @@ func (c *client) readPump() {
 		if err != nil {
 			return
 		}
+		// D-138: the bucket is the FIRST thing every inbound frame meets — it is
+		// metered before the frame type is even considered, so a flood cannot buy
+		// a free JSON decode or a free bad_message answer. A refused frame is
+		// dropped here and the socket stays open.
+		if !c.admitCommand() {
+			continue
+		}
 		if messageType != websocket.TextMessage {
 			// The catalog is JSON text; anything else is malformed input and
 			// gets the typed answer instead of silence (T-02-05).
@@ -230,6 +244,25 @@ func (c *client) readPump() {
 		}
 		c.handle(payload)
 	}
+}
+
+// admitCommand meters one inbound frame against D-138's bucket and answers
+// whether it may proceed.
+//
+// Only the FIRST refusal of an exhausted episode is answered with the typed
+// error; every further over-limit frame is absorbed silently until the bucket
+// refills (research Pattern 7). That keeps D-138's letter — an error frame IS
+// returned, the socket stays open and nothing moves — while removing the 1:1
+// amplification a naive per-frame answer would hand a flooder.
+func (c *client) admitCommand() bool {
+	allowed, firstRefusal := c.commands.admit(c.hub.now())
+	if allowed {
+		return true
+	}
+	if firstRefusal {
+		c.sendError(CodeRateLimited, "too many commands; wait a moment and try again")
+	}
+	return false
 }
 
 // handle routes one text frame against the frozen catalog.
@@ -288,9 +321,10 @@ func (c *client) handle(payload []byte) {
 		//
 		// Deliberately outside D-23's rejectedJoins cap — that counter counts
 		// join REJECTIONS, not answers — and so are the bad-JSON, no-type,
-		// non-text and pre-join replies above. The 4 KiB read limit is the only
-		// bound until the Phase 7 per-connection rate limit lands (CONTEXT
-		// §Deferred).
+		// non-text and pre-join replies above. Since Phase 7 the per-connection
+		// rate limit runs AHEAD of this switch in the read pump, so every one of
+		// those answers is metered and a flood cannot use them as free
+		// amplification (D-138).
 		c.sendError(CodeUnsupported, "command not implemented in this phase")
 	}
 }
