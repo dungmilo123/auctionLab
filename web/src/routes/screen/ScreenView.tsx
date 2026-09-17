@@ -261,7 +261,7 @@ function hintRange(item: PublicItem): string | null {
   return null
 }
 
-/** One label/value row on the projector: label 14/700, value 16/400. */
+/** One label/value cell of the SETTLED reveal grid: label 14/700, value 16/400. */
 function RevealRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -273,10 +273,11 @@ function RevealRow({ label, children }: { label: string; children: ReactNode }) 
 
 /**
  * The standings block, shared by SETTLED and FINALE — one component, one rule:
- * every entry renders, in the server's own order, and the block is the second of
- * the route's two declared scroll regions (20 players fill three columns at
- * 1920×1080 and need no scroll). The podium above it is a *prefix* of the same
- * list, never a second ranking.
+ * every entry renders, in the server's own order, one full-width row each, and
+ * the block is the second of the route's two declared scroll regions. The podium
+ * above it is a *prefix* of the same list, never a second ranking — so FINALE
+ * hands this component the podium's own suffix and the top three are not
+ * repeated.
  */
 function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
   const { t } = useLanguage()
@@ -286,10 +287,26 @@ function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
       <h2 className="shrink-0 text-xl leading-[1.2] font-bold tracking-[-0.01em]">
         {t('screen.standingsHeading')}
       </h2>
-      {/* 04-UI-SPEC §standings-block deviation: this compact rendition matches
-          the lobby grid (no min-h-11, no py-1) and preserves the row content,
-          typography and 4px border. */}
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-1 overflow-y-auto xl:grid-cols-3">
+      {/* 04-UI-SPEC §standings-block amendment (quick 260917-sfp, D-01): ONE
+          full-width row per player, in the server's order — the responsive
+          two/three-column grid split a rank from its nickname across columns at
+          projector size, so the block scrolls instead. The earlier deviation
+          still holds: this compact rendition matches the lobby grid's row (no
+          min-h-11, no py-1) and preserves the row content, typography and 4px
+          border.
+
+          16:9 capacity for four rows, sold SETTLED (the tallest ceremony): the
+          4.2vmin root makes the viewport 100/4.2 = 23.810rem; main's p-4 (2rem),
+          the 1.5rem header line and its 1rem gap leave the body 19.310rem. The
+          outcome block is 4.150rem (Display 2.4 + gap-1 0.25 + Body 1.5), the
+          body's two gap-4 gaps 2rem, and the two-row reveal is 3.426rem as
+          shipped — a borderless 1.5rem normal cell beside the 1.676rem accent
+          cell, plus gap-1 — so this block receives 9.734rem; its 1.5rem heading
+          and 0.5rem gap-2 leave the scroll grid 7.734rem against the 7.454rem
+          of four 1.676rem rows and three gap-1 gaps. The plan's proof charged
+          1.676rem to BOTH reveal rows (3.602rem -> 7.558rem against 7.454rem),
+          so the shipped classes clear its 0.104rem worst case too. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-1 overflow-y-auto">
         {entries.map((entry) => (
           <div
             key={entry.nickname}
@@ -563,7 +580,7 @@ function SettledBody({
   return (
     // One bounded flex child of ScreenView's body, exactly like FINALE: the
     // ceremony stays shrink-0 and the shared Standings takes the remainder, so
-    // the reclaimed budget is what allocates two full rows (D-01/D-02).
+    // the reclaimed budget is what allocates the standings rows (D-01/D-02).
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-col gap-1">
         <h2 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">
@@ -572,7 +589,16 @@ function SettledBody({
         <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-1">
+      {/* 04-UI-SPEC §Body 3 amendment (quick 260917-sfp, D-02): the reveal facts
+          are a two-column grid rather than a stacked column, so the ceremony
+          leaves the standings their four-row budget. Auto-placement over the
+          rendered cells alone: sold fills winner/price then truth/delta, unsold
+          fills price/truth — no blank winner or delta cell is ever mounted.
+          A normal cell is the player route's borderless one-line label/value
+          (1.5rem); the accent truth cell keeps its 4px border and its py-0, so
+          its one-line height is 1.5rem + 8px = 1.676rem — the compact row's own
+          ceiling, not a new off-scale height. */}
+      <div className="grid shrink-0 grid-cols-2 gap-1">
         {/* Omitted entirely when there is no winner — which is exactly the
             unsold case: a blank winner slot would read as a missing value
             rather than as "nobody won" (ECON-03). */}
@@ -589,7 +615,7 @@ function SettledBody({
 
         {/* The one accent fill of this state: the teaching moment of the whole
             app (§Color item 8). */}
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-1 text-primary-foreground">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-0 text-primary-foreground">
           <p className="text-sm leading-[1.5] font-bold">{t('settle.truthLabel')}</p>
           <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">
             <span>{formatVND(settle.truthValue)}</span>
@@ -678,9 +704,12 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
   )
 }
 
-/** Body 4 — FINALE (SCRN-03/ECON-05/D-89): the podium, then the full record. */
+/** Body 4 — FINALE (SCRN-03/ECON-05/D-89): the podium, then the rest of the record. */
 function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
   const { t } = useLanguage()
+  // D-89's podium is this list's own prefix: what the podium already
+  // celebrates is not repeated, so the record below resumes at fourth place.
+  const rest = standings.slice(3)
 
   return (
     // The same bounded composition as SETTLED: heading and podium are shrink-0
@@ -692,9 +721,11 @@ function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
 
       <Podium entries={podiumEntries(standings)} />
 
-      {/* The podium is the celebration and this is the result: everyone renders,
-          in the server's order, in the route's second scroll region. */}
-      <Standings entries={standings} />
+      {/* D-03: the list starts at the server-ranked fourth player — the ranks
+          are the server's own labels, so the first row still reads 4 and nothing
+          here renumbers — and it is absent, heading included, when the podium is
+          the whole field. */}
+      {rest.length > 0 && <Standings entries={rest} />}
     </div>
   )
 }
