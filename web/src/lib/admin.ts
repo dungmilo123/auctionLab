@@ -353,8 +353,15 @@ export function configFrame(config: AdminConfigInput): AdminCommand {
  * An unlisted or absent value renders NO tag — the browser never derives or
  * guesses which rung of the precedence chain won (T-07-12).
  */
-export function joinUrlSourceTagKey(_source: string): CopyKey | null {
-  return null
+const URL_SOURCE_KEYS: Readonly<Record<string, CopyKey>> = {
+  public_url: 'admin.urlSourcePublic',
+  tunnel: 'admin.tunnelLabel',
+  selected: 'admin.urlSourceSaved',
+  candidate: 'admin.urlSourceAuto',
+}
+
+export function joinUrlSourceTagKey(source: string): CopyKey | null {
+  return URL_SOURCE_KEYS[source] ?? null
 }
 
 /**
@@ -362,16 +369,16 @@ export function joinUrlSourceTagKey(_source: string): CopyKey | null {
  * override active, "the projector QR uses the URL selected here" is false);
  * every other rung keeps it.
  */
-export function urlNoteKey(_source: string): CopyKey {
-  return 'admin.urlNote'
+export function urlNoteKey(source: string): CopyKey {
+  return source === 'public_url' ? 'admin.urlOverrideNote' : 'admin.urlNote'
 }
 
 /**
  * G-7's second note, rendered below the list only while a healthy tunnel is the
  * effective source — the carried note stays there, because it is still true.
  */
-export function urlTunnelNoteKey(_source: string): CopyKey | null {
-  return null
+export function urlTunnelNoteKey(source: string): CopyKey | null {
+  return source === 'tunnel' ? 'admin.urlTunnelNote' : null
 }
 
 /**
@@ -389,8 +396,13 @@ export type TunnelRow = {
   waitingKey: CopyKey | null
 }
 
-export function tunnelRow(_status: TunnelStatus): TunnelRow {
-  return { url: '', healthy: false, healthKey: 'admin.tunnelUnhealthy', waitingKey: null }
+export function tunnelRow(status: TunnelStatus): TunnelRow {
+  return {
+    url: status.url,
+    healthy: status.healthy,
+    healthKey: status.healthy ? 'admin.tunnelHealthy' : 'admin.tunnelUnhealthy',
+    waitingKey: status.url === '' ? 'admin.tunnelWaiting' : null,
+  }
 }
 
 /** D-79's per-mode confirm sentence — the two strips name their own consequence. */

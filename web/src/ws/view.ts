@@ -25,6 +25,9 @@
  *   - D-88's public feed is seeded whole by a screen snapshot and, while the
  *     phase is LIVE, prepended by the same `bid.accepted` frame that moves the
  *     price — a bid produces no snapshot, so the live path cannot wait for one.
+ *   - A `tunnel.status` control frame patches ONE display-only field and is
+ *     ignored when malformed; the last valid status survives every snapshot,
+ *     because the server publishes on change (D-123/G-4).
  */
 
 import type {
@@ -336,14 +339,22 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         config: snapshot.config,
         players: snapshot.players,
         joinUrls: snapshot.joinUrls,
-        joinUrlSource: '',
-        tunnel: null,
+        joinUrlSource: snapshot.joinUrlSource,
+        // The tunnel read-out is display-only data from a control frame, and
+        // the server publishes it only on change — a snapshot must not clear
+        // what the panel already shows (D-123/G-4).
+        tunnel: state.tunnel,
       }
     }
 
-    case 'tunnel.status':
-      // D-123/G-4: display-only data from a control frame. Placeholder.
-      return null
+    case 'tunnel.status': {
+      // D-123/G-4: one display-only field from a control frame. A malformed
+      // answer (the decoder's null) is IGNORED rather than clearing the last
+      // valid status — display data is never a rejection (the `recent_bids`
+      // rule), and the panel keeps showing the tunnel's last real state.
+      if (frame.status === null) return null
+      return { ...state, tunnel: frame.status }
+    }
 
     case 'phase.changed': {
       const { phase, item } = frame.payload

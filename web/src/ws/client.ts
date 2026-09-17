@@ -52,6 +52,7 @@ import {
   PHASE_CHANGED,
   PRICE_TICK,
   STATE_SNAPSHOT,
+  TUNNEL_STATUS,
   parseEnvelope,
   readAdminSnapshot,
   readBidAccepted,
@@ -65,6 +66,7 @@ import {
   readPriceTick,
   readPublicItem,
   readScreenSnapshot,
+  readTunnelStatus,
   type BidRejected,
   type Envelope,
   type ErrorPayload,
@@ -377,10 +379,16 @@ export function openSocket(opts: SocketOptions): Socket {
     switch (step.outcome.kind) {
       case 'duplicate':
         return
-      case 'control':
-        // The control plane is admitted and consumed by the pattern above: the
-        // beat and the tunnel frame carry no game state to reduce.
+      case 'control': {
+        // The control plane is admitted at any seq and carries no GAME state to
+        // reduce — but `tunnel.status` IS presentation data the presenter's
+        // panel renders (D-123/T-07-12), so one decode runs here. Everything
+        // with nothing to reduce falls through `pushView`'s null rule, and a
+        // `heartbeat` (D-132) stays invisible by design.
+        const frame = decodeFrame(opts.role, envelope)
+        if (frame !== null) pushView(frame)
         return
+      }
       case 'snapshot': {
         if (!step.outcome.apply) return
         const frame = decodeFrame(opts.role, envelope)
@@ -588,14 +596,21 @@ export function openSocket(opts: SocketOptions): Socket {
 
 /**
  * Decode one admitted envelope into the frame the reducer understands. `null`
- * covers everything this socket does not render — `hello`, `error`,
- * `tunnel.status`, `heartbeat`, later phases' frames — AND every decode
- * failure, so an invalid or phase-inconsistent payload can never reach `onView`
- * (T-03-09).
+ * covers everything this socket does not render — `hello`, `error`, `heartbeat`,
+ * later phases' frames — AND every decode failure, so an invalid or
+ * phase-inconsistent payload can never reach `onView` (T-03-09).
+ *
+ * `tunnel.status` (D-123) is the one control-plane frame that IS rendered: it
+ * decodes to a display-only frame whose `status` is this decoder's answer, null
+ * included, so the reducer — not the socket layer — decides what a malformed
+ * frame leaves on the panel.
  */
 function decodeFrame(role: SocketRole, envelope: Envelope): ViewFrame | null {
   const { type, data, ts } = envelope
   switch (type) {
+    case TUNNEL_STATUS: {
+      return { kind: 'tunnel.status', status: readTunnelStatus(data) }
+    }
     case STATE_SNAPSHOT: {
       if (role === 'admin') {
         const snapshot = readAdminSnapshot(data)

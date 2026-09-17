@@ -857,8 +857,10 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   const joinUrls = readJoinUrls(data.join_urls)
   const selectedJoinUrl = readString(data.selected_join_url)
   // D-127/G-6: additive on the admin projection alone (D-24's rule — a payload
-  // that predates the key reads as "no source", never as a rejection).
-  const joinUrlSource = ''
+  // that predates the key reads as "no source", never as a rejection). The
+  // value travels verbatim: the panel's own mapper decides which of the four
+  // rungs it names and renders no tag for anything else (T-07-12).
+  const joinUrlSource = readString(data.join_url_source) ?? ''
   if (
     phase === null ||
     revision === null ||

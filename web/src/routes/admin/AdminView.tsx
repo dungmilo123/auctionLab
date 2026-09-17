@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
+import { ConnectionLine } from '@/components/ConnectionLine'
 import LanguageControl, { SegmentedChoice } from '@/components/LanguageControl'
 import { QrPanel } from '@/components/QrPanel'
 import { Button } from '@/components/ui/button'
@@ -17,7 +18,7 @@ import {
   type ResetMode,
 } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
-import type { AdminSealedBid, Phase, SealedProgress } from '@/ws/protocol'
+import type { AdminSealedBid, Phase, SealedProgress, TunnelStatus } from '@/ws/protocol'
 import { initialViewState, type ViewState } from '@/ws/view'
 import {
   FIELD_IDS,
@@ -27,13 +28,17 @@ import {
   draftFromItem,
   draftPayload,
   draftValid,
+  joinUrlSourceTagKey,
   mutationsEnabled,
   presenterSettle,
   releaseFrame,
   resetConfirmKey,
   resetFrame,
   sortPlayersByJoinedAt,
+  tunnelRow,
   urlCandidates,
+  urlNoteKey,
+  urlTunnelNoteKey,
   validateDraft,
   validateStartingBudget,
   visibleFields,
@@ -63,22 +68,9 @@ import {
 //      change" (D-79) structural rather than an effect — and the same fact
 //      discards an open item draft.
 //
-// The page's pure rules (validation, the socket gate, the candidate rows) live
-// in `lib/admin.ts`, where Vitest pins them; this file renders them.
-
-const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  reconnecting: 'status.connecting',
-  live: 'status.open',
-  offline: 'status.lost',
-  superseded: 'status.superseded',
-}
-
-const STATUS_FILL: Record<ConnectionStatus, string> = {
-  reconnecting: 'bg-muted-foreground',
-  live: 'bg-primary',
-  offline: 'bg-destructive',
-  superseded: 'bg-destructive',
-}
+// The page's pure rules (validation, the socket gate, the candidate rows, the
+// tunnel/source model) live in `lib/admin.ts`, where Vitest pins them; this file
+// renders them.
 
 const PHASE_KEYS: Record<Phase, CopyKey> = {
   LOBBY: 'phase.LOBBY',
@@ -361,10 +353,18 @@ function JoinQrCard({ joinUrl }: { joinUrl: string }) {
   )
 }
 
-/** Card 3 of the Setup tab (D-83/D-84/D-86): the candidate rows. */
+/**
+ * Card 3 of the Setup tab (D-83/D-84/D-86 + CONN-01/D-127/D-128): the candidate
+ * rows, the tunnel read-out and the two mutually exclusive notes. Everything
+ * here renders server truth: the effective URL, the source rung the server
+ * resolved (G-6) and the tunnel's last published status (D-123). The browser
+ * computes no precedence of its own (T-07-12).
+ */
 function JoinUrlsCard({
   joinUrls,
   selected,
+  joinUrlSource,
+  tunnel,
   pageOrigin,
   online,
   choosing,
@@ -372,6 +372,8 @@ function JoinUrlsCard({
 }: {
   joinUrls: string[]
   selected: string
+  joinUrlSource: string
+  tunnel: TunnelStatus | null
   pageOrigin: string
   online: boolean
   choosing: boolean
@@ -379,13 +381,51 @@ function JoinUrlsCard({
 }) {
   const { t } = useLanguage()
   const rows = urlCandidates(joinUrls, pageOrigin)
+  const tagKey = joinUrlSourceTagKey(joinUrlSource)
+  const tunnelNoteKey = urlTunnelNoteKey(joinUrlSource)
+  const readout = tunnel === null ? null : tunnelRow(tunnel)
 
   return (
     <Card className="gap-4 px-6 py-6 md:px-8 md:py-8">
       <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
         {t('admin.joinUrlsHeading')}
       </h2>
-      <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.urlNote')}</p>
+      {/* G-7: with the override active the carried sentence is false, so the
+          override note REPLACES it — the two are never stacked. */}
+      <p className="text-sm leading-[1.5] text-muted-foreground">
+        {t(urlNoteKey(joinUrlSource))}
+      </p>
+
+      {/* CONN-01/D-123: the tunnel read-out renders ONLY after a `tunnel.status`
+          frame has arrived — a `--tunnel` server that never publishes (or a
+          non-tunnel run) shows the carried panel with no invented empty state.
+          It is a read-out, never a choice row: the tunnel wins by itself when
+          healthy (D-128/G-4), so it is not pressable and has no re-probe or
+          protocol toggle (D-126 stays env-only). */}
+      {readout !== null && (
+        <div className="flex flex-wrap items-center gap-2 border-2 border-border bg-background px-2 py-2">
+          <span
+            aria-hidden="true"
+            className={`size-3 shrink-0 border-2 border-border ${
+              readout.healthy ? 'bg-foreground' : 'bg-transparent'
+            }`}
+          />
+          <span className="text-sm leading-[1.5] font-bold">{t('admin.tunnelLabel')}</span>
+          {/* The health is a WORD — the dot's fill is the secondary cue. */}
+          <span className="text-sm leading-[1.5] text-muted-foreground">
+            {t(readout.healthKey)}
+          </span>
+          {readout.waitingKey !== null ? (
+            <span className="text-sm leading-[1.5] text-muted-foreground">
+              {t(readout.waitingKey)}
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 break-all font-mono text-base leading-[1.5]">
+              {readout.url}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Never empty by construction: `urlCandidates` appends this page's own
           origin when the server's boot-time enumeration did not list it, so
@@ -413,13 +453,26 @@ function JoinUrlsCard({
                   {url}
                 </span>
                 {isSelected && (
-                  <span className="text-sm leading-[1.5] font-bold">{t('admin.urlSelected')}</span>
+                  <span className="text-sm leading-[1.5] font-bold">
+                    {/* G-6: the tag names the rung the server reported, and only
+                        when the effective URL is one of these rows. An unlisted
+                        value renders no tag rather than a guess. */}
+                    {tagKey === null
+                      ? t('admin.urlSelected')
+                      : `${t(tagKey)} · ${t('admin.urlSelected')}`}
+                  </span>
                 )}
               </button>
             </li>
           )
         })}
       </ul>
+
+      {/* G-7's second note: the healthy tunnel is the QR link, the persisted
+          choice is the fallback — the carried note above is still true. */}
+      {tunnelNoteKey !== null && (
+        <p className="text-sm leading-[1.5] text-muted-foreground">{t(tunnelNoteKey)}</p>
+      )}
     </Card>
   )
 }
@@ -532,6 +585,8 @@ function SetupPanel({
       <JoinUrlsCard
         joinUrls={view.joinUrls}
         selected={view.joinUrl}
+        joinUrlSource={view.joinUrlSource}
+        tunnel={view.tunnel}
         pageOrigin={window.location.origin}
         online={online}
         choosing={flags.urlChoosing}
@@ -1347,6 +1402,9 @@ function PlayersPanel({
 function AdminView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
+  // G-1: the machine's first-open boolean, mirrored for the shared indicator's
+  // `Connecting…`/`Reconnecting…` split (the rule stays in `reconnect.ts`).
+  const [lastOpenAt, setLastOpenAt] = useState<number | null>(null)
   const [view, setView] = useState<ViewState>(() => initialViewState())
   // The catalog generation: bumped once per admin snapshot, and only per
   // snapshot — an EVENT keeps the same `items` array, so its reference is the
@@ -1369,7 +1427,12 @@ function AdminView() {
   // StrictMode double-invoke cannot leave two admin connections behind.
   useEffect(() => {
     const connection = openAdminSocket({
-      onStatus: setStatus,
+      onStatus: (next) => {
+        // G-1: the first-open boolean the indicator splits on. The machine owns
+        // it; this route only mirrors the one instant it flips.
+        if (next === 'live') setLastOpenAt(Date.now())
+        setStatus(next)
+      },
       onView: (next) => {
         setView(next)
         if (next.items !== lastItemsRef.current) {
@@ -1424,6 +1487,12 @@ function AdminView() {
     connectionRef.current?.send(frame)
   }
 
+  function retry() {
+    // D-130's manual retry: reset the backoff and connect now. The role's join
+    // frame (the capability cookie) is rebuilt exactly like any other connect.
+    connectionRef.current?.retry()
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-12 md:px-8">
       <div className="flex flex-col gap-4">
@@ -1434,22 +1503,18 @@ function AdminView() {
         </div>
 
         {/* The four-state line is what stops a presenter from clicking a control
-            on a dead socket and seeing nothing happen. `superseded` is
-            unreachable for this role, but the shared shape keeps the state. */}
-        <div role="status" aria-live="polite" className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`inline-block size-3 border-2 border-border ${STATUS_FILL[status]}`}
-          />
-          <p className="text-sm leading-[1.5] font-bold">{t(STATUS_COPY[status])}</p>
-        </div>
-
-        {/* Every mutating control on every tab is disabled while the socket is
-            down (D-82a); the note names the recovery rather than implying the
-            page still works. */}
-        {status === 'offline' && (
-          <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.offlineNote')}</p>
-        )}
+            on a dead socket and seeing nothing happen (D-130/G-11). In the
+            `offline` state the reworded note names both recoveries and D-130's
+            retry sits directly under it — where the problem is named. Neither
+            renders on an ordinary blip, and `superseded` is unreachable for
+            this role (4001 is token-scoped, G-10). */}
+        <ConnectionLine
+          status={status}
+          lastOpenAt={lastOpenAt}
+          region
+          noteKey="admin.offlineNote"
+          onRetry={retry}
+        />
 
         {errorCode !== null && (
           <p role="alert" className="border-2 border-destructive px-2 py-2 text-base leading-[1.5]">
