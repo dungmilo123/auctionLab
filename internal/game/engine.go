@@ -409,8 +409,34 @@ func (e *Engine) SetPublisher(p Publisher) { e.publisher.Store(&p) }
 // The manager is edge-triggered, but this call is also idempotent: an unchanged
 // status is not a new fact and fans nothing.
 func (e *Engine) SetTunnelStatus(url string, healthy bool) {
-	_ = url
-	_ = healthy
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.state.tunnelURL == url && e.state.tunnelHealthy == healthy {
+		return // an unchanged status is not a new fact
+	}
+	before, _ := e.state.effectiveJoinURL()
+
+	// In-place mutation is safe and intended here: these two fields are the only
+	// mutable part of a committed state, every reader of them holds this lock,
+	// and clone() carries them into the next mutation's scratch copy — so no
+	// mutation can silently re-resolve the URL from the persisted rung alone.
+	e.state.tunnelURL = url
+	e.state.tunnelHealthy = healthy
+
+	after, _ := e.state.effectiveJoinURL()
+	if before == after {
+		return // the rung moved but the resolved URL did not: nothing to redraw
+	}
+
+	p := e.publisher.Load()
+	if p == nil {
+		return // no fan-out edge installed (a test engine): the state still moved
+	}
+	// An empty event list is the established "this mutation produced no typed
+	// frame of its own — the role snapshot IS the frame" path (D-33/H2), and the
+	// revision argument is the CURRENT one, so nothing here is a bump.
+	(*p)(e.state.revision, view{e}, nil)
 }
 
 // Rev is the one canonical game revision (D-35), readable without the lock.

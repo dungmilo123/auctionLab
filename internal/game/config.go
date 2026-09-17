@@ -146,6 +146,9 @@ func (s *state) effectiveJoinURL() (string, string) {
 	if s.publicURL != "" {
 		return s.publicURL, joinURLSourcePublic
 	}
+	if s.tunnelHealthy && s.tunnelURL != "" {
+		return s.tunnelURL, joinURLSourceTunnel
+	}
 	if s.config.JoinURL != "" {
 		return s.config.JoinURL, joinURLSourceSelected
 	}

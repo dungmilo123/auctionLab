@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -373,8 +374,23 @@ func wantsImmediateTick(events []game.Event) bool {
 //
 // PRECONDITION: engine.mu is held exclusively — same rule as Enqueue.
 func (h *Hub) broadcast(rev int64, typ string, data any) {
+	h.broadcastTo(rev, typ, data)
+}
+
+// broadcastTo is broadcast with an AUDIENCE: no roles means every joined
+// connection (the ticker's shape), and a non-empty role list restricts the
+// fan-out to those roles — which is how a control frame reaches the two roles
+// that render it and never a player (D-123/T-07-05). A connection that has not
+// joined has no role and is never a recipient, exactly as in broadcast.
+//
+// PRECONDITION: engine.mu is held exclusively — same rule as Enqueue.
+func (h *Hub) broadcastTo(rev int64, typ string, data any, roles ...string) {
 	for _, c := range h.registry.snapshot() {
-		if c.role() == "" {
+		role := c.role()
+		if role == "" {
+			continue
+		}
+		if len(roles) > 0 && !slices.Contains(roles, role) {
 			continue
 		}
 		c.enqueue(rev, typ, data)
@@ -404,8 +420,10 @@ type tunnelStatusPayload struct {
 // exactly like sendError and confirmNoop, because it writes each recipient's seq
 // counter and FIFO (D-21/D-33).
 func (h *Hub) BroadcastTunnelStatus(url string, healthy bool) {
-	_ = url
-	_ = healthy
+	_ = h.engine.Section(func(v game.View) error {
+		h.broadcastTo(v.Rev(), TypeTunnelStatus, tunnelStatusPayload{URL: url, Healthy: healthy}, RoleAdmin, RoleScreen)
+		return nil
+	})
 }
 
 // sendError answers ONE connection with the frozen typed error (D-24). It is
