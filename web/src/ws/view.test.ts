@@ -162,6 +162,8 @@ describe('initialViewState', () => {
       config: null,
       players: [],
       joinUrls: [],
+      joinUrlSource: '',
+      tunnel: null,
     })
   })
 })
@@ -281,6 +283,7 @@ describe('the snapshot rule (RESEARCH Q3/Q4)', () => {
       leaderboard: [],
       joinUrls: ['http://192.168.1.10:8080'],
       selectedJoinUrl: 'http://192.168.1.10:8080',
+      joinUrlSource: '',
       sealedBids: [],
       sealedProgress: null,
     }
@@ -841,6 +844,7 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
       leaderboard: [],
       joinUrls: ['http://192.168.1.10:8080', 'http://10.0.0.5:8080'],
       selectedJoinUrl: 'http://10.0.0.5:8080',
+      joinUrlSource: '',
       sealedBids: [],
       sealedProgress: null,
       ...overrides,
@@ -870,6 +874,46 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
     expect(player.players).toEqual([])
     expect(player.joinUrls).toEqual([])
     expect(player.joinUrl).toBe('')
+    expect(player.joinUrlSource).toBe('')
+    expect(player.tunnel).toBeNull()
+  })
+
+  it('carries the effective join-url source and keeps the last tunnel status (D-127/D-123)', () => {
+    // G-6/T-07-12: the rung comes from the server's closed vocabulary on the
+    // admin snapshot — the browser never derives which URL won.
+    const state = applied(initialViewState(), {
+      kind: 'admin-snapshot',
+      snapshot: presenterSnapshot({ joinUrlSource: 'tunnel' }),
+    })
+    expect(state.joinUrlSource).toBe('tunnel')
+
+    // No `tunnel.status` frame yet: the row has nothing to render.
+    expect(state.tunnel).toBeNull()
+
+    // A valid control frame is display-only data the panel renders...
+    const withTunnel = applied(state, {
+      kind: 'tunnel.status',
+      status: { url: 'https://quiet-night.trycloudflare.com', healthy: true },
+    })
+    expect(withTunnel.tunnel).toEqual({
+      url: 'https://quiet-night.trycloudflare.com',
+      healthy: true,
+    })
+
+    // ...a malformed answer (the decoder's null) is ignored, not applied...
+    expect(reduceView(withTunnel, { kind: 'tunnel.status', status: null })).toBeNull()
+
+    // ...and the LAST valid status survives a later snapshot: the server
+    // publishes on change, so a snapshot must not clear the read-out.
+    const afterSnapshot = applied(withTunnel, {
+      kind: 'admin-snapshot',
+      snapshot: presenterSnapshot(),
+    })
+    expect(afterSnapshot.tunnel).toEqual({
+      url: 'https://quiet-night.trycloudflare.com',
+      healthy: true,
+    })
+    expect(afterSnapshot.joinUrlSource).toBe('')
   })
 
   it('carries the server-computed rank through a player snapshot (D-89)', () => {

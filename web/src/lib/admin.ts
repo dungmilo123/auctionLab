@@ -19,7 +19,7 @@
 
 import type { AdminCommand, AdminConfigInput, ResetMode } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
-import type { AdminItem, AdminPlayer, Phase, PublicItem } from '@/ws/protocol'
+import type { AdminItem, AdminPlayer, Phase, PublicItem, TunnelStatus } from '@/ws/protocol'
 import { parseBidAmount } from './bid'
 import { formatVND } from './format'
 import type { CopyKey } from './i18n'
@@ -345,6 +345,52 @@ export function urlCandidates(joinUrls: readonly string[], pageOrigin: string): 
 /** The one Setup command both the budget field and the URL rows send (D-81/D-84). */
 export function configFrame(config: AdminConfigInput): AdminCommand {
   return { type: 'admin.config.update', config }
+}
+
+/**
+ * The source tag's dictionary key (G-6/D-127): the server's CLOSED vocabulary
+ * mapped to the four approved tag rows (`Tunnel` reuses `admin.tunnelLabel`).
+ * An unlisted or absent value renders NO tag — the browser never derives or
+ * guesses which rung of the precedence chain won (T-07-12).
+ */
+export function joinUrlSourceTagKey(_source: string): CopyKey | null {
+  return null
+}
+
+/**
+ * G-7: the PUBLIC_URL override REPLACES the carried `admin.urlNote` (with the
+ * override active, "the projector QR uses the URL selected here" is false);
+ * every other rung keeps it.
+ */
+export function urlNoteKey(_source: string): CopyKey {
+  return 'admin.urlNote'
+}
+
+/**
+ * G-7's second note, rendered below the list only while a healthy tunnel is the
+ * effective source — the carried note stays there, because it is still true.
+ */
+export function urlTunnelNoteKey(_source: string): CopyKey | null {
+  return null
+}
+
+/**
+ * The tunnel read-out's facts (D-123/CONN-01, G-4): a display-only status, never
+ * a choice row. The dot's presence language is the secondary cue — the health
+ * word is what states it — and an empty URL is a declared state (`waiting`),
+ * never a blank value.
+ */
+export type TunnelRow = {
+  url: string
+  /** filled = healthy, hollow = not (the carried presence language) */
+  healthy: boolean
+  healthKey: CopyKey
+  /** `admin.tunnelWaiting` while the URL is empty (tunnel off/restarting) */
+  waitingKey: CopyKey | null
+}
+
+export function tunnelRow(_status: TunnelStatus): TunnelRow {
+  return { url: '', healthy: false, healthKey: 'admin.tunnelUnhealthy', waitingKey: null }
 }
 
 /** D-79's per-mode confirm sentence — the two strips name their own consequence. */

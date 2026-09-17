@@ -740,6 +740,13 @@ export type AdminSnapshot = {
   joinUrls: string[]
   /** D-84: the URL every QR is built from */
   selectedJoinUrl: string
+  /**
+   * D-127/G-6: the rung that produced `selectedJoinUrl` — the server's closed
+   * vocabulary `public_url | tunnel | selected | candidate`, or '' when no URL
+   * resolved at all. Display-only: the browser maps it to a tag and never
+   * derives or persists a precedence rule of its own (T-07-12).
+   */
+  joinUrlSource: string
 }
 
 /**
@@ -849,6 +856,9 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
   const sealedBids = readAdminSealedBids(data.sealed_bids)
   const joinUrls = readJoinUrls(data.join_urls)
   const selectedJoinUrl = readString(data.selected_join_url)
+  // D-127/G-6: additive on the admin projection alone (D-24's rule — a payload
+  // that predates the key reads as "no source", never as a rejection).
+  const joinUrlSource = ''
   if (
     phase === null ||
     revision === null ||
@@ -879,6 +889,7 @@ export function readAdminSnapshot(data: unknown): AdminSnapshot | null {
     players,
     joinUrls,
     selectedJoinUrl,
+    joinUrlSource,
   }
 }
 

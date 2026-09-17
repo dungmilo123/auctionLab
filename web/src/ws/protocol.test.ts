@@ -918,6 +918,16 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
     expect(snapshot?.selectedJoinUrl).toBe('http://192.168.1.10:8080')
   })
 
+  it('decodes the effective join-url source, and reads its absence as no source (D-127/G-6)', () => {
+    // The closed vocabulary travels verbatim; the panel maps it to a tag.
+    expect(readAdminSnapshot(adminSnapshotPayload({ join_url_source: 'tunnel' }))?.joinUrlSource).toBe('tunnel')
+    expect(readAdminSnapshot(adminSnapshotPayload({ join_url_source: 'public_url' }))?.joinUrlSource).toBe('public_url')
+    // Additive key (D-24): a payload that predates it — or an ill-typed one —
+    // reads as "no source", never as a rejection.
+    expect(readAdminSnapshot(adminSnapshotPayload())?.joinUrlSource).toBe('')
+    expect(readAdminSnapshot(adminSnapshotPayload({ join_url_source: 7 }))?.joinUrlSource).toBe('')
+  })
+
   it('decodes the presenter sealed ledger strictly and reads an absent list as empty (D-117)', () => {
     const snapshot = readAdminSnapshot(
       adminSnapshotPayload({

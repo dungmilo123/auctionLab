@@ -6,13 +6,17 @@ import {
   draftFromItem,
   draftPayload,
   draftValid,
+  joinUrlSourceTagKey,
   mutationsEnabled,
   presenterSettle,
   releaseFrame,
   resetConfirmKey,
   resetFrame,
   sortPlayersByJoinedAt,
+  tunnelRow,
   urlCandidates,
+  urlNoteKey,
+  urlTunnelNoteKey,
   validateDraft,
   validateStartingBudget,
   type DraftFields,
@@ -218,6 +222,64 @@ describe('the socket gate (D-82a)', () => {
     expect(mutationsEnabled('reconnecting')).toBe(false)
     expect(mutationsEnabled('offline')).toBe(false)
     expect(mutationsEnabled('superseded')).toBe(false)
+  })
+})
+
+describe('the join-URL source tag (G-6/D-127)', () => {
+  it('maps the server’s closed vocabulary to its four approved tags', () => {
+    expect(joinUrlSourceTagKey('public_url')).toBe('admin.urlSourcePublic')
+    // `Tunnel` is `admin.tunnelLabel` reused — a fifth tag key is not added.
+    expect(joinUrlSourceTagKey('tunnel')).toBe('admin.tunnelLabel')
+    expect(joinUrlSourceTagKey('selected')).toBe('admin.urlSourceSaved')
+    expect(joinUrlSourceTagKey('candidate')).toBe('admin.urlSourceAuto')
+  })
+
+  it('renders no tag for an unlisted or absent value, never a guess', () => {
+    for (const source of ['', 'PUBLIC_URL', 'Saved', 'guessed', 'tunnel ']) {
+      expect(joinUrlSourceTagKey(source)).toBeNull()
+    }
+  })
+})
+
+describe('the URL notes (G-7)', () => {
+  it('replaces the carried note only while the PUBLIC_URL override wins', () => {
+    expect(urlNoteKey('public_url')).toBe('admin.urlOverrideNote')
+    for (const source of ['tunnel', 'selected', 'candidate', '']) {
+      expect(urlNoteKey(source)).toBe('admin.urlNote')
+    }
+  })
+
+  it('renders the tunnel note only while a healthy tunnel is the effective source', () => {
+    expect(urlTunnelNoteKey('tunnel')).toBe('admin.urlTunnelNote')
+    for (const source of ['public_url', 'selected', 'candidate', '']) {
+      expect(urlTunnelNoteKey(source)).toBeNull()
+    }
+  })
+})
+
+describe('the tunnel read-out (D-123/G-4)', () => {
+  it('names the declared empty/unhealthy state instead of inventing a blank value', () => {
+    expect(tunnelRow({ url: '', healthy: false })).toEqual({
+      url: '',
+      healthy: false,
+      healthKey: 'admin.tunnelUnhealthy',
+      waitingKey: 'admin.tunnelWaiting',
+    })
+  })
+
+  it('carries the URL and the healthy word once the probe round-trips', () => {
+    expect(tunnelRow({ url: 'https://abc.trycloudflare.com', healthy: true })).toEqual({
+      url: 'https://abc.trycloudflare.com',
+      healthy: true,
+      healthKey: 'admin.tunnelHealthy',
+      waitingKey: null,
+    })
+  })
+
+  it('reads an unhealthy tunnel WITH a URL as unhealthy, never as waiting', () => {
+    const row = tunnelRow({ url: 'https://abc.trycloudflare.com', healthy: false })
+    expect(row.healthKey).toBe('admin.tunnelUnhealthy')
+    expect(row.waitingKey).toBeNull()
   })
 })
 

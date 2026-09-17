@@ -46,6 +46,7 @@ import type {
   RecentBid,
   ScreenSnapshot,
   SealedProgress,
+  TunnelStatus,
 } from './protocol'
 import { isPhase, itemMatchesPhase } from './protocol'
 import { isSealedAuction } from '@/lib/screen'
@@ -112,6 +113,20 @@ export type ViewState = {
   players: AdminPlayer[]
   /** the presenter's join-URL candidates (D-83); empty for every other role */
   joinUrls: string[]
+  /**
+   * G-6/D-127: the rung that produced `joinUrl` — the server's closed
+   * vocabulary `public_url | tunnel | selected | candidate`, or '' for none.
+   * Carried verbatim from the admin snapshot; the browser maps it to a tag and
+   * never derives which rung won (T-07-12).
+   */
+  joinUrlSource: string
+  /**
+   * D-123/G-4: the LAST valid `tunnel.status` this page instance received, or
+   * null while none has arrived (the admin row does not render). Display-only
+   * data from a control frame — the server publishes it on change, so it
+   * survives every snapshot rather than being cleared by one.
+   */
+  tunnel: TunnelStatus | null
 }
 
 /** The item events that carry the current item. */
@@ -128,6 +143,12 @@ export type ViewFrame =
   | { kind: 'bid.accepted'; bid: BidAccepted; ts: number }
   | { kind: 'leaderboard'; entries: LeaderEntry[]; ts: number }
   | { kind: 'finale'; payload: FinaleReveal; ts: number }
+  /**
+   * D-123's `tunnel.status` control frame, decoded for the presenter's panel.
+   * `status` is the decoder's answer: null means the frame was malformed, and
+   * the reducer ignores it rather than clearing what the panel already shows.
+   */
+  | { kind: 'tunnel.status'; status: TunnelStatus | null }
 
 /**
  * The view before a single snapshot has arrived. Nothing is invented here: a
@@ -149,6 +170,8 @@ export function initialViewState(): ViewState {
     config: null,
     players: [],
     joinUrls: [],
+    joinUrlSource: '',
+    tunnel: null,
   }
 }
 
@@ -313,8 +336,14 @@ export function reduceView(state: ViewState, frame: ViewFrame): ViewState | null
         config: snapshot.config,
         players: snapshot.players,
         joinUrls: snapshot.joinUrls,
+        joinUrlSource: '',
+        tunnel: null,
       }
     }
+
+    case 'tunnel.status':
+      // D-123/G-4: display-only data from a control frame. Placeholder.
+      return null
 
     case 'phase.changed': {
       const { phase, item } = frame.payload
