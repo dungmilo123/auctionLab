@@ -440,3 +440,192 @@ func TestRoundItemLookupFindsTheCreatedItem(t *testing.T) {
 		t.Error("itemIDFromSnapshot accepted a snapshot with no items")
 	}
 }
+
+// --- Phase 7: the N-bot rapid-fire modes (D-135/D-136) ----------------------
+//
+// The cases above pin the STRICT contract: with two bots and no backpressure,
+// every gap is a failure. A 20-bot rapid-fire run is the one context where a
+// game-frame gap is legitimate — and only in the exact shape D-41 guarantees,
+// where the frame that reveals the gap IS the recovery snapshot. These cases pin
+// that asymmetry, the two control-plane frames D-132/D-123 added (heartbeat,
+// tunnel.status), the end-of-run convergence assertion, and the measured-rate
+// reporting D-138's bucket sizing is judged from.
+//
+// A harness that certified a broken run would be worse than no harness, so the
+// negative cases here matter as much as the positive ones.
+
+// TestStreamClassifiesControlPlaneFramesWithoutMovingRevision pins the two
+// control-plane types: each takes a real seq on the FIFO, moves NO revision, and
+// is applied at any seq by the browser gate — so a stale copy is ignored here
+// rather than failing a healthy run.
+func TestStreamClassifiesControlPlaneFramesWithoutMovingRevision(t *testing.T) {
+	s := newStream()
+	if err := s.observe(wire(t, 1, 1, "hello", helloJSON)); err != nil {
+		t.Fatalf("hello at seq 1: %v", err)
+	}
+	if err := s.observe(wire(t, 2, 1, "state.snapshot", onePlayerJSON)); err != nil {
+		t.Fatalf("the handshake snapshot at seq 2: %v", err)
+	}
+
+	if err := s.observe(wire(t, 3, 1, typeHeartbeat, `{"ts":1757934002000}`)); err != nil {
+		t.Fatalf("a heartbeat at seq 3: %v", err)
+	}
+	if err := s.observe(wire(t, 4, 1, typeTunnelStatus,
+		`{"url":"https://control.trycloudflare.com","healthy":true}`)); err != nil {
+		t.Fatalf("a tunnel.status at seq 4: %v", err)
+	}
+	if s.lastRev != 1 {
+		t.Errorf("last revision = %d, want the unchanged 1 — a control frame is not a state event (D-132)", s.lastRev)
+	}
+	if s.want != 5 {
+		t.Errorf("next expected seq = %d, want 5 (both control frames took their seq)", s.want)
+	}
+
+	// A beat that has already been counted: the browser gate applies it anyway,
+	// and the harness must not treat it as a duplicate (D-132's "at any seq").
+	if err := s.observe(wire(t, 3, 1, typeHeartbeat, `{"ts":1757934002000}`)); err != nil {
+		t.Fatalf("a stale heartbeat: %v", err)
+	}
+	if s.want != 5 {
+		t.Errorf("next expected seq = %d after a stale beat, want the unchanged 5", s.want)
+	}
+
+	// The stream continues exactly where it was.
+	if err := s.observe(wire(t, 5, 2, "state.snapshot", twoPlayersJSON)); err != nil {
+		t.Fatalf("the state event after the control frames: %v", err)
+	}
+	if s.lastRev != 2 {
+		t.Errorf("last revision = %d, want 2 — the stream resumed at the next state event", s.lastRev)
+	}
+}
+
+// TestStreamRapidFireAcceptsARepairedGap is D-41's one legal gap: in rapid mode
+// a game-frame gap is accepted only when the frame revealing it is the recovery
+// snapshot, and that snapshot re-bases the revision accounting (a repair
+// legitimately jumps many revisions).
+func TestStreamRapidFireAcceptsARepairedGap(t *testing.T) {
+	s := newRapidStream()
+	if err := s.observe(wire(t, 1, 1, "hello", helloJSON)); err != nil {
+		t.Fatalf("hello at seq 1: %v", err)
+	}
+	if err := s.observe(wire(t, 2, 1, "state.snapshot", onePlayerJSON)); err != nil {
+		t.Fatalf("the handshake snapshot at seq 2: %v", err)
+	}
+
+	// Six revisions were committed while this client was fenced: the frames
+	// between seq 2 and seq 9 were suppressed, and the recovery snapshot is
+	// what arrives next (D-41).
+	if err := s.observe(wire(t, 9, 7, "state.snapshot", twoPlayersJSON)); err != nil {
+		t.Fatalf("a gap repaired by the snapshot that reveals it: %v", err)
+	}
+	if s.lastRev != 7 {
+		t.Errorf("last revision = %d, want the repair's 7", s.lastRev)
+	}
+	if s.gaps != 1 || s.repairs != 1 {
+		t.Errorf("gaps/repairs = %d/%d, want 1/1 — a drill must show the repair happened", s.gaps, s.repairs)
+	}
+	if s.want != 10 {
+		t.Errorf("next expected seq = %d, want 10 (the repair took its own seq)", s.want)
+	}
+
+	// Normal accounting resumes from the rebased revision.
+	if err := s.observe(wire(t, 10, 8, "state.snapshot", twoPlayersJSON)); err != nil {
+		t.Fatalf("the state event after the repair: %v", err)
+	}
+}
+
+// TestStreamRapidFireRejectsASilentGap is D-135's "no silent gap": when a game
+// frame arrives past its expected seq and the frame is NOT the recovery
+// snapshot, the run fails — the relaxation must never become "anything goes".
+func TestStreamRapidFireRejectsASilentGap(t *testing.T) {
+	s := newRapidStream()
+	if err := s.observe(wire(t, 1, 1, "hello", helloJSON)); err != nil {
+		t.Fatalf("hello at seq 1: %v", err)
+	}
+	if err := s.observe(wire(t, 2, 1, "state.snapshot", onePlayerJSON)); err != nil {
+		t.Fatalf("the handshake snapshot at seq 2: %v", err)
+	}
+
+	err := s.observe(wire(t, 9, 7, "leaderboard", leaderboardJSON))
+	if err == nil {
+		t.Fatal("a game frame past its expected seq was accepted without a repair snapshot — that is a silent gap")
+	}
+	if !strings.Contains(err.Error(), "silent gap") {
+		t.Errorf("error = %q, want it to name the silent gap, not just any seq problem", err)
+	}
+}
+
+// TestStreamStrictSmokeStillRejectsAGap pins the asymmetry the two modes exist
+// for: `make loadtest`'s two-bot smoke keeps failing on ANY game-frame gap, so
+// raising the pool behind `--bots` never weakens the gate that runs before every
+// rehearsal.
+func TestStreamStrictSmokeStillRejectsAGap(t *testing.T) {
+	s := newStream()
+	if err := s.observe(wire(t, 1, 1, "hello", helloJSON)); err != nil {
+		t.Fatalf("hello at seq 1: %v", err)
+	}
+	if err := s.observe(wire(t, 2, 1, "state.snapshot", onePlayerJSON)); err != nil {
+		t.Fatalf("the handshake snapshot at seq 2: %v", err)
+	}
+	// The very shape rapid mode accepts: the smoke must still refuse it.
+	if err := s.observe(wire(t, 9, 7, "state.snapshot", twoPlayersJSON)); err == nil {
+		t.Fatal("a gap repaired by a snapshot was accepted in strict mode — the smoke path must stay strict (D-135)")
+	}
+}
+
+// TestConvergenceIsTheEndOfRunAssertion pins D-135's strongest assertion: every
+// bot's last state revision must equal the server's final revision, and a single
+// lagging bot fails the run with its index named.
+func TestConvergenceIsTheEndOfRunAssertion(t *testing.T) {
+	if err := converged([]int64{12, 12, 12}, 12); err != nil {
+		t.Errorf("converged(three bots at 12, want 12) = %v, want nil", err)
+	}
+
+	err := converged([]int64{12, 12, 11}, 12)
+	if err == nil {
+		t.Fatal("converged() certified a run in which one bot never reached the final revision")
+	}
+	if !strings.Contains(err.Error(), "bot 2") {
+		t.Errorf("error = %q, want it to name the lagging bot", err)
+	}
+	if err := converged(nil, 12); err == nil {
+		t.Error("converged() accepted an empty result set")
+	}
+}
+
+// TestFrameBudgetScalesWithThePool pins the bound that keeps a 20-bot run from
+// reading forever: the two-bot smoke keeps its shipped floor, and a bigger pool
+// gets a strictly bigger budget for the fan-out it will see.
+func TestFrameBudgetScalesWithThePool(t *testing.T) {
+	if got := frameBudget(bots); got < maxFrames {
+		t.Errorf("frameBudget(2) = %d, want at least the shipped floor %d", got, maxFrames)
+	}
+	if got := frameBudget(20); got <= frameBudget(bots) {
+		t.Errorf("frameBudget(20) = %d, want it strictly past frameBudget(2) = %d", got, frameBudget(bots))
+	}
+	if got := frameBudget(0); got < maxFrames {
+		t.Errorf("frameBudget(0) = %d, want it clamped to the smoke pool's budget", got)
+	}
+}
+
+// TestPeakCommandRateIsTheD138Evidence pins the measured rate the acceptance run
+// prints: the largest number of commands inside any one-second window, so the
+// production bucket (20/s, burst 40) can be judged against what the harness
+// actually asked of it.
+func TestPeakCommandRateIsTheD138Evidence(t *testing.T) {
+	base := time.Unix(1_700_000_000, 0)
+
+	burst := []time.Time{base, base.Add(10 * time.Millisecond), base.Add(20 * time.Millisecond)}
+	if got := peakCommandRate(burst); got != 3 {
+		t.Errorf("peakCommandRate(3 commands in 20ms) = %v, want 3", got)
+	}
+
+	spread := []time.Time{base, base.Add(2 * time.Second), base.Add(4 * time.Second)}
+	if got := peakCommandRate(spread); got != 1 {
+		t.Errorf("peakCommandRate(1 command per 2s) = %v, want 1", got)
+	}
+
+	if got := peakCommandRate(nil); got != 0 {
+		t.Errorf("peakCommandRate(nothing) = %v, want 0", got)
+	}
+}

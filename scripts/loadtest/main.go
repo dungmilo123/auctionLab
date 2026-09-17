@@ -35,16 +35,53 @@ const (
 	// defaultTarget matches `make run` (the binary on its default port).
 	defaultTarget = "ws://127.0.0.1:8080/ws"
 	// bots is D-43's Phase 2 pool: two independent players, so each bot can
-	// assert that the other one is visible in its own lobby.
+	// assert that the other one is visible in its own lobby. D-135's `--bots`
+	// flag raises it; the smoke default stays two.
 	bots = 2
-	// maxFrames bounds every bot's read loop. A run that needs more frames than
-	// this to see both players is already broken, and an unbounded loop would
-	// hang the gate on a server that keeps talking.
+	// maxFrames is the floor of every bot's frame budget: D-135's `--bots N`
+	// runs scale it with the pool (frameBudget), and the two-bot smoke keeps
+	// exactly this bound.
 	maxFrames = 8
 	// ioTimeout bounds every read and write so a hung server fails the run
 	// instead of blocking it.
 	ioTimeout = 5 * time.Second
+
+	// typeHeartbeat and typeTunnelStatus are D-132/D-123's control-plane
+	// frames: each takes a real seq on the connection's FIFO, carries the
+	// CURRENT revision without moving it, and means nothing to a game run. The
+	// harness must count them and keep going — a rapid-fire room is full of
+	// them, and treating one as "unexpected with no game running" would fail a
+	// perfectly healthy run.
+	typeHeartbeat    = "heartbeat"
+	typeTunnelStatus = "tunnel.status"
 )
+
+// frameBudget is how many frames ONE bot may read before the run gives up: the
+// handshake pair, one fan-out snapshot per peer, and headroom for a round's
+// frames. It scales with the pool because a 20-bot room fans out twenty times
+// as much as the smoke pair.
+func frameBudget(n int) int {
+	// RED: declaration only — the GREEN commit implements the scaling.
+	return 0
+}
+
+// peakCommandRate is the largest number of commands seen in any one-second
+// window of the recorded instants. It is the evidence D-138's bucket sizing is
+// judged from (research Pattern 5 item 6): a false `rate_limited` on a
+// legitimate rapid-fire bid is a correctness bug, so the harness must print what
+// it actually asked of the limiter.
+func peakCommandRate(at []time.Time) float64 {
+	// RED: declaration only — the GREEN commit implements the window.
+	return 0
+}
+
+// converged is D-135's end-of-run assertion: every bot's last state revision
+// must equal the server's final revision. It returns a run-stopping error naming
+// the bots that disagree, so a partially-converged room can never be certified.
+func converged(revs []int64, want int64) error {
+	// RED: declaration only — the GREEN commit implements the comparison.
+	return nil
+}
 
 // envelope is one server→client frame, decoded with the exact five frozen
 // fields (D-21). An unknown field would be ignored here on purpose: D-24's
@@ -113,11 +150,29 @@ type stream struct {
 	want    int64  // the seq the next frame must carry; 1 at hello
 	lastRev int64  // the last revision a state event carried; -1 before the first
 	seen    map[string]bool
+
+	// rapid is D-135's repair-tolerant mode: under rapid fire a game-frame seq
+	// gap is the CLIENT-VISIBLE SIGNAL OF A DROP, and D-41 repairs it with one
+	// recovery snapshot. In this mode — and only this mode — a gap is legal
+	// when the frame that reveals it is that snapshot. gaps and repairs record
+	// the positive evidence a drill must show (D-136): a run that never gaped
+	// proves nothing about the repair path.
+	rapid   bool
+	gaps    int
+	repairs int
 }
 
 // newStream starts a stream at its first expected frame, validating the player
 // role — the shape every Phase 2 case and both smoke bots use.
 func newStream() *stream { return newStreamAs("player") }
+
+// newRapidStream is newStream in D-135's rapid-fire mode: identical strict
+// accounting, plus the one D-41 repair shape. It backs `--rapid-fire`, never the
+// two-bot smoke.
+func newRapidStream() *stream {
+	// RED: declaration only — the GREEN commit turns on the repair arm.
+	return newStream()
+}
 
 // newStreamAs starts a stream for one connection role: the same D-21/D-22
 // contract, with the role-specific parts of the handshake and the snapshot
