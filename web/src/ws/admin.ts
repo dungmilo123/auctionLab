@@ -60,6 +60,8 @@ export type AdminCommand =
 /** The presenter's handle: the D-65 command frames go out through `send`. */
 export type AdminConnection = {
   send(frame: AdminCommand): void
+  /** Connect now, resetting the backoff (D-130's manual retry). */
+  retry(): void
   close(): void
 }
 
@@ -83,6 +85,10 @@ export function openAdminSocket(handlers: AdminSocketHandlers): AdminConnection 
   return {
     send(frame: AdminCommand): void {
       socket.send(frame)
+    },
+    retry(): void {
+      // RED: the pass-through is declared for the suite; the policy lands in GREEN.
+      socket.retry()
     },
     close(): void {
       socket.close()

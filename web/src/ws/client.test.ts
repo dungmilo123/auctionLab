@@ -1,22 +1,26 @@
 /**
- * The player socket's per-connection stream accounting (D-21 — closes GAP 2).
+ * The socket lifecycle: the per-connection stream account (D-21 — closes
+ * GAP 2) and the reconnect policy (D-130…D-134).
  *
  * `client.ts` is the one module that touches `window`, `document`,
  * `localStorage` and `WebSocket`, and this suite still runs in Vitest's `node`
  * environment: those four globals are stubbed narrowly for the duration of a
  * test and restored afterwards, so no jsdom and no new dependency is involved.
+ * The policy's own numbers are pinned purely in `reconnect.test.ts`; this file
+ * pins what the wiring does with them — one scheduler, one current socket, and
+ * a replacement that always starts from its own stream position.
  *
- * The regression this pins: `connect()` kept ONE `GateState` for the whole
- * `openPlayerSocket` lifetime, although D-21 and `gate.ts` say the gate is one
- * per connection. The D-45 resume's replacement socket starts its server-side
- * stream at seq 1 again, so with the dead connection's high-water mark still in
- * place, its `hello` and every non-snapshot frame at or below that mark were
+ * The regression the stream account pins: `connect()` kept ONE `GateState` for
+ * the whole `openPlayerSocket` lifetime, although D-21 and `gate.ts` say the
+ * gate is one per connection. A replacement socket's server-side stream starts
+ * at seq 1 again, so with the dead connection's high-water mark still in place,
+ * its `hello` and every non-snapshot frame at or below that mark were
  * classified `duplicate` and silently dropped. Snapshots survived because they
  * are rev-gated rather than seq-gated, which is exactly why the loss was
  * invisible for identity and budget and only showed up as a frozen stream.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initialGateState } from './gate'
 import { openPlayerSocket, readStoredToken, resetStream } from './client'
 import { openAdminSocket, type AdminConnection } from './admin'
@@ -162,10 +166,11 @@ class FakeSocket {
   close(code = 1000): void {
     this.readyState = 3
     // The browser queues the close event rather than firing it inside close().
-    // Queued, it is a no-op for today's callers — `client.ts` nulls onclose
-    // before it closes a socket — but if a future edit moves that detach, the
-    // spurious onclose becomes a visible `lost` status instead of a silent
-    // pass.
+    // Queued, it is a no-op for the caller's deliberate teardown — `client.ts`
+    // detaches onclose before it closes a socket it is replacing — but if a
+    // future edit moves that detach, the spurious onclose becomes a visible
+    // state change instead of a silent pass. For the STALE force-close the
+    // event is the whole point: it must flow through the ordinary close path.
     queueMicrotask(() => this.onclose?.({ code }))
   }
 
@@ -216,8 +221,10 @@ function installSocketEnvironment() {
       )
     }
   }
-  function fire(scope: 'document' | 'window', type: string): void {
-    for (const listener of [...(listeners[scope].get(type) ?? [])]) listener()
+  function fire(scope: 'document' | 'window', type: string, event?: unknown): void {
+    for (const listener of [...(listeners[scope].get(type) ?? [])]) {
+      ;(listener as (event?: unknown) => void)(event)
+    }
   }
 
   const fakeDocument = {
@@ -225,6 +232,8 @@ function installSocketEnvironment() {
     addEventListener: add('document'),
     removeEventListener: remove('document'),
   }
+  // `pageshow` carries `persisted` (D-133): the bfcache restore is the ONLY
+  // pageshow the socket acts on, and bfcache fires no visibilitychange.
   const fakeWindow = {
     location: { protocol: 'http:', host: 'localhost:5173' },
     localStorage: {
@@ -254,18 +263,40 @@ function installSocketEnvironment() {
       fakeDocument.visibilityState = state
       fire('document', 'visibilitychange')
     },
-    firePageshow(): void {
-      fire('window', 'pageshow')
+    firePageshow(persisted = false): void {
+      fire('window', 'pageshow', { persisted })
     },
   }
+}
+
+type SocketEnvironment = ReturnType<typeof installSocketEnvironment>
+
+/** The socket the environment constructed last — the replacement under test. */
+function lastSocket(env: SocketEnvironment): FakeSocket {
+  const socket = env.sockets.at(-1)
+  expect(socket).toBeDefined()
+  if (socket === undefined) throw new Error('no socket was constructed')
+  return socket
+}
+
+/** The player's stored token, as the server handed it over in a `hello`. */
+function hello(seq: number, token: string): string {
+  return envelope('hello', seq, { role: 'player', player: 'p1', nickname: 'Milo', token, rev: 0 })
 }
 
 describe('the per-connection stream account (D-21 — GAP 2)', () => {
   let connection: PlayerConnection | null = null
 
+  beforeEach(() => {
+    // The replacement is scheduled by D-130's policy now, so the retry is a
+    // timer this suite must own rather than race.
+    vi.useFakeTimers()
+  })
+
   afterEach(() => {
     connection?.close()
     connection = null
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -275,11 +306,12 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
     expect(resetStream()).toEqual(initialGateState())
   })
 
-  it('lets the replacement socket of a resume start from its own seq 1', () => {
+  it('lets the replacement socket of a reconnect start from its own seq 1', async () => {
     const env = installSocketEnvironment()
     const statuses: string[] = []
     const errors: ErrorPayload[] = []
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(Math, 'random').mockReturnValue(0)
 
     connection = openPlayerSocket({
       onStatus: (status) => statuses.push(status),
@@ -289,13 +321,11 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
 
     // ---- Connection one: the join form opens it, the player joins, and the
     // server's hello hands the identity token to storage (D-29).
-    const first = env.sockets[0]
-    expect(first).toBeDefined()
-    if (first === undefined) return
+    const first = lastSocket(env)
     expect(first.url).toBe('ws://localhost:5173/ws') // same-origin by construction
-    expect(statuses.at(-1)).toBe('connecting')
+    expect(statuses.at(-1)).toBe('reconnecting') // no open socket, an attempt running
     first.accept()
-    expect(statuses.at(-1)).toBe('open')
+    expect(statuses.at(-1)).toBe('live')
     expect(first.sent).toEqual([]) // no stored token yet — nothing to resume
 
     connection.join('Milo')
@@ -305,26 +335,26 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
       nickname: 'Milo',
     })
 
-    first.deliver(
-      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'first-token', rev: 0 }),
-    )
+    first.deliver(hello(1, 'first-token'))
     expect(readStoredToken()).toBe('first-token')
 
     // Frames that push this connection's stream position well past 1 — the
     // exact state the replacement socket must not inherit.
     first.deliver(envelope('phase.changed', 7, null, 3))
 
-    // ---- The socket dies (a locked phone), and D-45's visible/pageshow path
-    // reopens it with the stored token.
+    // ---- The socket dies (a locked phone), and D-130's policy schedules the
+    // replacement. The delay is the policy's own (attempt 1, sample 0 → 0 ms),
+    // so one advance is enough — and it proves the close scheduled exactly one
+    // attempt rather than replacing the socket in place.
     first.drop(1006)
-    expect(statuses.at(-1)).toBe('lost')
-
-    env.fireVisibility('visible')
+    expect(statuses.at(-1)).toBe('reconnecting')
+    expect(env.sockets).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1)
     expect(env.sockets).toHaveLength(2)
-    const second = env.sockets[1]
-    expect(second).toBeDefined()
-    if (second === undefined) return
+
+    const second = lastSocket(env)
     second.accept()
+    expect(statuses.at(-1)).toBe('live')
     expect(JSON.parse(second.sent.at(-1) ?? 'null')).toEqual({
       type: 'join',
       role: 'player',
@@ -332,15 +362,7 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
     })
 
     // ---- The replacement server stream starts over at seq 1 (D-21).
-    second.deliver(
-      envelope('hello', 1, {
-        role: 'player',
-        player: 'p1',
-        nickname: 'Milo',
-        token: 'second-token',
-        rev: 0,
-      }),
-    )
+    second.deliver(hello(1, 'second-token'))
     // With the dead connection's lastSeq still in place this hello classified
     // as `duplicate` and the replacement token never reached storage.
     expect(readStoredToken()).toBe('second-token')
@@ -350,10 +372,10 @@ describe('the per-connection stream account (D-21 — GAP 2)', () => {
     second.deliver(envelope('error', 2, { code: 'not_joined', message: 'join first' }))
     expect(errors).toEqual([{ code: 'not_joined', message: 'join first' }])
 
-    // ---- D-45 stays ONE attempt per visibility/pageshow event: an already
-    // open socket is left alone by the next event.
+    // ---- A visible tab that was never hidden and a non-bfcache pageshow are
+    // not verdicts about a healthy socket: no second replacement is built.
     env.fireVisibility('visible')
-    env.firePageshow()
+    env.firePageshow(false)
     expect(env.sockets).toHaveLength(2)
   })
 })
@@ -388,9 +410,7 @@ describe('the reduced view contract (D-57/D-70)', () => {
     if (socket === undefined) return
     socket.accept()
     connection.join('Milo')
-    socket.deliver(
-      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
-    )
+    socket.deliver(hello(1, 'tok'))
 
     // ---- A snapshot seeds the view (and the Phase-2 callback still fires).
     const payload = liveSnapshotData()
@@ -514,18 +534,24 @@ describe('the reduced view contract (D-57/D-70)', () => {
 describe('the deliberate session end (D-78/D-80 close code 4002)', () => {
   let connection: PlayerConnection | null = null
 
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
   afterEach(() => {
     connection?.close()
     connection = null
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
-  it('drops the stale identity and signals the route on 4002, not on an ordinary drop', () => {
+  it('drops the stale identity and signals the route on 4002, not on an ordinary drop', async () => {
     const env = installSocketEnvironment()
     const statuses: string[] = []
     let ended = 0
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(Math, 'random').mockReturnValue(0)
 
     connection = openPlayerSocket({
       onStatus: (status) => statuses.push(status),
@@ -536,29 +562,28 @@ describe('the deliberate session end (D-78/D-80 close code 4002)', () => {
       },
     })
 
-    const socket = env.sockets[0]
-    expect(socket).toBeDefined()
-    if (socket === undefined) return
+    const socket = lastSocket(env)
     socket.accept()
     connection.join('Milo')
-    socket.deliver(
-      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
-    )
+    socket.deliver(hello(1, 'tok'))
     expect(readStoredToken()).toBe('tok')
 
-    // A network drop is NOT a session end: the identity is kept so D-45's
-    // resume can restore it, and the route is left where it is.
+    // A network drop is NOT a session end: the identity is kept so the next
+    // socket can restore it, and the route is left where it is.
     socket.drop(1006)
-    expect(statuses.at(-1)).toBe('lost')
+    expect(statuses.at(-1)).toBe('reconnecting')
     expect(ended).toBe(0)
     expect(readStoredToken()).toBe('tok')
 
-    // The stored token reopens the socket on the next visibility change…
-    env.fireVisibility('visible')
-    const second = env.sockets[1]
-    expect(second).toBeDefined()
-    if (second === undefined) return
+    // The stored token is what the replacement rejoins with…
+    await vi.advanceTimersByTimeAsync(1)
+    const second = lastSocket(env)
     second.accept()
+    expect(JSON.parse(second.sent.at(-1) ?? 'null')).toEqual({
+      type: 'join',
+      role: 'player',
+      token: 'tok',
+    })
 
     // …and the presenter then clears the room / releases this row: the server
     // ends the session with its dedicated code. The device must not stay on a
@@ -567,17 +592,25 @@ describe('the deliberate session end (D-78/D-80 close code 4002)', () => {
     second.drop(4002)
     expect(ended).toBe(1)
     expect(readStoredToken()).toBe('')
-    expect(statuses.at(-1)).toBe('lost')
-    // Nothing left to resume with: a later visibility change opens no socket.
-    env.fireVisibility('visible')
-    expect(env.sockets).toHaveLength(2)
+    expect(statuses.at(-1)).toBe('reconnecting')
+
+    // The 4002 socket is an ordinary close for the SCHEDULER (only 4001 is
+    // terminal): the replacement carries no identity, so the join form the
+    // route just returned to has a live socket to submit through rather than
+    // silently doing nothing.
+    await vi.advanceTimersByTimeAsync(1)
+    const third = lastSocket(env)
+    expect(env.sockets).toHaveLength(3)
+    third.accept()
+    expect(third.sent).toEqual([]) // nothing left to resume with
   })
 
-  it('keeps the identity on 4001, which is a supersede and not a session end', () => {
+  it('keeps the identity on 4001, which is a supersede and not a session end', async () => {
     const env = installSocketEnvironment()
     const statuses: string[] = []
     let ended = 0
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(Math, 'random').mockReturnValue(0)
 
     connection = openPlayerSocket({
       onStatus: (status) => statuses.push(status),
@@ -588,14 +621,10 @@ describe('the deliberate session end (D-78/D-80 close code 4002)', () => {
       },
     })
 
-    const socket = env.sockets[0]
-    expect(socket).toBeDefined()
-    if (socket === undefined) return
+    const socket = lastSocket(env)
     socket.accept()
     connection.join('Milo')
-    socket.deliver(
-      envelope('hello', 1, { role: 'player', player: 'p1', nickname: 'Milo', token: 'tok', rev: 0 }),
-    )
+    socket.deliver(hello(1, 'tok'))
 
     socket.drop(4001)
     expect(statuses.at(-1)).toBe('superseded')
@@ -629,10 +658,10 @@ describe('the admin connection (D-64/H17)', () => {
     expect(socket).toBeDefined()
     if (socket === undefined) return
     expect(socket.url).toBe('ws://localhost:5173/ws')
-    expect(statuses.at(-1)).toBe('connecting')
+    expect(statuses.at(-1)).toBe('reconnecting')
 
     socket.accept()
-    expect(statuses.at(-1)).toBe('open')
+    expect(statuses.at(-1)).toBe('live')
     expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'join', role: 'admin' })
 
     socket.deliver(envelope('hello', 1, { role: 'admin', rev: 0 }))
@@ -652,13 +681,13 @@ describe('the admin connection (D-64/H17)', () => {
     expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'admin.item.start', id: 'i1' })
 
     // No localStorage path at all: nothing was written, and there is no
-    // identity to resume with, so a drop is not re-opened by visibility.
+    // identity, so a replacement socket sends no identity frame.
     expect(env.storage.size).toBe(0)
     socket.drop(1006)
-    expect(statuses.at(-1)).toBe('lost')
-    env.fireVisibility('visible')
-    env.firePageshow()
-    expect(env.sockets).toHaveLength(1)
+    expect(statuses.at(-1)).toBe('reconnecting')
+
+    // The presenter's one recovery control (D-130) is part of the handle.
+    expect(typeof admin.retry).toBe('function')
   })
 })
 
@@ -686,13 +715,13 @@ describe('the screen connection (D-87)', () => {
     expect(socket).toBeDefined()
     if (socket === undefined) return
     expect(socket.url).toBe('ws://localhost:5173/ws')
-    expect(statuses.at(-1)).toBe('connecting')
+    expect(statuses.at(-1)).toBe('reconnecting')
 
     socket.accept()
-    expect(statuses.at(-1)).toBe('open')
+    expect(statuses.at(-1)).toBe('live')
     expect(JSON.parse(socket.sent.at(-1) ?? 'null')).toEqual({ type: 'join', role: 'screen' })
     // Read-only BY TYPE: `close` is the whole handle, so no screen control can
-    // ever reach for a `send` that exists (D-87).
+    // ever reach for a `send` or a `retry` that exists (D-87).
     expect(Object.keys(screen)).toEqual(['close'])
 
     socket.deliver(envelope('hello', 1, { role: 'screen', rev: 0 }))
@@ -706,14 +735,11 @@ describe('the screen connection (D-87)', () => {
     )
     expect(views.at(-1)?.joinUrl).toBe('http://192.168.1.10:8080')
 
-    // No identity, so nothing is persisted and a drop is never resumed by
-    // visibility/pageshow — the admin's rule, not the player's (D-87).
+    // No identity, so nothing is persisted; the projector's own recovery is the
+    // automatic scheduler, not a control (G-3).
     expect(env.storage.size).toBe(0)
     socket.drop(1006)
-    expect(statuses.at(-1)).toBe('lost')
-    env.fireVisibility('visible')
-    env.firePageshow()
-    expect(env.sockets).toHaveLength(1)
+    expect(statuses.at(-1)).toBe('reconnecting')
   })
 
   it('applies the reserved finale frame to the same reduced view', () => {
@@ -742,5 +768,287 @@ describe('the screen connection (D-87)', () => {
       { rank: 1, nickname: 'Bình', totalValue: 200_000, budget: 900_000 },
       { rank: 2, nickname: 'An', totalValue: 0, budget: 1_000_000 },
     ])
+  })
+})
+
+describe('the reconnect policy in the lifecycle (D-130…D-134)', () => {
+  let connection: PlayerConnection | null = null
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    connection?.close()
+    connection = null
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('schedules ONE attempt per close, after the policy delay (D-130)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+    first.deliver(hello(1, 'tok'))
+    first.drop(1006)
+    expect(statuses.at(-1)).toBe('reconnecting')
+
+    // One failed attempt, sample 0.5: the policy's ceiling is 500·2^1 = 1000 ms,
+    // so the replacement exists at 500 ms and not one tick earlier.
+    expect(env.sockets).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(499)
+    expect(env.sockets).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(env.sockets).toHaveLength(2)
+    lastSocket(env).accept()
+    expect(statuses.at(-1)).toBe('live')
+  })
+
+  it('keeps attempting after the offline threshold instead of stopping (G-2)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    // Six consecutive failures on a page that never opened: the state turns
+    // `offline` (the presentation threshold) and the seventh attempt still
+    // exists — auto-retry never stops.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      expect(statuses.at(-1)).toBe(attempt >= 6 ? 'offline' : 'reconnecting')
+      lastSocket(env).drop(1006)
+      await vi.advanceTimersByTimeAsync(1)
+    }
+    expect(statuses.at(-1)).toBe('offline')
+    expect(env.sockets).toHaveLength(7)
+  })
+
+  it('connects immediately on the manual retry and resets the backoff (D-130)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      lastSocket(env).drop(1006)
+      await vi.advanceTimersByTimeAsync(1)
+    }
+    expect(statuses.at(-1)).toBe('offline')
+
+    // The retry cancels the scheduled wait and connects now: no timer advance.
+    const before = env.sockets.length
+    connection.retry()
+    expect(env.sockets).toHaveLength(before + 1)
+    expect(statuses.at(-1)).toBe('reconnecting')
+
+    // …and the counter really went back to the base: one more failure is not
+    // the threshold again, so the affordance cannot get stuck in `offline`.
+    lastSocket(env).drop(1006)
+    expect(statuses.at(-1)).toBe('reconnecting')
+  })
+
+  it('treats 4001 as terminal, with one deliberate rejoin using the kept token (D-131)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+    first.deliver(hello(1, 'tok'))
+    first.drop(4001)
+    expect(statuses.at(-1)).toBe('superseded')
+
+    // No auto-reconnect ever, on this page instance — the supersede loop is the
+    // failure this rule exists to stop (Pitfall 12).
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(env.sockets).toHaveLength(1)
+
+    // The token is KEPT: the notice's action is one deliberate rejoin that
+    // supersedes the other device in turn.
+    expect(readStoredToken()).toBe('tok')
+    connection.retry()
+    expect(env.sockets).toHaveLength(2)
+    const second = lastSocket(env)
+    second.accept()
+    expect(JSON.parse(second.sent.at(-1) ?? 'null')).toEqual({
+      type: 'join',
+      role: 'player',
+      token: 'tok',
+    })
+    expect(statuses.at(-1)).toBe('live')
+  })
+
+  it('force-closes a stale socket after 60 s of visible silence, refreshed by heartbeats (D-132)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const socket = lastSocket(env)
+    socket.accept()
+
+    // Ten seconds of silence at a time, each broken by the server's beat: the
+    // quiet phases (LOBBY/INTRO/SETTLED) carry nothing else.
+    for (let beat = 0; beat < 5; beat += 1) {
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(socket.readyState).toBe(1)
+      socket.deliver(envelope('heartbeat', beat + 2, { ts: WS_TS + (beat + 1) * 10_000 }))
+    }
+
+    // Exactly the budget of silence is not yet stale — the force-close is a
+    // strict "> 60 s", so a beat that lands on the boundary still counts.
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(socket.readyState).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(socket.readyState).toBe(3)
+    expect(statuses.at(-1)).toBe('reconnecting')
+  })
+
+  it('never tears a socket down from a hidden tab, and replaces it on a long return (D-133)', async () => {
+    const env = installSocketEnvironment()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: () => {},
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+    first.deliver(hello(1, 'tok'))
+
+    env.fireVisibility('hidden')
+    // A hidden tab's timers are throttled by iOS, so they are not a liveness
+    // input: 70 s of silence changes nothing while the tab is away.
+    await vi.advanceTimersByTimeAsync(70_000)
+    expect(first.readyState).toBe(1)
+
+    env.fireVisibility('visible')
+    // Back after more than five seconds: a NEW socket, never the old one, with
+    // the carried detach-then-replace order.
+    expect(first.readyState).toBe(3)
+    expect(env.sockets).toHaveLength(2)
+    const second = lastSocket(env)
+    second.accept()
+    expect(JSON.parse(second.sent.at(-1) ?? 'null')).toEqual({
+      type: 'join',
+      role: 'player',
+      token: 'tok',
+    })
+  })
+
+  it('replaces the socket only for a bfcache pageshow, and only after five hidden seconds', async () => {
+    const env = installSocketEnvironment()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: () => {},
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+
+    // Exactly five seconds hidden is NOT past the threshold: a quick app switch
+    // keeps its socket.
+    env.fireVisibility('hidden')
+    await vi.advanceTimersByTimeAsync(5_000)
+    env.fireVisibility('visible')
+    expect(env.sockets).toHaveLength(1)
+
+    // A normal pageshow (a fresh load) is not a bfcache restore.
+    env.firePageshow(false)
+    expect(env.sockets).toHaveLength(1)
+
+    // `event.persisted === true` is the explicit bfcache signal, and bfcache
+    // fires no visibilitychange.
+    env.firePageshow(true)
+    expect(env.sockets).toHaveLength(2)
+  })
+
+  it('ignores a close event from a socket it has already replaced (one scheduler)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    connection = openPlayerSocket({
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => {},
+      onError: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+    const staleClose = first.onclose
+    connection.retry()
+    expect(env.sockets).toHaveLength(2)
+    lastSocket(env).accept()
+    expect(statuses.at(-1)).toBe('live')
+
+    // The dead socket's handler is detached, but a late event that still got
+    // through must not stop or duplicate the replacement's own loop — a 4001
+    // from the old connection is exactly the case that would strand the page.
+    staleClose?.({ code: 4001 })
+    expect(statuses.at(-1)).toBe('live')
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(env.sockets).toHaveLength(2)
+  })
+
+  it('self-heals the projector while its handle stays close-only (D-130/G-3)', async () => {
+    const env = installSocketEnvironment()
+    const statuses: string[] = []
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    const projector = openScreenSocket({
+      onStatus: (status) => statuses.push(status),
+      onView: () => {},
+    })
+
+    const first = lastSocket(env)
+    first.accept()
+    first.drop(1006)
+    expect(statuses.at(-1)).toBe('reconnecting')
+    await vi.advanceTimersByTimeAsync(1)
+    expect(env.sockets).toHaveLength(2)
+    lastSocket(env).accept()
+    expect(statuses.at(-1)).toBe('live')
+
+    // No control was added for it: the handle is still `close` alone.
+    expect(Object.keys(projector)).toEqual(['close'])
+    projector.close()
   })
 })

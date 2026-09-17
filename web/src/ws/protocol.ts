@@ -309,6 +309,29 @@ export function readError(data: unknown): ErrorPayload | null {
 }
 
 /**
+ * `tunnel.status` payload (D-123): the two display facts the presenter's Join
+ * URLs panel reads. The URL is a string and `healthy` is a boolean; the empty
+ * URL with `healthy:false` is a DECLARED state (tunnel off or restarting), not
+ * a missing one.
+ */
+export type TunnelStatus = {
+  url: string
+  healthy: boolean
+}
+
+/**
+ * Decode a `tunnel.status` control frame.
+ *
+ * Display-only data, so this is deliberately NOT a totality rule: a malformed
+ * frame returns null and is ignored by the caller, exactly like a malformed
+ * `recent_bids` entry — a tunnel read-out must never reject a snapshot or
+ * freeze the panel it decorates (UI-SPEC §Requirement Impact 4).
+ */
+export function readTunnelStatus(data: unknown): TunnelStatus | null {
+  return null
+}
+
+/**
  * Decode the player `state.snapshot` payload (D-25/D-63).
  *
  * A payload with a missing or ill-typed required field decodes to null rather

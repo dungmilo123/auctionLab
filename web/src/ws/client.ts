@@ -121,6 +121,13 @@ export type Socket = {
   send(frame: unknown): void
   /** detach and close. Safe to call twice. */
   close(): void
+  /**
+   * Reconnect immediately (D-130): reset the backoff, cancel the scheduled
+   * attempt and connect now, with the carried detach-then-replace order. The
+   * player's "Retry now" / "Use this device" and the admin's retry both reach
+   * the socket through this one capability.
+   */
+  retry(): void
 }
 
 export type PlayerSocketHandlers = {
@@ -153,6 +160,8 @@ export type PlayerConnection = {
    * commands through the same shared core.
    */
   send(frame: unknown): void
+  /** Connect now, resetting the backoff (D-130's manual retry). */
+  retry(): void
   /** Detach and close. Safe to call twice. */
   close(): void
 }
@@ -400,6 +409,9 @@ export function openSocket(opts: SocketOptions): Socket {
 
   return {
     send,
+    retry(): void {
+      // RED: the immediate reconnect is not wired yet.
+    },
     close(): void {
       closed = true
       document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -505,6 +517,10 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
     },
     send(frame: unknown): void {
       socket.send(frame)
+    },
+    retry(): void {
+      // RED: the pass-through is declared for the suite; the policy lands in GREEN.
+      socket.retry()
     },
     close(): void {
       socket.close()

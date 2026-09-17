@@ -17,6 +17,7 @@ import {
   readPlayerSnapshot,
   readPriceTick,
   readScreenSnapshot,
+  readTunnelStatus,
   type Envelope,
 } from './protocol'
 
@@ -190,6 +191,32 @@ describe('readError', () => {
   it('rejects a payload without a code', () => {
     expect(readError({ message: 'no code here' })).toBeNull()
     expect(readError(null)).toBeNull()
+  })
+})
+
+describe('readTunnelStatus (D-123)', () => {
+  it('reads the two display facts a tunnel.status frame carries', () => {
+    expect(readTunnelStatus({ url: 'https://abc.trycloudflare.com', healthy: true })).toEqual({
+      url: 'https://abc.trycloudflare.com',
+      healthy: true,
+    })
+  })
+
+  it('keeps the declared off/restarting state instead of reading it as absent', () => {
+    // `{url:"", healthy:false}` is a valid status (the tunnel is off or coming
+    // back), so it decodes to the pair — the panel renders its waiting word
+    // from it rather than inventing an empty state (UI-SPEC §Copywriting).
+    expect(readTunnelStatus({ url: '', healthy: false })).toEqual({ url: '', healthy: false })
+  })
+
+  it('ignores a malformed frame — display data is never a rejection', () => {
+    expect(readTunnelStatus(null)).toBeNull()
+    expect(readTunnelStatus({})).toBeNull()
+    expect(readTunnelStatus({ url: 1, healthy: true })).toBeNull()
+    expect(readTunnelStatus({ url: '', healthy: 'yes' })).toBeNull()
+    expect(readTunnelStatus({ healthy: true })).toBeNull()
+    expect(readTunnelStatus('tunnel.status')).toBeNull()
+    expect(readTunnelStatus([{ url: '', healthy: true }])).toBeNull()
   })
 })
 
