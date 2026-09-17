@@ -235,13 +235,13 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
   // flight, the window is open, and the value is a whole number at or above the
   // server's minimum. The server still decides (D-52).
   const canSubmit =
-    status === 'open' &&
+    status === 'live' &&
     !outOfBudget &&
     !bidding &&
     remaining > 0 &&
     parsed !== null &&
     parsed >= live.minNextBid
-  const canRebid = status === 'open' && !outOfBudget && !bidding && remaining > 0
+  const canRebid = status === 'live' && !outOfBudget && !bidding && remaining > 0
 
   // One slot, never stacked. A refusal is the most recent fact and wins — but
   // the local pre-check renders the same copy key from the SAME dictionary, so

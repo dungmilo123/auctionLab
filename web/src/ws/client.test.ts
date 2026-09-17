@@ -933,7 +933,14 @@ describe('the reconnect policy in the lifecycle (D-130…D-134)', () => {
 
     await vi.advanceTimersByTimeAsync(5_000)
     expect(socket.readyState).toBe(3)
-    expect(statuses.at(-1)).toBe('reconnecting')
+    // The force-close is an ORDINARY close for the policy — the same path a
+    // network drop takes — so the next scheduled attempt builds a replacement.
+    await vi.advanceTimersByTimeAsync(1)
+    expect(env.sockets).toHaveLength(2)
+    // The state it produces is the machine's own: the same silence also aged the
+    // page past its 30 s offline threshold, so it reads `offline`. Invisible
+    // except through that state, exactly as D-132 requires.
+    expect(statuses.at(-1)).toBe('offline')
   })
 
   it('never tears a socket down from a hidden tab, and replaces it on a long return (D-133)', async () => {

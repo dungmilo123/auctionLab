@@ -123,21 +123,3 @@ export function nextOutcome(state: GateState, env: Envelope): GateStep {
   }
 }
 
-/** What a visibility/pageshow event should do about a closed socket (D-45). */
-export type ResumeDecision = 'reconnect' | 'none'
-
-/**
- * D-45's one-shot resume decision: on `visibilitychange → visible` and on
- * `pageshow`, a socket that is not OPEN is reconnected once and rejoined with
- * the stored token — so a locked phone comes back to the same identity and
- * budget (criterion 2).
- *
- * Without a stored token there is no identity to restore, and the join form's
- * own CTA is the recovery path — so the decision is `none` rather than opening
- * a socket that has nothing to say. Backoff, jitter and stale-socket detection
- * are deliberately absent (RECN-01/02 is Phase 7).
- */
-export function resumeOutcome(readyState: number, hasToken: boolean): ResumeDecision {
-  if (!hasToken) return 'none'
-  return readyState === SOCKET_OPEN ? 'none' : 'reconnect'
-}

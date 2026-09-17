@@ -44,21 +44,21 @@ import type { LiveOverlay, ViewState } from '@/ws/view'
 // client-side sort ever reorders the server's standings (ECON-05).
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  connecting: 'status.connecting',
-  open: 'status.open',
-  lost: 'status.lost',
+  reconnecting: 'status.connecting',
+  live: 'status.open',
+  offline: 'status.lost',
   superseded: 'status.superseded',
 }
 
 // The operator's cue, deliberately NOT the player route's: the screen spends its
-// one accent fill on the datum the room is watching, so `open` is near-black
+// one accent fill on the datum the room is watching, so `live` is near-black
 // here (§Color item 10). The square never carries the state alone — the word is
 // always beside it, and this route has no live region at all (a price that
 // re-announces four times a second is unusable).
 const STATUS_FILL: Record<ConnectionStatus, string> = {
-  connecting: 'bg-muted-foreground',
-  open: 'bg-foreground',
-  lost: 'bg-destructive',
+  reconnecting: 'bg-muted-foreground',
+  live: 'bg-foreground',
+  offline: 'bg-destructive',
   superseded: 'bg-destructive',
 }
 
@@ -702,7 +702,7 @@ function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
 
 function ScreenView() {
   const { t } = useLanguage()
-  const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
   // `null` until the first admitted snapshot: before it the route shows the
   // header row and one line, and nothing else (no QR, no skeleton).
   const [view, setView] = useState<ViewState | null>(null)

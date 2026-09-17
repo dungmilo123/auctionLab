@@ -24,7 +24,7 @@ function field(overrides: Partial<SealedAmountInput> = {}): SealedAmountInput {
 
 /** The field plus the window/socket facts the enabled predicate reads. */
 function submit(overrides: Partial<SealedSubmitInput> = {}): SealedSubmitInput {
-  return { ...field({ raw: '320000' }), status: 'open', remainingMs: 30_000, inFlight: false, ...overrides }
+  return { ...field({ raw: '320000' }), status: 'live', remainingMs: 30_000, inFlight: false, ...overrides }
 }
 
 describe('the sealed field prefill (D-119)', () => {
@@ -111,7 +111,7 @@ describe('the sealed submit predicate (D-120)', () => {
   })
 
   it('is disabled while the socket is not open, the window has closed, or a frame is in flight', () => {
-    for (const status of ['connecting', 'lost', 'superseded'] as const) {
+    for (const status of ['reconnecting', 'offline', 'superseded'] as const) {
       expect(canSubmitSealed(submit({ status }))).toBe(false)
     }
     expect(canSubmitSealed(submit({ remainingMs: 0 }))).toBe(false)

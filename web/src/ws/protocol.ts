@@ -328,7 +328,11 @@ export type TunnelStatus = {
  * freeze the panel it decorates (UI-SPEC §Requirement Impact 4).
  */
 export function readTunnelStatus(data: unknown): TunnelStatus | null {
-  return null
+  if (!isRecord(data)) return null
+  const url = readString(data.url)
+  const healthy = data.healthy
+  if (url === null || typeof healthy !== 'boolean') return null
+  return { url, healthy }
 }
 
 /**

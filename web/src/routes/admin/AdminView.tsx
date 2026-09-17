@@ -67,16 +67,16 @@ import {
 // in `lib/admin.ts`, where Vitest pins them; this file renders them.
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  connecting: 'status.connecting',
-  open: 'status.open',
-  lost: 'status.lost',
+  reconnecting: 'status.connecting',
+  live: 'status.open',
+  offline: 'status.lost',
   superseded: 'status.superseded',
 }
 
 const STATUS_FILL: Record<ConnectionStatus, string> = {
-  connecting: 'bg-muted-foreground',
-  open: 'bg-primary',
-  lost: 'bg-destructive',
+  reconnecting: 'bg-muted-foreground',
+  live: 'bg-primary',
+  offline: 'bg-destructive',
   superseded: 'bg-destructive',
 }
 
@@ -1346,7 +1346,7 @@ function PlayersPanel({
 
 function AdminView() {
   const { t } = useLanguage()
-  const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
   const [view, setView] = useState<ViewState>(() => initialViewState())
   // The catalog generation: bumped once per admin snapshot, and only per
   // snapshot — an EVENT keeps the same `items` array, so its reference is the
@@ -1447,7 +1447,7 @@ function AdminView() {
         {/* Every mutating control on every tab is disabled while the socket is
             down (D-82a); the note names the recovery rather than implying the
             page still works. */}
-        {status === 'lost' && (
+        {status === 'offline' && (
           <p className="text-sm leading-[1.5] text-muted-foreground">{t('admin.offlineNote')}</p>
         )}
 

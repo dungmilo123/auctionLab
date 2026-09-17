@@ -87,7 +87,7 @@ export function sealedFieldError(input: SealedAmountInput): BidReasonKey | null 
  */
 export function canSubmitSealed(input: SealedSubmitInput): boolean {
   return (
-    input.status === 'open' &&
+    input.status === 'live' &&
     input.remainingMs > 0 &&
     !input.inFlight &&
     parseBidAmount(input.raw) !== null &&

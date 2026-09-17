@@ -325,7 +325,7 @@ export function validateStartingBudget(raw: string): CopyKey | undefined {
  * predicate. A control that cannot deliver must not look available.
  */
 export function mutationsEnabled(status: ConnectionStatus): boolean {
-  return status === 'open'
+  return status === 'live'
 }
 
 /**

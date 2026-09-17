@@ -37,9 +37,9 @@ import SettledReveal from './SettledReveal'
 // Both are set from one frame in one React batch, so they can never disagree.
 
 const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  connecting: 'status.connecting',
-  open: 'status.open',
-  lost: 'status.lost',
+  reconnecting: 'status.connecting',
+  live: 'status.open',
+  offline: 'status.lost',
   superseded: 'status.superseded',
 }
 
@@ -47,9 +47,9 @@ const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
 // beside it. The 2px outline is what keeps the accent fill perceivable against
 // the page, so the square is never rendered as a bare accent block.
 const STATUS_FILL: Record<ConnectionStatus, string> = {
-  connecting: 'bg-muted-foreground',
-  open: 'bg-primary',
-  lost: 'bg-destructive',
+  reconnecting: 'bg-muted-foreground',
+  live: 'bg-primary',
+  offline: 'bg-destructive',
   superseded: 'bg-destructive',
 }
 
@@ -79,7 +79,7 @@ function errorCopyKey(code: string): CopyKey {
  */
 function PlayerView() {
   const { t } = useLanguage()
-  const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
   const [nickname, setNickname] = useState('')
   const [joining, setJoining] = useState(false)
   // A stored token means the session can be restored, so the form must not
@@ -192,7 +192,7 @@ function PlayerView() {
       if (restoring) return <p className="text-base leading-[1.5]">{t('session.restoring')}</p>
       return (
         <JoinForm
-          open={status === 'open'}
+          open={status === 'live'}
           joining={joining}
           nickname={nickname}
           onNicknameChange={changeNickname}

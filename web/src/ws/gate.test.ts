@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  SOCKET_CLOSED,
-  SOCKET_OPEN,
-  initialGateState,
-  nextOutcome,
-  resumeOutcome,
-  type GateState,
-} from './gate'
+import { initialGateState, nextOutcome, type GateState } from './gate'
 import type { Envelope } from './protocol'
 
 // One frame builder, so every case reads as the rule it pins rather than as
@@ -175,21 +168,5 @@ describe('the heartbeat (D-132)', () => {
       frame({ type: 'heartbeat', seq: 4, rev: 99 }),
     )
     expect(step.state.rev).toBe(7)
-  })
-})
-
-describe('the resume decision (D-45)', () => {
-  it('reconnects once when a stored token exists and the socket is not open', () => {
-    expect(resumeOutcome(SOCKET_CLOSED, true)).toBe('reconnect')
-  })
-
-  it('does nothing while the socket is open', () => {
-    expect(resumeOutcome(SOCKET_OPEN, true)).toBe('none')
-  })
-
-  it('does nothing without a stored token', () => {
-    // No token means no identity to restore: the join form is the recovery
-    // path, and opening a socket that has nothing to say would be noise.
-    expect(resumeOutcome(SOCKET_CLOSED, false)).toBe('none')
   })
 })

@@ -213,10 +213,10 @@ describe('the item draft (D-82b)', () => {
 })
 
 describe('the socket gate (D-82a)', () => {
-  it('allows a mutation only while the socket is open', () => {
-    expect(mutationsEnabled('open')).toBe(true)
-    expect(mutationsEnabled('connecting')).toBe(false)
-    expect(mutationsEnabled('lost')).toBe(false)
+  it('allows a mutation only while the socket is live', () => {
+    expect(mutationsEnabled('live')).toBe(true)
+    expect(mutationsEnabled('reconnecting')).toBe(false)
+    expect(mutationsEnabled('offline')).toBe(false)
     expect(mutationsEnabled('superseded')).toBe(false)
   })
 })

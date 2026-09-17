@@ -131,5 +131,5 @@ export function atFloor(price: number, floor: number): boolean {
  * deliver must not look available (D-82a's rule, applied to the accept).
  */
 export function canAccept(input: AcceptInput): boolean {
-  return input.status === 'open' && !input.inFlight && input.price <= input.budget
+  return input.status === 'live' && !input.inFlight && input.price <= input.budget
 }

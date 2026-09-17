@@ -170,7 +170,7 @@ describe('atFloor (D-103)', () => {
 })
 
 describe('canAccept (D-104/DTCH-02)', () => {
-  const open = { status: 'open', inFlight: false, price: 200_000, budget: 1_000_000 } as const
+  const open = { status: 'live', inFlight: false, price: 200_000, budget: 1_000_000 } as const
 
   it('enables the CTA only while the socket is open, nothing is in flight and the price is affordable', () => {
     expect(canAccept(open)).toBe(true)
@@ -195,7 +195,7 @@ describe('canAccept (D-104/DTCH-02)', () => {
   })
 
   it('never enables while the socket cannot deliver', () => {
-    for (const status of ['connecting', 'lost', 'superseded'] as const) {
+    for (const status of ['reconnecting', 'offline', 'superseded'] as const) {
       expect(canAccept({ ...open, status })).toBe(false)
     }
   })

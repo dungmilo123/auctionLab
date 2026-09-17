@@ -1,17 +1,19 @@
 /**
- * The socket lifecycle (D-44/D-45) — one role-neutral core plus the player
- * wrapper Phase 2 shipped.
+ * The socket lifecycle (D-44/D-45 → D-130…D-134) — one role-neutral core plus
+ * the player wrapper Phase 2 shipped.
  *
- * This module owns everything the pure gate cannot: the same-origin URL, the
+ * This module owns everything the pure modules cannot: the same-origin URL, the
  * open/close state, the reconciliation state per connection, the token in
- * storage, and D-45's one-shot resume. The rules themselves live in `gate.ts`,
- * the frame shapes in `protocol.ts` and the reduction in `view.ts`, so all
- * three stay testable in the node environment.
+ * storage, and every global the policy is applied through (`window`,
+ * `document`, `WebSocket`, `localStorage`, `setTimeout`, `Math.random`). The
+ * rules themselves live in `reconnect.ts` (the policy), `gate.ts` (the stream
+ * account), `protocol.ts` (the frame shapes) and `view.ts` (the reduction), so
+ * all four stay testable in the node environment.
  *
  * `openSocket` is the extracted lifecycle (H17); `openPlayerSocket` is the
- * player's thin wrapper over it, with its exported signature, callbacks and
- * token behaviour unchanged. `admin.ts` builds the presenter's connection on
- * the same core.
+ * player's thin wrapper over it, with its exported signature and token
+ * behaviour unchanged. `admin.ts` and `screen.ts` build their connections on the
+ * same core, which is what gives all three roles the same recovery (D-130).
  *
  * It is deliberately NOT a React hook: the React effect that calls
  * `openPlayerSocket` owns the lifetime, and cleanup closes it. A module-scope
@@ -20,13 +22,21 @@
  */
 
 import {
-  SOCKET_CLOSED,
   SOCKET_OPEN,
   initialGateState,
   nextOutcome,
-  resumeOutcome,
   type GateState,
 } from './gate'
+import {
+  HIDDEN_TEARDOWN_MS,
+  STALE_CHECK_PERIOD_MS,
+  STALE_SILENCE_MS,
+  SUPERSEDED_CLOSE_CODE,
+  deriveState,
+  nextDelay,
+  schedulerDecision,
+  type ReconnectState,
+} from './reconnect'
 import {
   BID_ACCEPTED,
   BID_REJECTED,
@@ -65,29 +75,36 @@ import { initialViewState, reduceView, type ViewFrame, type ViewState } from './
 /** D-29's storage key (UI-SPEC §Resume, supersede and storage). */
 export const TOKEN_KEY = 'auctionlab.player_token'
 
-/** Close code 4001: another connection took this identity (D-31). */
-export const SUPERSEDED_CLOSE_CODE = 4001
+/**
+ * Close code 4001: another connection took this identity (D-31). It is the ONE
+ * terminal close (D-131): the token is kept and the scheduler stops for this
+ * page instance, and the player's notice offers one deliberate rejoin. The
+ * literal lives in `reconnect.ts` beside the terminal decision that reads it,
+ * and is re-exported here because this module has always published it.
+ */
+export { SUPERSEDED_CLOSE_CODE }
 
 /**
  * Close code 4002: the PRESENTER ended this session — D-78's `clear_players`, or
  * D-80's release of one row. The capability this device held is gone (the row
  * was deleted or its token released), so the role must return to its entry
  * state instead of rendering what it last saw. Like 4001 it is a deliberate
- * server decision, never a network drop.
+ * server decision, never a network drop — but it is NOT terminal: the reopened
+ * socket is what lets the returned join form actually submit.
  */
 export const SESSION_ENDED_CLOSE_CODE = 4002
 
 /** The four connection states UI-SPEC allows — exactly these, no more. */
-export type ConnectionStatus = 'connecting' | 'open' | 'lost' | 'superseded'
+export type ConnectionStatus = ReconnectState
 
 /** The role a socket joins as (D-23). It selects the snapshot decoder. */
 export type SocketRole = 'player' | 'admin' | 'screen'
 
 /**
  * The role-neutral socket contract (H17). The lifecycle — same-origin URL,
- * detach-then-replace, reset-per-connection gate, ONE resume attempt per
- * visibility/pageshow event — lives here once; the role owns its join frame,
- * its identity and its callbacks.
+ * detach-then-replace, reset-per-connection gate, ONE scheduler per socket and
+ * the heartbeat-driven staleness check — lives here once; the role owns its
+ * join frame, its identity and its callbacks.
  */
 export type SocketOptions = {
   role: SocketRole
@@ -218,28 +235,93 @@ export function resetStream(): GateState {
 
 /**
  * The extracted role-neutral lifecycle (H17): same-origin URL, the gate reset
- * per connection, the detach-then-replace order, the D-45 resume, the status
- * callback and the reduced-view callback. The role owns its join frame, its
- * identity storage and its callbacks; nothing role-specific lives here.
- *
- * Everything the pure gate cannot own is here: one `GateState` per connection,
- * the open/close state, the stored-identity read, and D-45's one-shot resume.
- * The rules themselves live in `gate.ts`, the frame shapes in `protocol.ts` and
- * the reduction in `view.ts`, so all three stay testable in the node
- * environment with this module's four stubbed globals.
+ * per connection, the detach-then-replace order, D-130's backoff and liveness
+ * policy, the status callback and the reduced-view callback. The role owns its
+ * join frame, its identity storage and its callbacks; nothing role-specific
+ * lives here.
  */
 export function openSocket(opts: SocketOptions): Socket {
   // The gate is per CONNECTION (D-21), but the view is the app's state: it
-  // survives a resume, and the replacement connection's snapshot replaces it.
+  // survives a reconnect, and the replacement connection's snapshot replaces it.
   let gate: GateState = initialGateState()
   let view: ViewState = initialViewState()
   let current: WebSocket | null = null
   let closed = false
 
+  // D-130's machine. `attempts` counts consecutive failures since the last
+  // successful open and is ALSO the backoff's exponent, so "the manual retry
+  // resets the backoff" is one assignment rather than a second counter free to
+  // drift from the first. `lastOpenAt` is never reset by anything: it is the
+  // age half of the offline threshold, and a retry cannot un-age the page.
+  let attempts = 0
+  let lastOpenAt: number | null = null
+  let lastCloseCode: number | null = null
+  /** D-132: the arrival instant of the newest ADMITTED frame (control frames included). */
+  let lastMessageAt = 0
+  /** THE scheduled attempt. One scheduler per socket (T-07-09): every path that
+   *  reschedules clears this first, so two retries can never race. */
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  /** D-133: when this tab went hidden, or null while it is visible. */
+  let hiddenAt: number | null = null
+
+  function now(): number {
+    return Date.now()
+  }
+
+  function isOpen(): boolean {
+    return current !== null && current.readyState === SOCKET_OPEN
+  }
+
+  /** The machine's current reading, as the UI declares it (D-130). */
+  function status(): ConnectionStatus {
+    return deriveState({ open: isOpen(), attempts, lastOpenAt, now: now(), lastCloseCode })
+  }
+
+  function publishStatus(): void {
+    opts.onStatus(status())
+  }
+
+  function cancelScheduled(): void {
+    if (retryTimer === null) return
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
+
   function send(frame: unknown): void {
     const socket = current
     if (socket === null || socket.readyState !== SOCKET_OPEN) return
     socket.send(JSON.stringify(frame))
+  }
+
+  /**
+   * D-130's schedule: one attempt, full jitter, capped — forever. `offline` is
+   * a presentation threshold, not a stop (G-2), so the only state that refuses
+   * to schedule is D-131's terminal supersede.
+   */
+  function scheduleRetry(): void {
+    if (closed) return
+    if (schedulerDecision(status()) === 'stop') return
+    const delay = nextDelay(attempts, Math.random())
+    retryTimer = setTimeout(() => {
+      retryTimer = null
+      connect()
+    }, delay)
+  }
+
+  /**
+   * Connect NOW (D-130's manual retry, and D-131's one deliberate rejoin):
+   * reset the backoff, cancel the waiting attempt and run the ordinary
+   * detach-then-replace connect — so a retry re-sends the stored token exactly
+   * like any other connect, and a 4001 rejoin supersedes the other device in
+   * turn.
+   */
+  function retryNow(): void {
+    if (closed) return
+    attempts = 0
+    // A deliberate rejoin answers the terminal close, so the machine must stop
+    // reading it as terminal — otherwise the page could never leave superseded.
+    lastCloseCode = null
+    connect()
   }
 
   function applyHello(data: unknown): void {
@@ -257,7 +339,8 @@ export function openSocket(opts: SocketOptions): Socket {
       opts.onTokenInvalid?.()
     }
     // The server's message is log-only (UI-SPEC §Join/mutation states, T-02-01):
-    // the UI selects its copy from the dictionary by `error.code`.
+    // the UI selects its copy from the dictionary by `error.code`. An unknown
+    // code (D-138's `rate_limited` included) stays here and paints nothing.
     console.warn('[ws] server error', error.code, error.message)
     opts.onError?.(error)
   }
@@ -274,6 +357,11 @@ export function openSocket(opts: SocketOptions): Socket {
     const envelope = parseEnvelope(raw)
     if (envelope === null) return
 
+    // D-132: EVERY admitted frame is liveness, control frames included. The
+    // 25 s heartbeat exists precisely so a quiet LOBBY/INTRO/SETTLED stream is
+    // not mistaken for a dead socket by the staleness check below.
+    lastMessageAt = now()
+
     const step = nextOutcome(gate, envelope)
     gate = step.state
 
@@ -281,8 +369,8 @@ export function openSocket(opts: SocketOptions): Socket {
       case 'duplicate':
         return
       case 'control':
-        // Phase 7 owns tunnel.status behaviour. The gate's exception is the
-        // only thing Phase 2 needs: never mistaken for a game event.
+        // The control plane is admitted and consumed by the pattern above: the
+        // beat and the tunnel frame carry no game state to reduce.
         return
       case 'snapshot': {
         if (!step.outcome.apply) return
@@ -312,6 +400,10 @@ export function openSocket(opts: SocketOptions): Socket {
   function connect(): void {
     if (closed) return
 
+    // The scheduled attempt (if any) IS this connect: clear it first so a
+    // manual retry racing the timer cannot leave two timers alive.
+    cancelScheduled()
+
     // D-21/GAP 2: `seq` is THIS connection's stream position and the server
     // restarts it at 1 on every accepted upgrade, so the gate is one per
     // connection. Reusing the dead socket's high-water mark would classify the
@@ -322,7 +414,8 @@ export function openSocket(opts: SocketOptions): Socket {
 
     // Detach and close the connection being replaced BEFORE opening its
     // successor, so a late event from the old socket can never be mistaken for
-    // the new one's (the StrictMode double-invoke and the 4001 case).
+    // the new one's (the StrictMode double-invoke, the 4001 case, and D-133's
+    // teardown-rejoin, which must never reuse the old socket).
     const previous = current
     current = null
     if (previous !== null) {
@@ -333,7 +426,7 @@ export function openSocket(opts: SocketOptions): Socket {
       previous.close()
     }
 
-    opts.onStatus('connecting')
+    publishStatus()
 
     let socket: WebSocket
     try {
@@ -341,18 +434,30 @@ export function openSocket(opts: SocketOptions): Socket {
     } catch {
       // The constructor throws on an unusable URL (e.g. a built index.html
       // opened from file://). Without this the status line would stay
-      // "connecting" forever, which mid-demo reads as a hung server.
-      opts.onStatus('lost')
+      // "connecting" forever, which mid-demo reads as a hung server. It is a
+      // failed attempt like any other: count it and let the policy schedule the
+      // next one — auto-retry never stops (G-2).
+      attempts += 1
+      lastCloseCode = null
+      publishStatus()
+      scheduleRetry()
       return
     }
     current = socket
+    lastMessageAt = now()
 
     socket.onopen = () => {
       if (current !== socket) return
-      opts.onStatus('open')
+      // A successful open resets the backoff and the age threshold at once
+      // (D-130), so the state is `live` until the next close says otherwise.
+      attempts = 0
+      lastOpenAt = now()
+      lastCloseCode = null
+      lastMessageAt = now()
+      publishStatus()
       // The role's join. The player sends the stored token when there is one
-      // (D-30 (1)) and otherwise waits for the form; the admin always joins as
-      // admin — there is no identity to restore.
+      // (D-30 (1)) and otherwise waits for the form; the admin and the screen
+      // always join with their role — there is no identity to restore.
       const frame = opts.joinFrame(opts.readToken())
       if (frame !== null) send(frame)
     }
@@ -362,6 +467,8 @@ export function openSocket(opts: SocketOptions): Socket {
     socket.onclose = (event: CloseEvent) => {
       if (current !== socket) return // a deliberate close already ran
       current = null
+      lastCloseCode = event.code
+
       if (event.code === SESSION_ENDED_CLOSE_CODE) {
         // D-78/D-80: the presenter ended this session, so the identity this
         // device held is gone and the view it is showing is stale by
@@ -374,13 +481,22 @@ export function openSocket(opts: SocketOptions): Socket {
         opts.onTokenInvalid?.()
         opts.onSessionEnded?.()
       }
-      // `superseded` is a status, not a terminal state: the token is kept, so
-      // the next visibility/pageshow runs D-45's resume and reopens with it —
-      // which means two tabs of one identity take turns superseding each other,
-      // each time a backgrounded one comes forward. No token leaks and no data
-      // is lost; making the superseded state terminal is Phase 7's reconnect
-      // policy (RECN-01/02).
-      opts.onStatus(event.code === SUPERSEDED_CLOSE_CODE ? 'superseded' : 'lost')
+
+      if (event.code === SUPERSEDED_CLOSE_CODE) {
+        // D-131: terminal for this page instance. The token is KEPT — it is the
+        // identity the notice's one action re-claims — and the scheduler is
+        // stopped, which is what ends the page-supersedes-page fight (Pitfall 12).
+        cancelScheduled()
+        publishStatus()
+        return
+      }
+
+      attempts += 1
+      publishStatus()
+      // 4002 is an ordinary close for the scheduler even though it cleared the
+      // identity: the reopened socket is what makes the join form the route
+      // just returned to actually submit.
+      scheduleRetry()
     }
 
     socket.onerror = () => {
@@ -388,34 +504,66 @@ export function openSocket(opts: SocketOptions): Socket {
     }
   }
 
-  function resume(): void {
+  /**
+   * D-132's staleness check. A phone that was suspended can hold a socket whose
+   * `readyState` still says OPEN while nothing will ever arrive on it, so the
+   * liveness signal has to be the frames themselves. Only the CURRENT socket is
+   * ever considered, and a hidden tab is skipped entirely: iOS throttles its
+   * timers, so a hidden-tab tick is not evidence about the socket (D-133).
+   */
+  function checkStale(): void {
     if (closed) return
-    const readyState = current === null ? SOCKET_CLOSED : current.readyState
-    // D-45: ONE attempt per visibility/pageshow event, and only when there is
-    // an identity to restore. Backoff, jitter and stale-socket detection are
-    // RECN-01/02 (Phase 7) and are deliberately absent — and a role with no
-    // stored identity (the admin) simply never resumes.
-    if (resumeOutcome(readyState, opts.readToken() !== '') !== 'reconnect') return
-    connect()
+    const socket = current
+    if (socket === null || socket.readyState !== SOCKET_OPEN) return
+    if (document.visibilityState !== 'visible') return
+    if (now() - lastMessageAt <= STALE_SILENCE_MS) return
+    // Force-close through the ordinary close path: the ordinary transition, no
+    // new state, no copy, no notice (D-132). `onclose` is still attached, so
+    // the retry policy runs exactly as it does for a network drop.
+    socket.close()
   }
 
+  /**
+   * D-133's Apple-shaped recovery. Returned from a tab that was hidden for more
+   * than the teardown threshold: the old socket is never reused (it may be a
+   * zombie whose readyState lies), so the ordinary connect replaces it and the
+   * role rejoins with whatever identity it holds.
+   */
   function onVisibilityChange(): void {
-    if (document.visibilityState === 'visible') resume()
+    if (document.visibilityState !== 'visible') {
+      hiddenAt = now()
+      return
+    }
+    const hiddenForMs = hiddenAt === null ? 0 : now() - hiddenAt
+    hiddenAt = null
+    if (hiddenForMs > HIDDEN_TEARDOWN_MS) retryNow()
   }
+
+  /**
+   * The bfcache restore. `event.persisted === true` is read EXPLICITLY because
+   * a bfcache pageshow fires no visibilitychange at all — this is the only
+   * signal that the page was resurrected rather than loaded.
+   */
+  function onPageShow(event: PageTransitionEvent): void {
+    if (event.persisted !== true) return
+    retryNow()
+  }
+
+  const staleTimer = setInterval(checkStale, STALE_CHECK_PERIOD_MS)
 
   document.addEventListener('visibilitychange', onVisibilityChange)
-  window.addEventListener('pageshow', resume)
+  window.addEventListener('pageshow', onPageShow)
   connect()
 
   return {
     send,
-    retry(): void {
-      // RED: the immediate reconnect is not wired yet.
-    },
+    retry: retryNow,
     close(): void {
       closed = true
+      cancelScheduled()
+      clearInterval(staleTimer)
       document.removeEventListener('visibilitychange', onVisibilityChange)
-      window.removeEventListener('pageshow', resume)
+      window.removeEventListener('pageshow', onPageShow)
       const socket = current
       current = null
       if (socket !== null) {
@@ -432,8 +580,9 @@ export function openSocket(opts: SocketOptions): Socket {
 /**
  * Decode one admitted envelope into the frame the reducer understands. `null`
  * covers everything this socket does not render — `hello`, `error`,
- * `tunnel.status`, later phases' frames — AND every decode failure, so an
- * invalid or phase-inconsistent payload can never reach `onView` (T-03-09).
+ * `tunnel.status`, `heartbeat`, later phases' frames — AND every decode
+ * failure, so an invalid or phase-inconsistent payload can never reach `onView`
+ * (T-03-09).
  */
 function decodeFrame(role: SocketRole, envelope: Envelope): ViewFrame | null {
   const { type, data, ts } = envelope
@@ -481,9 +630,9 @@ function decodeFrame(role: SocketRole, envelope: Envelope): ViewFrame | null {
 
 /**
  * Open the player connection (D-44/D-45) — the exported API Phase 2 shipped,
- * now a thin role wrapper over `openSocket`. The signature, the callbacks, the
- * token behaviour and the resume rule are unchanged: the player joins by name
- * from the form, or resumes with the stored token the moment the socket opens.
+ * now a thin role wrapper over `openSocket`. The signature, the callbacks and
+ * the token behaviour are unchanged: the player joins by name from the form, or
+ * rejoins with the stored token the moment the socket opens.
  */
 export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnection {
   const socket = openSocket({
@@ -519,7 +668,6 @@ export function openPlayerSocket(handlers: PlayerSocketHandlers): PlayerConnecti
       socket.send(frame)
     },
     retry(): void {
-      // RED: the pass-through is declared for the suite; the policy lands in GREEN.
       socket.retry()
     },
     close(): void {
