@@ -3,6 +3,8 @@ package hub
 import (
 	"sync"
 	"time"
+
+	"auctionlab/internal/game"
 )
 
 // This file owns D-132's application-level heartbeat: ONE hub-level goroutine
@@ -67,4 +69,12 @@ func (h *Hub) StartHeartbeat() (stop func()) {
 //
 // It goes through engine.Section and the ordinary broadcast, so each frame takes
 // a real seq on each recipient's lock-held FIFO at the current revision.
-func (h *Hub) heartbeat() {}
+func (h *Hub) heartbeat() {
+	_ = h.engine.Section(func(v game.View) error {
+		// The registry is NOT consulted for emptiness first: a beat with nobody
+		// connected is a no-op by construction, and the connection that needs
+		// this frame is exactly the one the server already counts as joined.
+		h.broadcast(v.Rev(), TypeHeartbeat, heartbeatPayload{TS: h.now().UnixMilli()})
+		return nil
+	})
+}

@@ -90,9 +90,30 @@ func testPolicyWithBuffer(depth int) Policy {
 
 // testClock is the injectable clock D-38 requires: tests move time instead of
 // sleeping, and the SAME instant drives both the engine and the envelope clock.
-type testClock struct{ t time.Time }
+//
+// It is mutex-guarded since Phase 7, and that is load-bearing rather than
+// decorative: D-138's command bucket asks the hub's clock on EVERY inbound
+// frame, so a test that moved time from its own goroutine while the server's read
+// pump was already reading it is a genuine data race — the -race suite is what
+// found it, and setTime is the only way to move the clock now.
+type testClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
 
-func (c *testClock) now() time.Time { return c.t }
+func (c *testClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+// setTime pins the clock to an instant, so the field itself never escapes the
+// mutex.
+func (c *testClock) setTime(t time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = t
+}
 
 // newTestHub builds a hub on its own engine and database, with the fan-out edge
 // installed exactly as cmd/server installs it.

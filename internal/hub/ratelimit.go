@@ -52,8 +52,29 @@ func newCommandBucket(policy Policy, now time.Time) *commandBucket {
 //
 // A policy with a non-positive rate or burst means "no bucket configured": the
 // frame is admitted, so a hand-built Policy can never lock a connection out of
-// its own commands.
+// its own commands (production always sets both, and
+// TestDefaultPolicyPinsTheD40Numbers pins the literals).
 func (b *commandBucket) admit(now time.Time) (ok bool, firstRefusal bool) {
-	_ = now
-	return true, false
+	if b.rate <= 0 || b.burst <= 0 {
+		return true, false
+	}
+
+	// Refill by wall-clock elapsed time, in the token domain. The clock is the
+	// hub's injected one, so a test advances time as data instead of sleeping.
+	// A non-monotonic reading (an injected clock moved backwards) simply grants
+	// no tokens.
+	if elapsed := now.Sub(b.last).Seconds(); elapsed > 0 {
+		b.tokens = min(b.burst, b.tokens+elapsed*b.rate)
+		b.last = now
+	}
+
+	if b.tokens >= 1 {
+		b.tokens--
+		b.refusing = false // an admitted frame ends the episode
+		return true, false
+	}
+
+	first := !b.refusing
+	b.refusing = true
+	return false, first
 }

@@ -124,7 +124,7 @@ func TestTickCarriesTimingWithoutBumpingRevision(t *testing.T) {
 
 	// A direct beat after six seconds of injected time carries the new remaining
 	// window, the same revision, and moves nothing else.
-	clock.t = base.Add(5 * time.Second)
+	clock.setTime(base.Add(5 * time.Second))
 	h.tick()
 	beat := readType(t, conn, TypePriceTick)
 	if beat.Seq <= immediate.Seq {
@@ -142,7 +142,7 @@ func TestTickCarriesTimingWithoutBumpingRevision(t *testing.T) {
 
 	// Advancing past the deadline makes the NEXT beat settle: one mutation, one
 	// revision, and the settle's own three frames — never a LIVE tick.
-	clock.t = base.Add(31 * time.Second)
+	clock.setTime(base.Add(31 * time.Second))
 	h.tick()
 
 	if got := engine.Phase(); got != game.PhaseSettled {
@@ -332,7 +332,7 @@ func TestSealedTickStaysSilent(t *testing.T) {
 	// The deadline arm is untouched: past the deadline the SAME beat settles the
 	// item once, through the one settle path, and the settle's own three frames
 	// are the whole fan-out — never a stale LIVE tick.
-	clock.t = base.Add(31 * time.Second)
+	clock.setTime(base.Add(31 * time.Second))
 	h.tick()
 	if got := engine.Phase(); got != game.PhaseSettled {
 		t.Fatalf("phase after a due sealed beat = %s, want SETTLED (D-107: sealed settles on the wall clock)", got)

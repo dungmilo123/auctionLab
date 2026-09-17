@@ -20,8 +20,10 @@ func TestCommandRateLimit(t *testing.T) {
 	base := time.UnixMilli(1_700_000_000_000)
 	clock := &testClock{t: base}
 	policy := testPolicyWithBuffer(64)
-	policy.CommandRate = 1  // one token per (injected) second
-	policy.CommandBurst = 2 // two frames back to back
+	policy.CommandRate = 1
+	// The join frame is metered like any other (D-138 exempts nothing), so a
+	// burst of 3 is exactly: the join, the malformed frame, and one command.
+	policy.CommandBurst = 3
 	h, engine := newTestHubWithClock(t, policy, clock)
 
 	conn := dialWS(t, h)
@@ -61,7 +63,7 @@ func TestCommandRateLimit(t *testing.T) {
 
 	// The socket is still open and the injected clock refills the bucket: two
 	// seconds at one token per second is a full burst again.
-	clock.t = base.Add(2 * time.Second)
+	clock.setTime(base.Add(2 * time.Second))
 	writeFrame(t, conn, `{"type":"future.command"}`)
 
 	after := readFrame(t, conn)
