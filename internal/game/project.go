@@ -340,6 +340,15 @@ type AdminView struct {
 	JoinURLs        []string `json:"join_urls"`
 	SelectedJoinURL string   `json:"selected_join_url"`
 
+	// Phase 7 (D-127, additive): which rung of
+	// `PUBLIC_URL > tunnel(healthy) > persisted > candidate` produced the
+	// selection above — the closed vocabulary `public_url | tunnel | selected |
+	// candidate`, or "" when there is no URL at all. The client cannot derive it:
+	// an effective URL alone cannot tell a persisted choice from a candidate
+	// default, so the server names it or the panel renders no tag (the
+	// SealedProgress precedent, D-88).
+	JoinURLSource string `json:"join_url_source"`
+
 	// Phase 6 (D-117, additive): the presenter's sealed count, the SAME number
 	// the player and the projector render, so the ledger card never counts rows
 	// in the browser. An explicit null outside a sealed item.
@@ -457,6 +466,7 @@ func (s *state) playerView(now time.Time, playerID string) PlayerView {
 
 // screenView builds the projector's projection.
 func (s *state) screenView(now time.Time) ScreenView {
+	joinURL, _ := s.effectiveJoinURL()
 	return ScreenView{
 		Phase:          string(s.phase),
 		Revision:       s.revision,
@@ -464,7 +474,7 @@ func (s *state) screenView(now time.Time) ScreenView {
 		Lobby:          s.lobby(),
 		Leaderboard:    s.leaderboard(),
 		Item:           s.currentPublicItem(now.UnixMilli()),
-		JoinURL:        s.selectedJoinURL(),
+		JoinURL:        joinURL,
 		RecentBids:     s.recentBids(),
 		SealedProgress: s.sealedProgress(),
 	}
@@ -539,10 +549,12 @@ func (s *state) adminView(now time.Time) AdminView {
 		Leaderboard: s.leaderboard(),
 		Item:        s.currentPublicItem(now.UnixMilli()),
 	}
-	// D-83/D-84: the two halves of the Join URLs panel. The candidates are the
-	// boot-time proposals; the selection is the URL every QR code is built from.
+	// D-83/D-84/D-127: the two halves of the Join URLs panel. The candidates are
+	// the boot-time proposals; the selection is the URL every QR code is built
+	// from, and the source names the rung that won it (the client cannot derive
+	// either fact on its own).
 	view.JoinURLs = s.joinURLs()
-	view.SelectedJoinURL = s.selectedJoinURL()
+	view.SelectedJoinURL, view.JoinURLSource = s.effectiveJoinURL()
 
 	for _, id := range s.order {
 		p := s.players[id]

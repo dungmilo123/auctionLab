@@ -381,6 +381,33 @@ func (h *Hub) broadcast(rev int64, typ string, data any) {
 	}
 }
 
+// tunnelStatusPayload is the tunnel.status control-plane body (D-123): the
+// origin the supervisor published, and whether a real screen-role WebSocket
+// round-trip through it has succeeded. The zero value is a declared state — "no
+// tunnel rung" — not an absence.
+type tunnelStatusPayload struct {
+	URL     string `json:"url"`
+	Healthy bool   `json:"healthy"`
+}
+
+// BroadcastTunnelStatus publishes one tunnel status change to the roles that act
+// on it — admin and screen — and never to a player (D-123/T-07-05). It is the
+// hub half of cmd/server's status callback; the callback also hands the same
+// status to the engine's runtime URL field, which is what moves the QR (D-128).
+//
+// The frame is control-plane by the catalog's own exception: it carries the
+// CURRENT revision without bumping it and the client applies it regardless of
+// seq. It is a fan-out like any other, so it takes a real seq per recipient on
+// the lock-held FIFO.
+//
+// PRECONDITION: engine.mu is NOT held. The enqueue runs inside engine.Section,
+// exactly like sendError and confirmNoop, because it writes each recipient's seq
+// counter and FIFO (D-21/D-33).
+func (h *Hub) BroadcastTunnelStatus(url string, healthy bool) {
+	_ = url
+	_ = healthy
+}
+
 // sendError answers ONE connection with the frozen typed error (D-24). It is
 // the hub's private-error producer, and it takes the engine's exclusive lock for
 // exactly the reason the fan-out runs under it: it writes that connection's seq

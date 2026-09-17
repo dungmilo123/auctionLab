@@ -127,6 +127,14 @@ type Config struct {
 	// never durable state — config_json persists the SELECTED url (D-84), not
 	// the proposals — so it is passed here rather than loaded from the store.
 	JoinURLCandidates []string
+
+	// PublicURL is D-127's hard override: `--public-url` / `PUBLIC_URL`, which
+	// outranks every auto-detected source at the resolution layer. It is a boot
+	// input and NEVER durable state — it deliberately has no counterpart in
+	// engineConfig, so an operator's command-line value can never be written to
+	// game.config_json and outlive the flag that produced it (research Pitfall
+	// 9). An empty or invalid value simply means "no override".
+	PublicURL string
 }
 
 // engineConfig mirrors the persisted game.config_json (D-36). Persisting the
@@ -239,6 +247,16 @@ type state struct {
 	// persists only the selected URL (D-84) — and it never changes after New,
 	// so clone() may copy the slice header rather than the strings.
 	joinURLCandidates []string
+
+	// publicURL, tunnelURL and tunnelHealthy are D-127/D-128's RUNTIME inputs:
+	// the boot override and the supervisor's latest published status. None of
+	// them is durable state and none of them has a field in engineConfig, so no
+	// code path can write one to game.config_json. They are mutated only by
+	// SetTunnelStatus (under the exclusive lock) and copied by clone, so the
+	// next mutation's scratch state carries them forward.
+	publicURL     string
+	tunnelURL     string
+	tunnelHealthy bool
 }
 
 // Engine is the authoritative game state and the single mutation path. All
@@ -308,6 +326,17 @@ func New(cfg Config) (*Engine, error) {
 		return nil, fmt.Errorf("game: persisted phase %q is not part of the PLAN.md §6 machine", gameRow.Phase)
 	}
 
+	// D-127: the boot override, validated by the SAME D-86 rule the admin's own
+	// selection follows. An invalid value is dropped rather than advertised —
+	// connectivity inputs never stop the boot (D-129); the operator-facing
+	// warning is cmd/server's line to print.
+	publicURL := cfg.PublicURL
+	if publicURL != "" {
+		if err := ValidateJoinURL(publicURL); err != nil {
+			publicURL = ""
+		}
+	}
+
 	s := &state{
 		phase:         Phase(gameRow.Phase),
 		revision:      gameRow.Revision,
@@ -320,6 +349,7 @@ func New(cfg Config) (*Engine, error) {
 		// D-83: the boot-time candidate list. A defensive copy, so a caller that
 		// reuses its slice cannot mutate the engine's proposals afterwards.
 		joinURLCandidates: append([]string(nil), cfg.JoinURLCandidates...),
+		publicURL:         publicURL,
 	}
 	for _, row := range rows {
 		s.players[row.ID] = &player{
@@ -360,6 +390,28 @@ func New(cfg Config) (*Engine, error) {
 // the engine needs the hub to fan out, so the edge is installed rather than
 // passed to New.
 func (e *Engine) SetPublisher(p Publisher) { e.publisher.Store(&p) }
+
+// SetTunnelStatus records the tunnel supervisor's latest published status as
+// RUNTIME state and, when that moves the effective join URL, fans the current
+// role projections out (D-127/D-128).
+//
+// Two things deliberately do NOT happen here:
+//
+//   - Nothing is persisted. A quick-tunnel URL is ephemeral, so writing it into
+//     game.config_json would advertise a host that is already gone on the next
+//     offline boot (D-128) — the same reason PUBLIC_URL has no persisted field.
+//   - The revision does not move. `rev` is the GAME revision: one bump per
+//     successful persisted mutation (D-35). Transport availability is neither
+//     game state nor persisted, so the snapshots go out at the CURRENT revision
+//     — which the client's gate applies (`env.rev >= state.rev`) — and the QR
+//     updates immediately without polluting game history (research Pitfall 3).
+//
+// The manager is edge-triggered, but this call is also idempotent: an unchanged
+// status is not a new fact and fans nothing.
+func (e *Engine) SetTunnelStatus(url string, healthy bool) {
+	_ = url
+	_ = healthy
+}
 
 // Rev is the one canonical game revision (D-35), readable without the lock.
 func (e *Engine) Rev() int64 { return e.revision.Load() }
@@ -784,6 +836,12 @@ func (s *state) clone() *state {
 		// copied and the strings are shared — unlike `bids`/`sealedBids`, nothing
 		// ever appends to it.
 		joinURLCandidates: s.joinURLCandidates,
+		// D-127/D-128: the runtime URL inputs travel with the state, or a
+		// mutation would silently reset the effective join URL to the persisted
+		// rung and the QR would fall back mid-game.
+		publicURL:     s.publicURL,
+		tunnelURL:     s.tunnelURL,
+		tunnelHealthy: s.tunnelHealthy,
 	}
 	if s.currentAuction != nil {
 		run := *s.currentAuction

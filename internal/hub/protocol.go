@@ -109,6 +109,7 @@ const (
 	TypeLeaderboard    = "leaderboard"     // Phase 3
 	TypeFinale         = "finale"          // Phase 4
 	TypeTunnelStatus   = "tunnel.status"   // Phase 7 — CONTROL PLANE, see below
+	TypeHeartbeat      = "heartbeat"       // Phase 7 — CONTROL PLANE, see below (D-132)
 	TypeError          = "error"
 )
 
@@ -121,6 +122,7 @@ const (
 	CodeBadMessage      = "bad_message"
 	CodeUnsupported     = "unsupported"
 	CodeNotAuthorized   = "not_authorized" // Phase 3: admin-role misuse (D-65/H12); Phase 4 adds the ADMIN_KEY check (ADMN-04)
+	CodeRateLimited     = "rate_limited"   // Phase 7: D-138's inbound command bucket, informational only
 )
 
 // # Phase 3 payloads (D-52…D-68)
@@ -186,6 +188,10 @@ var frozenCatalog = [...]string{
 	TypeLeaderboard,
 	TypeFinale,
 	TypeTunnelStatus,
+	// Phase 7 (D-132): the application-level liveness beat, appended inside the
+	// server→client group for the same reason Phase 4's release stayed inside
+	// the client→server group — the array's own grouping rule survives.
+	TypeHeartbeat,
 	TypeError,
 }
 
@@ -199,14 +205,21 @@ var frozenErrorCodes = [...]string{
 	CodeBadMessage,
 	CodeUnsupported,
 	CodeNotAuthorized,
+	CodeRateLimited,
 }
 
-// tunnel.status is the one control-plane message in this catalog. It is
-// orthogonal to the game revision space: a client must apply it regardless of
-// seq and must NOT feed it through the revision gate — otherwise a tunnel URL
-// rotation whose rev looked stale would be dropped exactly when the venue needs
-// it (Phase 7 owns the behaviour; the exception is recorded here now so a later
-// reader cannot "simplify" it away).
+// tunnel.status and heartbeat are the control-plane messages in this catalog.
+// They are orthogonal to the game revision space: a client must apply them
+// regardless of seq and must NOT feed them through the revision gate — otherwise
+// a tunnel URL rotation whose rev looked stale would be dropped exactly when the
+// venue needs it, and a heartbeat would be mistaken for a stream gap every 25
+// seconds (Phase 7 owns the behaviour; the exception is recorded here now so a
+// later reader cannot "simplify" it away).
+//
+// heartbeat joined the class in Phase 7 (D-132) because the browser cannot
+// observe gorilla's ping frames: this application-level beat is the only
+// liveness evidence a page can timestamp, so it must reach the page in every
+// phase without touching either counter.
 const tunnelStatusControlPlane = TypeTunnelStatus
 
 // errorPayload is the typed error body (D-24).

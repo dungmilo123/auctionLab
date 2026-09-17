@@ -24,6 +24,14 @@ var configCandidates = []string{
 // fixtures deliberately pass no candidates.
 func newConfigEnv(t *testing.T, path string, clock *testClock, candidates []string) *testEnv {
 	t.Helper()
+	return newConfigEnvWith(t, path, clock, candidates, "")
+}
+
+// newConfigEnvWith is newConfigEnv with D-127's boot override injected: the
+// `--public-url` / PUBLIC_URL value reaches the engine through game.Config
+// exactly once, at boot, and is never durable state.
+func newConfigEnvWith(t *testing.T, path string, clock *testClock, candidates []string, publicURL string) *testEnv {
+	t.Helper()
 
 	st := openTestStore(t, path)
 	env := &testEnv{store: st, clock: clock, fatal: make(chan error, 8)}
@@ -33,6 +41,7 @@ func newConfigEnv(t *testing.T, path string, clock *testClock, candidates []stri
 		Now:               clock.now,
 		Fatal:             func(err error) { env.fatal <- err },
 		JoinURLCandidates: candidates,
+		PublicURL:         publicURL,
 	})
 	if err != nil {
 		t.Fatalf("game.New: %v", err)
@@ -338,5 +347,211 @@ func TestJoinURLDefaultsToFirstCandidate(t *testing.T) {
 	}
 	if emptyScreen.JoinURL != "" {
 		t.Errorf("screen join_url with no candidates = %q, want empty", emptyScreen.JoinURL)
+	}
+}
+
+// --- Phase 7 (D-127/D-128): the effective join URL and its runtime-only rungs ---
+
+// TestEffectiveJoinURLPrecedence pins D-127's ONE resolution rule:
+// PUBLIC_URL > a healthy tunnel > the persisted selection > the first LAN
+// candidate, with the source tag naming the rung that won. Every case reads the
+// SAME two projections the room actually renders from — the projector's
+// join_url (the QR text) and the admin's selected_join_url + join_url_source —
+// so the URL and its provenance cannot disagree.
+func TestEffectiveJoinURLPrecedence(t *testing.T) {
+	const (
+		publicURL = "https://demo.example/join?k=show"
+		tunnelURL = "https://three-dashed-words.trycloudflare.com"
+	)
+
+	cases := []struct {
+		name       string
+		publicURL  string
+		tunnelURL  string
+		healthy    bool
+		selection  string // persisted through admin.config.update before the status is applied
+		candidates []string
+		wantURL    string
+		wantSource string
+	}{
+		{
+			name:      "PUBLIC_URL wins a healthy tunnel",
+			publicURL: publicURL, tunnelURL: tunnelURL, healthy: true,
+			selection: configCandidates[1], candidates: configCandidates,
+			wantURL: publicURL, wantSource: "public_url",
+		},
+		{
+			name:      "PUBLIC_URL wins the persisted selection",
+			publicURL: publicURL,
+			selection: configCandidates[1], candidates: configCandidates,
+			wantURL: publicURL, wantSource: "public_url",
+		},
+		{
+			name:      "a healthy tunnel wins the persisted selection",
+			tunnelURL: tunnelURL, healthy: true,
+			selection: configCandidates[1], candidates: configCandidates,
+			wantURL: tunnelURL, wantSource: "tunnel",
+		},
+		{
+			name:      "a healthy tunnel wins the first candidate",
+			tunnelURL: tunnelURL, healthy: true,
+			candidates: configCandidates,
+			wantURL:    tunnelURL, wantSource: "tunnel",
+		},
+		{
+			name:      "an unhealthy tunnel falls back to the persisted selection",
+			tunnelURL: tunnelURL,
+			selection: configCandidates[1], candidates: configCandidates,
+			wantURL: configCandidates[1], wantSource: "selected",
+		},
+		{
+			name:      "an unhealthy tunnel falls back to the first candidate",
+			tunnelURL: tunnelURL,
+			candidates: configCandidates,
+			wantURL:    configCandidates[0], wantSource: "candidate",
+		},
+		{
+			name:      "an empty tunnel URL is not a rung",
+			selection: configCandidates[2], candidates: configCandidates,
+			wantURL: configCandidates[2], wantSource: "selected",
+		},
+		{
+			name:      "an invalid PUBLIC_URL is ignored rather than advertised",
+			publicURL: "not-a-url",
+			tunnelURL: tunnelURL, healthy: true,
+			candidates: configCandidates,
+			wantURL:    tunnelURL, wantSource: "tunnel",
+		},
+		{
+			name:    "nothing configured at all",
+			wantURL: "", wantSource: "",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newConfigEnvWith(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, tc.candidates, tc.publicURL)
+			if tc.selection != "" {
+				selected := tc.selection
+				if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selected}); err != nil {
+					t.Fatalf("UpdateConfig(%q): %v", selected, err)
+				}
+			}
+			env.engine.SetTunnelStatus(tc.tunnelURL, tc.healthy)
+
+			screen, ok := env.engine.Snapshot(RoleScreen, "").(ScreenView)
+			if !ok {
+				t.Fatalf("screen snapshot has type %T", env.engine.Snapshot(RoleScreen, ""))
+			}
+			if screen.JoinURL != tc.wantURL {
+				t.Errorf("screen join_url = %q, want %q", screen.JoinURL, tc.wantURL)
+			}
+
+			admin, ok := env.engine.Snapshot(RoleAdmin, "").(AdminView)
+			if !ok {
+				t.Fatalf("admin snapshot has type %T", env.engine.Snapshot(RoleAdmin, ""))
+			}
+			if admin.SelectedJoinURL != tc.wantURL {
+				t.Errorf("admin selected_join_url = %q, want %q (the two projections read one rule)", admin.SelectedJoinURL, tc.wantURL)
+			}
+			if admin.JoinURLSource != tc.wantSource {
+				t.Errorf("admin join_url_source = %q, want %q", admin.JoinURLSource, tc.wantSource)
+			}
+		})
+	}
+}
+
+// TestTunnelURLIsNeverPersisted is D-128's durability rule: the quick-tunnel URL
+// is EPHEMERAL, so it may become the effective selection while it is healthy and
+// must never enter game.config_json — otherwise the next offline boot would
+// advertise a host that no longer exists. PUBLIC_URL (D-127) is the same kind of
+// value: a boot input that must not survive the process that received it.
+//
+// It also pins the two boundaries that keep the rule honest: the revision does
+// not move for a transport fact (D-35), and the player projection never gains a
+// URL field (T-07-05).
+func TestTunnelURLIsNeverPersisted(t *testing.T) {
+	const (
+		tunnelURL   = "https://four-dashed-words.trycloudflare.com"
+		overrideURL = "https://override.example/"
+	)
+	path := filepath.Join(t.TempDir(), "auction.db")
+	selected := configCandidates[1]
+
+	env := newConfigEnv(t, path, &testClock{t: testStart}, configCandidates)
+	selection := selected
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selection}); err != nil {
+		t.Fatalf("UpdateConfig: %v", err)
+	}
+	afterSelection := storedConfigJSON(t, env)
+
+	// The tunnel becomes healthy: the QR moves, nothing is written, and the game
+	// revision does not move either.
+	before := env.engine.Rev()
+	env.engine.SetTunnelStatus(tunnelURL, true)
+
+	screen, ok := env.engine.Snapshot(RoleScreen, "").(ScreenView)
+	if !ok {
+		t.Fatalf("screen snapshot has type %T", env.engine.Snapshot(RoleScreen, ""))
+	}
+	if screen.JoinURL != tunnelURL {
+		t.Errorf("screen join_url with a healthy tunnel = %q, want %q", screen.JoinURL, tunnelURL)
+	}
+	admin, ok := env.engine.Snapshot(RoleAdmin, "").(AdminView)
+	if !ok {
+		t.Fatalf("admin snapshot has type %T", env.engine.Snapshot(RoleAdmin, ""))
+	}
+	if admin.SelectedJoinURL != tunnelURL || admin.JoinURLSource != "tunnel" {
+		t.Errorf("admin selection = %q (%q), want %q (%q)", admin.SelectedJoinURL, admin.JoinURLSource, tunnelURL, "tunnel")
+	}
+	if got := storedConfigJSON(t, env); got != afterSelection {
+		t.Errorf("config_json = %q, want the untouched %q — a quick-tunnel URL is ephemeral and must not be persisted (D-128)", got, afterSelection)
+	}
+	if got := env.engine.Rev(); got != before {
+		t.Errorf("revision = %d, want the unchanged %d: a transport fact is not a game mutation (D-35)", got, before)
+	}
+
+	// Unhealthy falls straight back to the persisted selection: the room keeps
+	// playing on LAN/local while the tunnel restarts (D-129).
+	env.engine.SetTunnelStatus(tunnelURL, false)
+	if screen := env.engine.Snapshot(RoleScreen, "").(ScreenView); screen.JoinURL != selected {
+		t.Errorf("screen join_url after the tunnel went unhealthy = %q, want the persisted %q", screen.JoinURL, selected)
+	}
+
+	// A restart on the same file: the ephemeral URL is gone for good, the
+	// selection is still there, and the tunnel host never reached the database.
+	second := newConfigEnv(t, path, &testClock{t: testStart.Add(5 * time.Minute)}, []string{configCandidates[0]})
+	if screen := second.engine.Snapshot(RoleScreen, "").(ScreenView); screen.JoinURL != selected {
+		t.Errorf("screen join_url after a restart = %q, want the persisted %q — a runtime URL must not survive the process", screen.JoinURL, selected)
+	}
+	if got := storedConfigJSON(t, second); strings.Contains(got, "trycloudflare") {
+		t.Errorf("config_json after a restart = %q, want no tunnel host in durable state", got)
+	}
+
+	// PUBLIC_URL is a boot input with the same rule: it outranks the healthy
+	// tunnel and is never written either.
+	third := newConfigEnvWith(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates, overrideURL)
+	third.engine.SetTunnelStatus(tunnelURL, true)
+	if screen := third.engine.Snapshot(RoleScreen, "").(ScreenView); screen.JoinURL != overrideURL {
+		t.Errorf("screen join_url with PUBLIC_URL set = %q, want the override %q (D-127)", screen.JoinURL, overrideURL)
+	}
+	if got := storedConfigJSON(t, third); strings.Contains(got, "override.example") {
+		t.Errorf("config_json = %q, want no public URL in durable state", got)
+	}
+
+	// T-07-05: the player projection never gains a URL field, however the URL
+	// was resolved.
+	playerJSON, err := json.Marshal(env.engine.Snapshot(RolePlayer, ""))
+	if err != nil {
+		t.Fatalf("marshalling the player snapshot: %v", err)
+	}
+	var player map[string]any
+	if err := json.Unmarshal(playerJSON, &player); err != nil {
+		t.Fatalf("unmarshalling the player snapshot: %v", err)
+	}
+	for _, key := range []string{"join_url", "join_urls", "selected_join_url", "join_url_source"} {
+		if _, present := player[key]; present {
+			t.Errorf("the player snapshot carries %q: a player has no use for the show's URLs (T-07-05)", key)
+		}
 	}
 }

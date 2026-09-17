@@ -81,6 +81,7 @@ func TestProtocol(t *testing.T) {
 			{"leaderboard", TypeLeaderboard},
 			{"finale", TypeFinale},
 			{"tunnel.status", TypeTunnelStatus},
+			{"heartbeat", TypeHeartbeat},
 			{"error", TypeError},
 		}
 
@@ -107,6 +108,7 @@ func TestProtocol(t *testing.T) {
 			{"bad_message", CodeBadMessage},
 			{"unsupported", CodeUnsupported},
 			{"not_authorized", CodeNotAuthorized}, // Phase 3: admin-role misuse (D-65); Phase 4 adds ADMIN_KEY (ADMN-04)
+			{"rate_limited", CodeRateLimited},     // Phase 7: D-138's inbound command bucket
 		}
 		for _, entry := range codes {
 			if entry.constant != entry.literal {
@@ -235,6 +237,10 @@ func TestProtocolFreeze(t *testing.T) {
 		"leaderboard",
 		"finale",
 		"tunnel.status",
+		// Phase 7 (D-132): the application-level heartbeat, appended inside the
+		// server→client group. It joins tunnel.status as a control-plane frame
+		// the client applies at any seq and never through the revision gate.
+		"heartbeat",
 		"error",
 	}
 
@@ -262,6 +268,10 @@ func TestProtocolFreeze(t *testing.T) {
 		"bad_message",
 		"unsupported",
 		"not_authorized",
+		// Phase 7 (D-138): the inbound command bucket's refusal. It is
+		// informational — the socket stays open and nothing moves — and it is
+		// emitted at most once per exhausted episode.
+		"rate_limited",
 	}
 	if got := frozenErrorCodes[:]; !slices.Equal(got, codes) {
 		t.Errorf("the frozen error catalog changed:\n got %q\nwant %q\n"+

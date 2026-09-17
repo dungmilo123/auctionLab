@@ -77,14 +77,14 @@ func validateConfigInput(in ConfigInput) error {
 		}
 	}
 	if in.JoinURL != nil {
-		if err := validateJoinURL(*in.JoinURL); err != nil {
+		if err := ValidateJoinURL(*in.JoinURL); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// validateJoinURL is D-86's rule, and nothing more: non-empty, `http://` or
+// ValidateJoinURL is D-86's rule, and nothing more: non-empty, `http://` or
 // `https://`, at most MaxJoinURLLen characters.
 //
 // The URL is never dialled, never resolved and never compared against the
@@ -93,7 +93,12 @@ func validateConfigInput(in ConfigInput) error {
 // `location.origin`, a value the server cannot see and must not second-guess.
 // Counted in RUNES like every other user-supplied string here (D-28/D-66): a
 // byte count would refuse a URL the admin's own keyboard measured as short.
-func validateJoinURL(raw string) error {
+//
+// Exported because D-127's `PUBLIC_URL` override is validated by this exact rule
+// — the engine applies it to the boot input, and cmd/server reports whether the
+// operator's value was accepted — and a second spelling of the rule in cmd/server
+// is precisely how the two would drift.
+func ValidateJoinURL(raw string) error {
 	if raw == "" {
 		return errors.New("game: config join_url must not be empty")
 	}
@@ -106,23 +111,48 @@ func validateJoinURL(raw string) error {
 	return nil
 }
 
-// selectedJoinURL is D-84's authoritative join URL: the persisted selection
-// whenever one exists, and the first candidate only when the show has never
-// selected one.
+// Join-URL sources: the closed vocabulary of D-127's rungs, carried to the
+// admin panel as `join_url_source` so the presenter can see WHY a URL won. They
+// are wire strings, and the panel maps each to a dictionary key — an empty
+// source means "no URL at all", which renders no tag rather than a guess.
+const (
+	joinURLSourcePublic    = "public_url"
+	joinURLSourceTunnel    = "tunnel"
+	joinURLSourceSelected  = "selected"
+	joinURLSourceCandidate = "candidate"
+)
+
+// effectiveJoinURL is D-127's ONE resolution rule: the boot `PUBLIC_URL`
+// override > the tunnel URL while the probe calls it healthy > the persisted
+// selection (D-84) > the first LAN candidate (D-83) > nothing. It answers with
+// the URL and the rung that produced it in the same call, so the QR text and its
+// provenance tag can never disagree.
 //
-// The persisted value wins even when it is absent from the candidate list,
+// PUBLIC_URL outranks even the admin's own selection on purpose: it is the
+// operator's hard override at the resolution layer, and removing it restores the
+// selection untouched (it is never persisted).
+//
+// The persisted selection wins even when it is absent from the candidate list,
 // because that is exactly the case D-86 creates: the admin may select
 // `location.origin` (a dev box, a hotspot, a tunnel URL) and the server
 // deliberately does not check it against its own enumeration. Re-defaulting
 // because a URL is not in the list would silently undo the presenter's choice.
-func (s *state) selectedJoinURL() string {
+//
+// The tunnel rung exists only while `healthy` is true AND the URL is non-empty:
+// the zero Status is a DECLARED state meaning "there is no tunnel rung to stand
+// on" (D-129), so a tunnel that is starting, dead or flapping falls straight
+// through to persisted/LAN play and the room keeps bidding.
+func (s *state) effectiveJoinURL() (string, string) {
+	if s.publicURL != "" {
+		return s.publicURL, joinURLSourcePublic
+	}
 	if s.config.JoinURL != "" {
-		return s.config.JoinURL
+		return s.config.JoinURL, joinURLSourceSelected
 	}
 	if len(s.joinURLCandidates) > 0 {
-		return s.joinURLCandidates[0]
+		return s.joinURLCandidates[0], joinURLSourceCandidate
 	}
-	return ""
+	return "", ""
 }
 
 // joinURLs is D-83's candidate list as the admin panel receives it: a copy, so
