@@ -40,6 +40,7 @@ import {
 import {
   BID_ACCEPTED,
   BID_REJECTED,
+  CODE_RATE_LIMITED,
   CODE_TOKEN_INVALID,
   ERROR,
   FINALE,
@@ -339,9 +340,17 @@ export function openSocket(opts: SocketOptions): Socket {
       opts.onTokenInvalid?.()
     }
     // The server's message is log-only (UI-SPEC §Join/mutation states, T-02-01):
-    // the UI selects its copy from the dictionary by `error.code`. An unknown
-    // code (D-138's `rate_limited` included) stays here and paints nothing.
+    // the UI selects its copy from the dictionary by `error.code`. The log line
+    // is unconditional, so an informational code is still visible in the
+    // console while painting nothing.
     console.warn('[ws] server error', error.code, error.message)
+    if (error.code === CODE_RATE_LIMITED) {
+      // D-138/T-07-11: the inbound command bucket's answer is informational —
+      // the socket stayed open, nothing moved, and the flood was absorbed. A
+      // route must never turn it into an error row or a notice, so it stops
+      // here rather than reaching `onError`.
+      return
+    }
     opts.onError?.(error)
   }
 

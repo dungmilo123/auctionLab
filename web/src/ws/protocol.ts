@@ -241,6 +241,14 @@ export type PlayerSnapshot = {
  */
 export const CODE_TOKEN_INVALID = 'token_invalid'
 
+/**
+ * D-138's informational refusal: the per-connection command bucket answered an
+ * over-limit frame. It never closes the socket and never moves state, so it is
+ * an INFORMATIONAL code — logged, never rendered (T-07-11) and never allowed to
+ * paint a route's error row.
+ */
+export const CODE_RATE_LIMITED = 'rate_limited'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

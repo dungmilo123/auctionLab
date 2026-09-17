@@ -1058,4 +1058,31 @@ describe('the reconnect policy in the lifecycle (D-130…D-134)', () => {
     expect(Object.keys(projector)).toEqual(['close'])
     projector.close()
   })
+
+  it('logs an informational code without painting a route error (D-138/T-07-11)', async () => {
+    const env = installSocketEnvironment()
+    const errors: ErrorPayload[] = []
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    connection = openPlayerSocket({
+      onStatus: () => {},
+      onSnapshot: () => {},
+      onError: (error) => errors.push(error),
+    })
+
+    const socket = lastSocket(env)
+    socket.accept()
+    socket.deliver(hello(1, 'tok'))
+
+    // The command bucket's answer: the socket stays open, nothing moved, and
+    // the frame reaches the log — but no route may turn it into an error row.
+    socket.deliver(envelope('error', 2, { code: 'rate_limited', message: 'slow down' }, 4))
+    expect(errors).toEqual([])
+    expect(warn).toHaveBeenCalledWith('[ws] server error', 'rate_limited', 'slow down')
+
+    // Every other refusal still reaches the route, so the filter is one code
+    // wide rather than a mute button.
+    socket.deliver(envelope('error', 3, { code: 'bad_message', message: 'no such frame' }, 4))
+    expect(errors).toEqual([{ code: 'bad_message', message: 'no such frame' }])
+  })
 })
