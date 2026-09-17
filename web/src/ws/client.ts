@@ -80,10 +80,12 @@ export const TOKEN_KEY = 'auctionlab.player_token'
 
 /**
  * Close code 4001: another connection took this identity (D-31). It is the ONE
- * terminal close (D-131): the token is kept and the scheduler stops for this
- * page instance, and the player's notice offers one deliberate rejoin. The
- * literal lives in `reconnect.ts` beside the terminal decision that reads it,
- * and is re-exported here because this module has always published it.
+ * terminal close (D-131): the token is kept and the page instance stops
+ * connecting — the scheduler refuses to schedule and both lifecycle listeners
+ * (`visibilitychange`, bfcache `pageshow`) refuse to reconnect — until the
+ * player's notice offers the one deliberate rejoin. The literal lives in
+ * `reconnect.ts` beside the terminal decision that reads it, and is re-exported
+ * here because this module has always published it.
  */
 export { SUPERSEDED_CLOSE_CODE }
 
@@ -317,6 +319,12 @@ export function openSocket(opts: SocketOptions): Socket {
    * detach-then-replace connect — so a retry re-sends the stored token exactly
    * like any other connect, and a 4001 rejoin supersedes the other device in
    * turn.
+   *
+   * This is the ONLY place the terminal close is cleared, and it is reached
+   * only from a deliberate action (`retry()`, the notice's "Use this device").
+   * The two lifecycle listeners check `isSuperseded()` before they call it, so
+   * a backgrounded-and-resumed phone cannot answer the notice on the player's
+   * behalf — that would be the supersede loop D-131 exists to stop.
    */
   function retryNow(): void {
     if (closed) return
@@ -325,6 +333,15 @@ export function openSocket(opts: SocketOptions): Socket {
     // reading it as terminal — otherwise the page could never leave superseded.
     lastCloseCode = null
     connect()
+  }
+
+  /**
+   * D-131's terminal reading: 4001 outranks the recovery paths until a
+   * deliberate rejoin clears it. `deriveState` reads the same field, and the
+   * two lifecycle listeners below must consult it before they connect.
+   */
+  function isSuperseded(): boolean {
+    return lastCloseCode === SUPERSEDED_CLOSE_CODE
   }
 
   function applyHello(data: unknown): void {
@@ -545,6 +562,12 @@ export function openSocket(opts: SocketOptions): Socket {
    * than the teardown threshold: the old socket is never reused (it may be a
    * zombie whose readyState lies), so the ordinary connect replaces it and the
    * role rejoins with whatever identity it holds.
+   *
+   * D-131 outranks the recovery. A phone that was backgrounded while the notice
+   * was showing must not re-claim the identity on resume: that rejoin would be
+   * silent (the status turns `live`, so the notice disappears) and the two
+   * devices would supersede each other in turn — Pitfall 12's loop, reached
+   * through this path instead of through the scheduler.
    */
   function onVisibilityChange(): void {
     if (document.visibilityState !== 'visible') {
@@ -553,16 +576,19 @@ export function openSocket(opts: SocketOptions): Socket {
     }
     const hiddenForMs = hiddenAt === null ? 0 : now() - hiddenAt
     hiddenAt = null
+    if (isSuperseded()) return
     if (hiddenForMs > HIDDEN_TEARDOWN_MS) retryNow()
   }
 
   /**
    * The bfcache restore. `event.persisted === true` is read EXPLICITLY because
    * a bfcache pageshow fires no visibilitychange at all — this is the only
-   * signal that the page was resurrected rather than loaded.
+   * signal that the page was resurrected rather than loaded. It is bounded by
+   * the same terminal rule as the visibility path above.
    */
   function onPageShow(event: PageTransitionEvent): void {
     if (event.persisted !== true) return
+    if (isSuperseded()) return
     retryNow()
   }
 

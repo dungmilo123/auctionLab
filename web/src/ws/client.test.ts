@@ -889,6 +889,20 @@ describe('the reconnect policy in the lifecycle (D-130…D-134)', () => {
     await vi.advanceTimersByTimeAsync(120_000)
     expect(env.sockets).toHaveLength(1)
 
+    // The two lifecycle paths that connect DIRECTLY (D-133's long hide, the
+    // bfcache restore) are bound by the same terminal rule. A backgrounded
+    // phone that resumes while the notice is showing must not clear it and
+    // re-claim the identity: that rejoin is silent (the status turns `live`, so
+    // the notice vanishes) and it is the supersede loop reached through a path
+    // the scheduler never touches.
+    env.fireVisibility('hidden')
+    await vi.advanceTimersByTimeAsync(6_000)
+    env.fireVisibility('visible')
+    expect(env.sockets).toHaveLength(1)
+    env.firePageshow(true)
+    expect(env.sockets).toHaveLength(1)
+    expect(statuses.at(-1)).toBe('superseded')
+
     // The token is KEPT: the notice's action is one deliberate rejoin that
     // supersedes the other device in turn.
     expect(readStoredToken()).toBe('tok')
