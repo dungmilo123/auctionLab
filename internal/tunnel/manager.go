@@ -363,7 +363,22 @@ func (g *generation) current() string {
 // runGeneration spawns one cloudflared, supervises it until it exits, and
 // reports how long it lived. `ran` is false when the process never started at
 // all — the one failure that is not an exit.
+//
+// Two windows make a stop racing a spawn dangerous, and both are closed here
+// rather than left to the caller: Close() sets `stopping` BEFORE it looks at
+// `m.cmd`, so the flag is the one piece of state the two sides share. A stop
+// that already landed refuses the spawn (window 1: `Start(); Close()` in quick
+// succession); a stop that lands between `cmd.Start()` and the publish is
+// answered by the re-check below, which finds the command already recorded
+// (window 2). Without both, Close() would block on `<-m.finished` — which
+// cannot close until the child exits — and a long-lived cloudflared would
+// survive the process: the deferred mgr.Close in the boot would never return,
+// and the SIGTERM/SIGKILL policy would be skipped entirely.
 func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool) {
+	if m.stopping.Load() {
+		return 0, nil, false
+	}
+
 	args := []string{
 		"tunnel",
 		"--url", fmt.Sprintf("http://127.0.0.1:%d", m.cfg.Port),
@@ -403,6 +418,15 @@ func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool)
 	m.cmd = cmd
 	m.genDone = genDone
 	m.mu.Unlock()
+
+	// The publish above is what terminate() reads, and `stopping` was set before
+	// it looked — so a Close() that ran terminate() inside the window just now
+	// found no cmd to signal and is waiting on genDone. One of the two sides
+	// always sees the other: either terminate() saw this cmd, or this re-check
+	// sees the flag and kills the child itself.
+	if m.stopping.Load() {
+		_ = cmd.Process.Kill()
+	}
 
 	gen := newGeneration()
 	genCtx, genCancel := context.WithCancel(context.Background())

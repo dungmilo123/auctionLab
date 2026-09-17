@@ -403,6 +403,36 @@ while :; do sleep 0.05; done
 		rec.assertQuiet(t, 200*time.Millisecond)
 	})
 
+	t.Run("a stop that lands before the first generation spawns nothing", func(t *testing.T) {
+		// `Start and Close are safe to call in any order` (the Manager's own
+		// contract). A Close that lands before the supervisor's first generation
+		// must not be answered by spawning cloudflared anyway: the deferred
+		// Close in the boot would then wait on a child terminate() never saw,
+		// and the child would outlive the process.
+		dir := t.TempDir()
+		marker := filepath.Join(dir, "spawned")
+		bin := stubBin(t, dir, fmt.Sprintf(`
+printf spawned > %q
+%s
+while :; do sleep 0.05; done
+`, marker, urlLine("too-late")))
+
+		rec := newStatusRecorder()
+		logs := &logRecorder{}
+		cfg := baseConfig(t, rec, logs)
+		cfg.Bin = bin
+
+		m := New(cfg)
+		m.Close()
+		m.Start()
+
+		time.Sleep(200 * time.Millisecond)
+		if _, err := os.Stat(marker); err == nil {
+			t.Fatalf("a child was spawned after Close(); %s exists", marker)
+		}
+		rec.assertQuiet(t, 100*time.Millisecond)
+	})
+
 	t.Run("kills a child that ignores SIGTERM after the bounded wait", func(t *testing.T) {
 		dir := t.TempDir()
 		beats := filepath.Join(dir, "beats")
