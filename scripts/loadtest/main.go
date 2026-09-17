@@ -22,10 +22,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -61,8 +64,10 @@ const (
 // frames. It scales with the pool because a 20-bot room fans out twenty times
 // as much as the smoke pair.
 func frameBudget(n int) int {
-	// RED: declaration only — the GREEN commit implements the scaling.
-	return 0
+	if n < bots {
+		n = bots
+	}
+	return max(maxFrames, 2+3*n)
 }
 
 // peakCommandRate is the largest number of commands seen in any one-second
@@ -71,15 +76,40 @@ func frameBudget(n int) int {
 // legitimate rapid-fire bid is a correctness bug, so the harness must print what
 // it actually asked of the limiter.
 func peakCommandRate(at []time.Time) float64 {
-	// RED: declaration only — the GREEN commit implements the window.
-	return 0
+	if len(at) == 0 {
+		return 0
+	}
+	peak := 0
+	for i := range at {
+		seen := 0
+		for j := i; j < len(at); j++ {
+			if at[j].Sub(at[i]) > time.Second {
+				break
+			}
+			seen++
+		}
+		peak = max(peak, seen)
+	}
+	return float64(peak)
 }
 
 // converged is D-135's end-of-run assertion: every bot's last state revision
 // must equal the server's final revision. It returns a run-stopping error naming
 // the bots that disagree, so a partially-converged room can never be certified.
 func converged(revs []int64, want int64) error {
-	// RED: declaration only — the GREEN commit implements the comparison.
+	if len(revs) == 0 {
+		return fmt.Errorf("no bots reported a revision")
+	}
+	var lagging []string
+	for i, rev := range revs {
+		if rev != want {
+			lagging = append(lagging, fmt.Sprintf("bot %d at rev %d", i, rev))
+		}
+	}
+	if len(lagging) > 0 {
+		return fmt.Errorf("%d/%d bots did not converge on the final revision %d: %s",
+			len(lagging), len(revs), want, strings.Join(lagging, ", "))
+	}
 	return nil
 }
 
@@ -160,6 +190,11 @@ type stream struct {
 	rapid   bool
 	gaps    int
 	repairs int
+
+	// snapshots counts the state.snapshot frames this stream consumed. The
+	// N-bot run's drain barrier polls it: a resync reply is a snapshot, and a
+	// bot's own reply cannot arrive before its burst frames were processed.
+	snapshots int
 }
 
 // newStream starts a stream at its first expected frame, validating the player
@@ -170,8 +205,9 @@ func newStream() *stream { return newStreamAs("player") }
 // accounting, plus the one D-41 repair shape. It backs `--rapid-fire`, never the
 // two-bot smoke.
 func newRapidStream() *stream {
-	// RED: declaration only — the GREEN commit turns on the repair arm.
-	return newStream()
+	s := newStream()
+	s.rapid = true
+	return s
 }
 
 // newStreamAs starts a stream for one connection role: the same D-21/D-22
@@ -189,14 +225,48 @@ func (s *stream) observe(env envelope) error {
 	if env.Type == "" {
 		return fmt.Errorf("frame %d: envelope has no type", s.want)
 	}
+	if env.TS <= 0 {
+		return fmt.Errorf("frame %d: ts = %d, want a positive server millisecond clock (D-21)", s.want, env.TS)
+	}
+
+	// D-132/D-123's control plane comes FIRST, before any game-run handling:
+	// a heartbeat or a tunnel.status is applied at ANY seq (the browser gate
+	// does exactly that, and a room full of them is the normal rapid-fire
+	// state), it carries the current revision without moving it, and its
+	// payload means nothing here. A stale copy has already been counted, so it
+	// is ignored rather than failed as a duplicate.
+	if env.Type == typeHeartbeat || env.Type == typeTunnelStatus {
+		if env.Seq >= s.want {
+			s.want = env.Seq + 1
+		}
+		return nil
+	}
+
 	if env.Seq < s.want {
 		return fmt.Errorf("frame %d: duplicate seq %d — the stream already carried it (D-21)", s.want, env.Seq)
 	}
 	if env.Seq > s.want {
-		return fmt.Errorf("frame %d: seq gap — the server sent %d, so a message was dropped (D-21)", s.want, env.Seq)
-	}
-	if env.TS <= 0 {
-		return fmt.Errorf("frame %d: ts = %d, want a positive server millisecond clock (D-21)", s.want, env.TS)
+		// D-41's ONE legal gap: under rapid fire a fenced connection loses a
+		// burst and is repaired by a snapshot, so the frame that reveals the
+		// gap must BE that snapshot. Anything else is a silent gap — the exact
+		// failure the two-bot smoke exists to catch, and one the relaxed mode
+		// must never wave through (D-135).
+		if !s.rapid {
+			return fmt.Errorf("frame %d: seq gap — the server sent %d, so a message was dropped (D-21)", s.want, env.Seq)
+		}
+		s.gaps++
+		if env.Type != "state.snapshot" {
+			return fmt.Errorf("frame %d: silent gap — seq jumped to %d and the frame is %q, not the recovery snapshot (D-41/D-135)",
+				s.want, env.Seq, env.Type)
+		}
+		s.repairs++
+		s.lastRev = env.Rev
+		s.want = env.Seq + 1
+		s.snapshots++
+		for _, entry := range lobbyEntries(env.Data) {
+			s.seen[entry] = true
+		}
+		return nil
 	}
 
 	switch env.Type {
@@ -236,6 +306,7 @@ func (s *stream) observe(env envelope) error {
 		for _, entry := range snap.Lobby {
 			s.seen[entry.Nickname] = true
 		}
+		s.snapshots++
 	case "phase.changed":
 		if err := s.acceptRevision(env.Rev); err != nil {
 			return err
@@ -339,6 +410,21 @@ func (s *stream) complete(peers []string) bool {
 		}
 	}
 	return true
+}
+
+// lobbyEntries reads a snapshot payload's lobby nicknames. The repair arm needs
+// it because a recovery snapshot is the frame that re-establishes the room after
+// a drop; a payload that is not a snapshot yields nothing.
+func lobbyEntries(data json.RawMessage) []string {
+	var snap snapshotPayload
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(snap.Lobby))
+	for _, entry := range snap.Lobby {
+		names = append(names, entry.Nickname)
+	}
+	return names
 }
 
 // decodeObject unmarshals a payload into a raw-key object.
@@ -576,6 +662,20 @@ func itemIDFromSnapshot(data json.RawMessage) (string, error) {
 var adminKeyFlag = flag.String("admin-key", os.Getenv("ADMIN_KEY"),
 	"admin capability for the round's admin bot (default: $ADMIN_KEY)")
 
+// D-135/D-136's N-bot modes. The defaults are the shipped smoke shape: two
+// bots, no burst, nobody stalled — so `make loadtest` is the same run it has
+// always been, and every new mode is opt-in.
+var (
+	botsFlag = flag.Int("bots", bots,
+		"player bots to dial (default 2: the smoke pair)")
+	rapidFlag = flag.Bool("rapid-fire", false,
+		"blast --burst bid commands from every bot, then assert the room converged (D-135)")
+	burstFlag = flag.Int("burst", 30,
+		"bids each bot sends in rapid-fire mode (bounded; stays inside burst 40, D-138)")
+	stalledFlag = flag.Int("stalled-index", -1,
+		"bot index that stops reading during the burst so the fence and its repair are exercised (D-136; -1: none)")
+)
+
 func main() {
 	target := resolveTarget()
 	adminKey := *adminKeyFlag
@@ -585,6 +685,21 @@ func main() {
 	// `make loadtest` against the same dev database does not collide with the
 	// players the previous run left behind (D-28's uniqueness is server-wide).
 	run := fmt.Sprintf("lt-%06d", time.Now().UnixNano()%1_000_000)
+
+	// D-135/D-136's N-bot modes take a different path from the smoke pair: the
+	// smoke's assertions are about two connections seeing each other, while the
+	// fleet's are about twenty streams staying ordered and converging. The
+	// shipped shape is unchanged — `make loadtest` still runs exactly what it
+	// ran before this phase.
+	if *rapidFlag || *botsFlag != bots || *stalledFlag >= 0 {
+		os.Exit(runFleetMain(target, run, fleetConfig{
+			bots:    *botsFlag,
+			rapid:   *rapidFlag,
+			burst:   *burstFlag,
+			stalled: *stalledFlag,
+		}, start))
+	}
+
 	nicknames := make([]string, bots)
 	specs := make([]botSpec, bots)
 	for i := range specs {
@@ -1077,15 +1192,21 @@ func runRound(target, run, adminKey string) roundReport {
 func resolveTarget() string {
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
-		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url] [--admin-key KEY]\n\n")
+		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url] [--admin-key KEY] [--bots N] [--rapid-fire] [--burst K] [--stalled-index I]\n\n")
 		fmt.Fprintf(out, "Dials %d player bots against a live /ws, asserts the real protocol's\n", bots)
 		fmt.Fprintf(out, "seq/rev contract, then plays one bounded English round (an admin bot\n")
 		fmt.Fprintf(out, "creates and drives an item, two players bid, and the round ends on the\n")
 		fmt.Fprintf(out, "reveal). It exits non-zero when any bot cannot join, the round cannot\n")
 		fmt.Fprintf(out, "complete, or a frame breaks the stream contract. The URL may also come\n")
 		fmt.Fprintf(out, "from WS_URL.\n\n")
+		fmt.Fprintf(out, "--bots N raises the pool; --rapid-fire makes every bot blast --burst\n")
+		fmt.Fprintf(out, "bids and then asserts the whole room converged (D-135); --stalled-index\n")
+		fmt.Fprintf(out, "names the one bot that stops reading during the burst, so the fence and\n")
+		fmt.Fprintf(out, "its repair are exercised for real (D-136). The two-bot default is the\n")
+		fmt.Fprintf(out, "smoke run: no burst, nobody stalled, the stream still strict.\n\n")
 		fmt.Fprintf(out, "The admin bot is authorized (ADMN-04): --admin-key, or ADMIN_KEY in the\n")
-		fmt.Fprintf(out, "environment, must carry the key the server printed at boot.\n\n")
+		fmt.Fprintf(out, "environment, must carry the key the server printed at boot. --rapid-fire\n")
+		fmt.Fprintf(out, "needs it too: the burst bids against an item the fleet's own admin starts.\n\n")
 		fmt.Fprintf(out, "  default: %s\n", defaultTarget)
 	}
 	flag.Parse()
@@ -1141,7 +1262,7 @@ func runBot(target string, spec botSpec) result {
 	}
 
 	s := newStream()
-	for res.seen < maxFrames {
+	for res.seen < frameBudget(len(spec.peers)) {
 		_ = conn.SetReadDeadline(time.Now().Add(ioTimeout))
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
@@ -1170,4 +1291,572 @@ func runBot(target string, spec botSpec) result {
 		"no snapshot showed every player (%s) in %d frames — the other bot never became visible",
 		strings.Join(spec.peers, ", "), res.seen))
 	return res
+}
+
+// --- Phase 7: the N-bot fleet (D-135/D-136) --------------------------------
+//
+// The smoke pair above proves two connections see each other. This section
+// proves what a REAL room does: twenty connections, every stream validated as it
+// arrives, a bounded burst of real bids, one connection deliberately not
+// reading, and D-135's single strongest assertion at the end — every bot on the
+// same final revision.
+//
+// The assertions are the point, not the traffic. A harness that generated twenty
+// sockets and printed a number would certify nothing; the cases in main_test.go
+// pin each rule here, including the ones that must FAIL.
+
+// fleetConfig is one N-bot run's whole shape.
+type fleetConfig struct {
+	bots    int  // how many player bots dial (D-135's --bots)
+	rapid   bool // blast a bounded burst and assert convergence (--rapid-fire)
+	burst   int  // bids per bot in the burst (--burst)
+	stalled int  // the bot that stops reading during the burst (-1: none)
+}
+
+// fleetReport is what an N-bot run proved, in the order it happened. It mirrors
+// roundReport: one line per proved fact, one entry per failure, and an exit code
+// that follows the failures.
+type fleetReport struct {
+	lines []string
+	errs  []string
+}
+
+func (r *fleetReport) ok(format string, args ...any) {
+	r.lines = append(r.lines, fmt.Sprintf(format, args...))
+}
+
+func (r *fleetReport) fail(format string, args ...any) {
+	r.errs = append(r.errs, fmt.Sprintf(format, args...))
+}
+
+func (r *fleetReport) passed() bool { return len(r.errs) == 0 }
+
+// burstTimeout bounds the burst and the drain that follows it. A race-built
+// server under a race-built harness is slow on purpose, so the ceiling is
+// generous — but it exists: a run that hangs must fail the gate, not hold it.
+const burstTimeout = 60 * time.Second
+
+// commandSpacing paces a bot's burst so the ROOM interleaves. Without it each
+// bot's commands arrive back to back on its own socket, the first acceptance
+// makes that bot the leader, and every later command is refused as
+// already_leading — which produces almost no fan-out, and a drill whose stalled
+// peer never fills its FIFO proves nothing (D-136). The spacing costs tens of
+// milliseconds and is what makes the burst a room-wide burst instead of twenty
+// private monologues.
+const commandSpacing = 2 * time.Millisecond
+
+// smallReceiveBuffer dials with a 2 KiB receive buffer so the server's writes
+// stop being absorbed after a couple of kilobytes. That is the real "phone that
+// stopped reading" case made deterministic instead of a race against loopback
+// buffering — internal/hub/ordering_test.go's documented seam, inlined because
+// the harness is package main and cannot import the hub's test helpers.
+func smallReceiveBuffer(network, addr string) (net.Conn, error) {
+	d := net.Dialer{Control: func(_, _ string, c syscall.RawConn) error {
+		var sockErr error
+		if err := c.Control(func(fd uintptr) {
+			sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, 2048)
+		}); err != nil {
+			return err
+		}
+		return sockErr
+	}}
+	return d.Dial(network, addr)
+}
+
+// fleetBot is one bot inside an N-bot run: its socket, its stream, and the
+// accounting the run reports. The reader goroutine owns the socket and the
+// stream; every field the run's goroutine reads is mutex-guarded, because a
+// stream read from two goroutines is a data race the race-built gate exists to
+// catch.
+type fleetBot struct {
+	spec botSpec
+	conn *websocket.Conn
+
+	// paused is D-136's stall: the reader stops pulling frames off the socket,
+	// so the server's writer blocks on the tiny receive buffer and the FIFO
+	// behind it overflows. stopping is the run's own teardown, which must not
+	// be reported as a stream failure.
+	paused   atomic.Bool
+	stopping atomic.Bool
+
+	mu     sync.Mutex
+	s      *stream
+	frames int
+	err    error
+	at     []time.Time // when each command was sent (the measured rate)
+}
+
+// dialFleet connects one bot and starts validating its stream from seq 1. A
+// stalled bot dials through the small receive buffer; a rapid-fire run validates
+// with the repair-tolerant stream, and the smoke shape with the strict one.
+func dialFleet(target string, spec botSpec, rapid, stalled bool) (*fleetBot, error) {
+	dialer := websocket.DefaultDialer
+	if stalled {
+		dialer = &websocket.Dialer{NetDial: smallReceiveBuffer}
+	}
+
+	conn, resp, err := dialer.Dial(target, nil)
+	if err != nil {
+		status := "no response"
+		if resp != nil {
+			status = resp.Status
+			_ = resp.Body.Close()
+		}
+		return nil, fmt.Errorf("dial %s as %s: %v (%s)", target, spec.nickname, err, status)
+	}
+
+	s := newStream()
+	if rapid {
+		s = newRapidStream()
+	}
+	b := &fleetBot{spec: spec, conn: conn, s: s}
+	go b.read()
+	return b, nil
+}
+
+// read validates every frame this bot receives until the socket ends or the
+// stream breaks. It is the ONLY reader of this socket — which is exactly what
+// gets paused to make the stall real.
+func (b *fleetBot) read() {
+	for {
+		if b.stopping.Load() {
+			return
+		}
+		if b.paused.Load() {
+			time.Sleep(2 * time.Millisecond)
+			continue
+		}
+
+		_ = b.conn.SetReadDeadline(time.Now().Add(ioTimeout))
+		_, raw, err := b.conn.ReadMessage()
+		if err != nil {
+			if b.stopping.Load() {
+				return
+			}
+			b.fail(fmt.Errorf("%s: reading: %w", b.spec.nickname, err))
+			return
+		}
+
+		var env envelope
+		if err := json.Unmarshal(raw, &env); err != nil {
+			b.fail(fmt.Errorf("%s: frame is not JSON: %v (%s)", b.spec.nickname, err, raw))
+			return
+		}
+
+		b.mu.Lock()
+		observeErr := b.s.observe(env)
+		b.frames++
+		b.mu.Unlock()
+		if observeErr != nil {
+			b.fail(fmt.Errorf("%s: %w", b.spec.nickname, observeErr))
+			return
+		}
+	}
+}
+
+// fail keeps the FIRST error, so a run reports the symptom that started the
+// cascade instead of the cascade.
+func (b *fleetBot) fail(err error) {
+	b.mu.Lock()
+	if b.err == nil {
+		b.err = err
+	}
+	b.mu.Unlock()
+}
+
+// close ends the reader without recording an error: a socket ending is how every
+// one of these bots ends.
+func (b *fleetBot) close() {
+	b.stopping.Store(true)
+	_ = b.conn.Close()
+}
+
+// send writes one command frame. Only this bot's own goroutine writes to its
+// socket — gorilla allows exactly one concurrent writer.
+func (b *fleetBot) send(frame string) error {
+	_ = b.conn.SetWriteDeadline(time.Now().Add(ioTimeout))
+	if err := b.conn.WriteMessage(websocket.TextMessage, []byte(frame)); err != nil {
+		return fmt.Errorf("%s: sending: %w", b.spec.nickname, err)
+	}
+	return nil
+}
+
+// noteCommand records one command's send instant for the measured rate.
+func (b *fleetBot) noteCommand() {
+	b.mu.Lock()
+	b.at = append(b.at, time.Now())
+	b.mu.Unlock()
+}
+
+// join is the D-28 handshake: role player plus the run-scoped nickname.
+func (b *fleetBot) join() error {
+	frame, err := json.Marshal(map[string]string{"type": "join", "role": "player", "nickname": b.spec.nickname})
+	if err != nil {
+		return fmt.Errorf("%s: marshaling the join: %w", b.spec.nickname, err)
+	}
+	return b.send(string(frame))
+}
+
+// state copies this bot's observable stream state under the lock.
+func (b *fleetBot) state() (frames, snapshots int, lastRev int64, gaps, repairs int, err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.frames, b.s.snapshots, b.s.lastRev, b.s.gaps, b.s.repairs, b.err
+}
+
+// awaitComplete waits until every peer has appeared in one of this bot's
+// snapshots. The budget is the pool-scaled frame bound (D-135) plus a wall-clock
+// ceiling, so a server that stops talking fails the run instead of hanging it.
+func (b *fleetBot) awaitComplete(budget int) error {
+	deadline := time.Now().Add(ioTimeout)
+	for {
+		b.mu.Lock()
+		done := b.s.complete(b.spec.peers)
+		frames, err := b.frames, b.err
+		b.mu.Unlock()
+
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+		if frames >= budget {
+			return fmt.Errorf("%s: no snapshot showed every player (%s) in %d frames — a peer never became visible",
+				b.spec.nickname, strings.Join(b.spec.peers, ", "), frames)
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s: the room was not fully visible within %s (%d frames read)",
+				b.spec.nickname, ioTimeout, frames)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
+// awaitSnapshotAfter waits until this bot's stream has consumed a snapshot past
+// `before`. It is the fleet's drain barrier: a bot's resync reply is a snapshot,
+// and it cannot arrive before that bot's OWN commands were processed — so N
+// replies prove the whole burst is done, whatever order the sockets raced in.
+func (b *fleetBot) awaitSnapshotAfter(before int) error {
+	deadline := time.Now().Add(ioTimeout)
+	for {
+		b.mu.Lock()
+		now, err := b.s.snapshots, b.err
+		b.mu.Unlock()
+
+		if err != nil {
+			return err
+		}
+		if now > before {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s: no snapshot arrived within %s — the burst never drained", b.spec.nickname, ioTimeout)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
+// awaitRevision waits until this bot's stream has reached the given revision.
+func (b *fleetBot) awaitRevision(want int64) error {
+	deadline := time.Now().Add(burstTimeout)
+	for {
+		b.mu.Lock()
+		rev, err := b.s.lastRev, b.err
+		b.mu.Unlock()
+
+		if err != nil {
+			return err
+		}
+		if rev >= want {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s: never reached the room's revision %d within %s (last state rev %d)",
+				b.spec.nickname, want, burstTimeout, rev)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// startFleetItem drives the admin path the round already owns — upsert, then
+// start twice (D-65) — so the fleet's bids are real mutations rather than
+// private refusals that generate no traffic. The returned connection is kept
+// open for the run's duration: an admin that disconnected mid-drill would commit
+// a presence mutation the convergence assertion cannot attribute.
+//
+// The item's min_increment is deliberately small (1000): the burst must be able
+// to climb the ladder for the whole burst, which is what produces the fan-out
+// volume that makes the stalled bot's overflow real (D-136).
+func startFleetItem(target, run, adminKey string) (*roundBot, error) {
+	if adminKey == "" {
+		return nil, fmt.Errorf("no admin capability — set ADMIN_KEY (or pass --admin-key) to the key the server printed at boot")
+	}
+
+	admin, err := dialRound(target, "fleet admin", "admin", "", adminKey)
+	if err != nil {
+		return nil, err
+	}
+
+	item := fmt.Sprintf(`{"name":%q,"auction_type":"english","truth_value":350000,"start_price":100000,`+
+		`"min_increment":1000,"duration_ms":300000,"anti_snipe_mode":"disabled"}`, run+" fleet lot")
+	if err := admin.send(`{"type":"admin.item.upsert","item":` + item + `}`); err != nil {
+		admin.close()
+		return nil, err
+	}
+	itemID, err := admin.awaitItemID(roundIO)
+	if err != nil {
+		admin.close()
+		return nil, fmt.Errorf("admin.item.upsert: %w", err)
+	}
+
+	if err := admin.start(itemID); err != nil {
+		admin.close()
+		return nil, err
+	}
+	if _, err := admin.awaitTypes(roundIO, "phase.changed", "item.intro", "state.snapshot"); err != nil {
+		admin.close()
+		return nil, fmt.Errorf("item.start → ITEM_INTRO: %w", err)
+	}
+	if err := admin.start(itemID); err != nil {
+		admin.close()
+		return nil, err
+	}
+	if _, err := admin.awaitTypes(roundIO, "phase.changed", "item.live", "state.snapshot", "price.tick"); err != nil {
+		admin.close()
+		return nil, fmt.Errorf("item.start → LIVE: %w", err)
+	}
+	return admin, nil
+}
+
+// runFleet is D-135's twenty-client drill against a live server, and D-136's
+// wire half of the stalled-client proof. The order is the contract:
+//
+//  1. An admin bot starts one LIVE item, so a bid is a real mutation.
+//  2. N bots dial, join, and read until every peer is visible. A bot's own
+//     handshake pair is the proof ITS join was committed.
+//  3. Every bot blasts `--burst` bids. The stalled bot is not reading while
+//     this happens: its 2 KiB receive buffer fills, the writer blocks, the
+//     64-deep FIFO overflows, and the connection is fenced (D-41).
+//  4. Every bot asks for a snapshot and waits for one. Its own reply cannot
+//     arrive before its own commands were processed, so N replies prove the
+//     burst is drained.
+//  5. One more mutation — a sentinel join — is the room's FINAL revision, and
+//     D-135's convergence assertion runs on that number.
+func runFleet(target, run string, cfg fleetConfig) fleetReport {
+	var report fleetReport
+
+	admin, err := startFleetItem(target, run, *adminKeyFlag)
+	if err != nil {
+		report.fail("%v", err)
+		return report
+	}
+	defer admin.close()
+	report.ok("the fleet's item is LIVE (min_increment 1000, so the burst can climb the ladder)")
+
+	nicknames := make([]string, cfg.bots)
+	for i := range nicknames {
+		nicknames[i] = fmt.Sprintf("%s-%02d", run, i)
+	}
+
+	bots := make([]*fleetBot, cfg.bots)
+	defer func() {
+		for _, b := range bots {
+			if b != nil {
+				b.close()
+			}
+		}
+	}()
+	for i := range bots {
+		spec := botSpec{index: i, nickname: nicknames[i], peers: nicknames}
+		b, err := dialFleet(target, spec, cfg.rapid, i == cfg.stalled)
+		if err != nil {
+			report.fail("%v", err)
+			return report
+		}
+		bots[i] = b
+	}
+
+	for _, b := range bots {
+		if err := b.join(); err != nil {
+			report.fail("%v", err)
+			return report
+		}
+	}
+	budget := frameBudget(cfg.bots)
+	for _, b := range bots {
+		if err := b.awaitComplete(budget); err != nil {
+			report.fail("%v", err)
+			return report
+		}
+	}
+	report.ok("%d bots joined and saw every peer within %d frames", cfg.bots, budget)
+
+	if !cfg.rapid {
+		report.converge(target, run, bots)
+		return report
+	}
+
+	// The stall: the reader stops pulling frames off this socket for the whole
+	// burst, so the fence and its repair are exercised for real (D-41/D-136).
+	if cfg.stalled >= 0 {
+		bots[cfg.stalled].paused.Store(true)
+		report.ok("bot %02d is not reading during the burst: the fence and its repair are being exercised", cfg.stalled)
+	}
+
+	var wg sync.WaitGroup
+	for i, b := range bots {
+		wg.Add(1)
+		go func(i int, b *fleetBot) {
+			defer wg.Done()
+			for c := 0; c < cfg.burst; c++ {
+				amount := int64(100_000 + (c*cfg.bots+i+1)*1_000)
+				if err := b.send(fmt.Sprintf(`{"type":"bid.place","amount":%d}`, amount)); err != nil {
+					b.fail(err)
+					return
+				}
+				b.noteCommand()
+				if c < cfg.burst-1 {
+					time.Sleep(commandSpacing)
+				}
+			}
+		}(i, b)
+	}
+	wg.Wait()
+
+	if cfg.stalled >= 0 {
+		bots[cfg.stalled].paused.Store(false)
+	}
+
+	// The drain barrier. Each bot asks for a snapshot and waits for one; its own
+	// reply is queued behind its own commands, so once all N replies are in, the
+	// burst is provably done and the next mutation really is the last one.
+	before := make([]int, len(bots))
+	for i, b := range bots {
+		b.mu.Lock()
+		before[i] = b.s.snapshots
+		b.mu.Unlock()
+		if err := b.send(`{"type":"resync"}`); err != nil {
+			report.fail("%v", err)
+			return report
+		}
+	}
+	for i, b := range bots {
+		if err := b.awaitSnapshotAfter(before[i]); err != nil {
+			report.fail("%v", err)
+			return report
+		}
+	}
+	report.ok("every bot's burst drained: each resync reply arrived after that bot's own commands")
+
+	report.converge(target, run, bots)
+
+	// D-136: the stalled bot must show POSITIVE repair evidence. A drill that
+	// never stalled proves nothing about the mechanism, so it fails the run.
+	if cfg.stalled >= 0 {
+		frames, _, lastRev, gaps, repairs, err := bots[cfg.stalled].state()
+		if err != nil {
+			report.fail("%v", err)
+		}
+		if gaps == 0 || repairs == 0 {
+			report.fail("bot %02d never showed a gap repaired by a snapshot (%d gaps, %d repairs in %d frames): "+
+				"a drill that never stalls proves nothing (D-136)", cfg.stalled, gaps, repairs, frames)
+		} else {
+			report.ok("bot %02d stalled and was repaired: %d gap(s), %d recovery snapshot(s), at rev %d",
+				cfg.stalled, gaps, repairs, lastRev)
+		}
+	}
+
+	// The evidence D-138's bucket sizing is judged from: what each bot actually
+	// asked of the limiter. Nothing below is a t.Log — this output IS the
+	// acceptance record.
+	for i, b := range bots {
+		b.mu.Lock()
+		commands, rate, frames, rev := len(b.at), peakCommandRate(b.at), b.frames, b.s.lastRev
+		b.mu.Unlock()
+		tag := ""
+		if i == cfg.stalled {
+			tag = " (stalled)"
+		}
+		report.ok("bot %02d%s: %d commands, peak %g cmd/s, %d frames, last state rev %d", i, tag, commands, rate, frames, rev)
+	}
+	return report
+}
+
+// converge is D-135's single strongest assertion: one more mutation — a
+// sentinel join, committed after the burst is provably drained — is the room's
+// FINAL revision, and every bot must observe it. converged() then fails the run
+// if any bot's last state revision differs, naming the ones that lagged.
+func (r *fleetReport) converge(target, run string, bots []*fleetBot) {
+	sentinel, err := dialRound(target, "sentinel", "player", run+"-sentinel", "")
+	if err != nil {
+		r.fail("the settling mutation: %v", err)
+		return
+	}
+	defer sentinel.close()
+
+	final := sentinel.s.lastRev
+	if final <= 0 {
+		r.fail("the sentinel join reported no revision (%d)", final)
+		return
+	}
+
+	for _, b := range bots {
+		if err := b.awaitRevision(final); err != nil {
+			r.fail("%v", err)
+		}
+	}
+
+	revs := make([]int64, len(bots))
+	for i, b := range bots {
+		_, _, rev, _, _, err := b.state()
+		if err != nil {
+			r.fail("%v", err)
+		}
+		revs[i] = rev
+	}
+	if err := converged(revs, final); err != nil {
+		r.fail("%v", err)
+		return
+	}
+	r.ok("all %d bots converged on the room's final revision %d", len(bots), final)
+}
+
+// runFleetMain is main()'s N-bot arm: validate the configuration, run the
+// drill, print the per-bot evidence, and return the process's exit code.
+func runFleetMain(target, run string, cfg fleetConfig, start time.Time) int {
+	switch {
+	case cfg.bots < 1:
+		fmt.Printf("loadtest: --bots must be at least 1 (got %d)\n", cfg.bots)
+		return 2
+	case cfg.burst < 1:
+		fmt.Printf("loadtest: --burst must be at least 1 (got %d)\n", cfg.burst)
+		return 2
+	case cfg.stalled >= cfg.bots:
+		fmt.Printf("loadtest: --stalled-index %d is outside the pool (0..%d)\n", cfg.stalled, cfg.bots-1)
+		return 2
+	case cfg.stalled >= 0 && !cfg.rapid:
+		fmt.Printf("loadtest: --stalled-index needs --rapid-fire — the stall happens during the burst\n")
+		return 2
+	}
+
+	report := runFleet(target, run, cfg)
+	for _, line := range report.lines {
+		fmt.Printf("fleet: %s\n", line)
+	}
+	for _, problem := range report.errs {
+		fmt.Printf("fleet: FAILED — %s\n", problem)
+	}
+
+	mode := "join-only"
+	if cfg.rapid {
+		mode = fmt.Sprintf("rapid-fire burst=%d stalled=%d", cfg.burst, cfg.stalled)
+	}
+	verdict, code := "converged", 0
+	if !report.passed() {
+		verdict, code = "FAILED", 1
+	}
+	fmt.Printf("loadtest: %s — %d bots (%s), the fleet %s, in %s\n",
+		target, cfg.bots, mode, verdict, time.Since(start).Round(time.Millisecond))
+	return code
 }
