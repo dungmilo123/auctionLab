@@ -87,7 +87,6 @@ export function openAdminSocket(handlers: AdminSocketHandlers): AdminConnection 
       socket.send(frame)
     },
     retry(): void {
-      // RED: the pass-through is declared for the suite; the policy lands in GREEN.
       socket.retry()
     },
     close(): void {
