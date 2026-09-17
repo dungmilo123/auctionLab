@@ -143,6 +143,41 @@ describe('the control-plane exception (D-24)', () => {
   })
 })
 
+describe('the heartbeat (D-132)', () => {
+  it('is applied at any seq, like tunnel.status, and never on rev', () => {
+    // The wire literal, not the constant: the gate's addition is the code under
+    // test, and a renamed literal must fail here rather than in a quiet room.
+    const step = nextOutcome(
+      at({ lastSeq: 9, rev: 6 }),
+      frame({ type: 'heartbeat', seq: 4, rev: 2, data: { ts: 1_757_934_000_000 } }),
+    )
+    expect(step.outcome).toEqual({ kind: 'control' })
+    expect(step.state.rev).toBe(6)
+    expect(step.state.resyncPending).toBe(false)
+  })
+
+  it('counts its stream position so the next game frame is not a gap', () => {
+    const step = nextOutcome(at({ lastSeq: 4 }), frame({ type: 'heartbeat', seq: 5 }))
+    expect(step.outcome).toEqual({ kind: 'control' })
+    expect(step.state.lastSeq).toBe(5)
+    // A heartbeat never asks for a resync, even when it arrives across a gap:
+    // it carries no game state that a snapshot could repair.
+    const gapped = nextOutcome(at({ lastSeq: 4 }), frame({ type: 'heartbeat', seq: 40 }))
+    expect(gapped.outcome).toEqual({ kind: 'control' })
+    expect(gapped.state.resyncPending).toBe(false)
+    const next = nextOutcome(gapped.state, frame({ type: 'phase.changed', seq: 41 }))
+    expect(next.outcome).toEqual({ kind: 'apply', requestResync: false })
+  })
+
+  it('never lets a heartbeat advance the reconciled revision', () => {
+    const step = nextOutcome(
+      at({ lastSeq: 3, rev: 7 }),
+      frame({ type: 'heartbeat', seq: 4, rev: 99 }),
+    )
+    expect(step.state.rev).toBe(7)
+  })
+})
+
 describe('the resume decision (D-45)', () => {
   it('reconnects once when a stored token exists and the socket is not open', () => {
     expect(resumeOutcome(SOCKET_CLOSED, true)).toBe('reconnect')

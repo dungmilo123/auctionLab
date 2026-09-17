@@ -56,6 +56,10 @@ const FROZEN_SERVER_TYPES = [
   'leaderboard',
   'finale',
   'tunnel.status',
+  // Phase 7 (D-132): the application-level heartbeat, appended INSIDE the
+  // server→client group beside the other control-plane frame — the same
+  // deliberate two-list edit internal/hub/protocol.go made.
+  'heartbeat',
   'error',
 ]
 
@@ -67,6 +71,8 @@ const FROZEN_ERROR_CODES = [
   'bad_message',
   'unsupported',
   'not_authorized',
+  // Phase 7 (D-138): the inbound command bucket's informational refusal.
+  'rate_limited',
 ]
 
 const CANONICAL_FRAME = '{"type":"hello","seq":1,"rev":0,"ts":1757934000000,"data":{"role":"player"}}'
