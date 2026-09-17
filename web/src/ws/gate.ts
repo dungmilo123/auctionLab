@@ -13,13 +13,16 @@
  *   - `state.snapshot` is the sync point: apply it when its `rev` is current or
  *     newer, and reset the expected stream position to it.
  *
- * `tunnel.status` is the one control-plane exception (D-24): it is applied
- * regardless of `seq` and must never be fed through the revision gate, because
- * a tunnel URL rotation whose revision looked stale is exactly when the venue
- * needs it.
+ * `tunnel.status` and `heartbeat` are the two control-plane exceptions (D-24,
+ * D-132): both are applied regardless of `seq` and must never be fed through
+ * the revision gate. `tunnel.status` because a tunnel URL rotation whose
+ * revision looked stale is exactly when the venue needs it; `heartbeat`
+ * because it carries no game state at all — it exists so the client can see
+ * that a quiet phase is still alive, and a beat that triggered a resync every
+ * 25 seconds would be the noise it was added to prevent (Pitfall 4).
  */
 
-import { STATE_SNAPSHOT, TUNNEL_STATUS, type Envelope } from './protocol'
+import { HEARTBEAT, STATE_SNAPSHOT, TUNNEL_STATUS, type Envelope } from './protocol'
 
 /**
  * WebSocket readyState values, spelled as literals on purpose: the `WebSocket`
@@ -71,11 +74,12 @@ export type GateStep = {
  * construction.
  */
 export function nextOutcome(state: GateState, env: Envelope): GateStep {
-  // The control plane first (D-24): tunnel.status is applied as it arrives and
-  // is NEVER fed through the revision gate — a rotated tunnel URL whose rev
-  // looked stale is exactly when the venue needs it. Its stream position still
+  // The control plane first (D-24/D-132): tunnel.status and heartbeat are
+  // applied as they arrive and are NEVER fed through the revision gate — a
+  // rotated tunnel URL whose rev looked stale is exactly when the venue needs
+  // it, and a beat carries no game state to gate. Their stream position still
   // counts, so the next game message is not misread as a gap.
-  if (env.type === TUNNEL_STATUS) {
+  if (env.type === TUNNEL_STATUS || env.type === HEARTBEAT) {
     return {
       state: { ...state, lastSeq: Math.max(state.lastSeq, env.seq) },
       outcome: { kind: 'control' },

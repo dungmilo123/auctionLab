@@ -57,9 +57,22 @@ export const SUPERSEDED_CLOSE_CODE = 4001
 /** The four connection states UI-SPEC allows — exactly these, no more. */
 export type ReconnectState = 'live' | 'reconnecting' | 'offline' | 'superseded'
 
-/** One delay from D-130's full-jitter policy: uniform in [0, min(500·2^n, 15 s)]. */
+/**
+ * One delay from D-130's full-jitter policy: uniform in [0, min(500·2^n, 15 s)].
+ *
+ * `rand` is a caller-supplied sample in [0, 1] — the caller owns the random
+ * source (`Math.random`), so this stays a pure input→output pair. Both inputs
+ * are made total rather than trusted: a nonsense attempt falls back to the
+ * base interval and a sample outside [0, 1] is clamped, because a `NaN` here
+ * would reach `setTimeout` and silently become a 0 ms hot loop (the
+ * `dutchPriceAt` total-answer rule).
+ */
 export function nextDelay(attempt: number, rand: number): number {
-  return BACKOFF_BASE_MS
+  const n = Math.max(0, Math.floor(attempt))
+  // `2 ** n` overflows to Infinity for absurd counts — `min` caps it either way.
+  const ceiling = Math.min(BACKOFF_BASE_MS * 2 ** n, BACKOFF_CAP_MS)
+  const sample = Math.min(Math.max(rand, 0), 1)
+  return Math.floor(sample * ceiling)
 }
 
 /** Everything the derived state is a function of. */
@@ -76,8 +89,29 @@ export type ReconnectInputs = {
   lastCloseCode: number | null
 }
 
-/** The state the indicator declares for these inputs (D-130). */
+/**
+ * The state the indicator declares for these inputs (D-130).
+ *
+ * Four inputs are the machine's own (`open`, `attempts`, `lastOpenAt`,
+ * `lastCloseCode`) plus the caller's clock: `live` is by definition the
+ * socket's readyState, so it has to be an input rather than something derived
+ * from a counter. The four branches are total and ordered, so there is no
+ * undefined cell:
+ *
+ *   superseded   4001 is terminal for this page instance — it outranks every
+ *                other input, including a readyState that has not caught up;
+ *   live         the transport is open;
+ *   offline      no open socket, and either six failures or thirty seconds
+ *                since the last successful open (a presentation threshold, not
+ *                a stop — the scheduler keeps running, G-2);
+ *   reconnecting everything else: an attempt is in flight or scheduled.
+ */
 export function deriveState(inputs: ReconnectInputs): ReconnectState {
+  if (inputs.lastCloseCode === SUPERSEDED_CLOSE_CODE) return 'superseded'
+  if (inputs.open) return 'live'
+  const agedOut =
+    inputs.lastOpenAt !== null && inputs.now - inputs.lastOpenAt >= OFFLINE_AGE_MS
+  if (inputs.attempts >= OFFLINE_ATTEMPT_THRESHOLD || agedOut) return 'offline'
   return 'reconnecting'
 }
 
@@ -89,17 +123,35 @@ export type ConnectionWord =
   | 'status.lost'
   | 'status.superseded'
 
-/** The word for one state, with `reconnecting` split by G-1's first-open rule. */
+/**
+ * The word for one state, with `reconnecting` split by G-1's first-open rule:
+ * telling a player who just opened the page "Reconnecting…" is false, so the
+ * pre-first-open case renders the carried `status.connecting` word, which is
+ * what keeps that dictionary key reachable.
+ */
 export function connectionWord(state: ReconnectState, lastOpenAt: number | null): ConnectionWord {
-  return 'status.connecting'
+  switch (state) {
+    case 'live':
+      return 'status.open'
+    case 'offline':
+      return 'status.lost'
+    case 'superseded':
+      return 'status.superseded'
+    case 'reconnecting':
+      return lastOpenAt === null ? 'status.connecting' : 'status.reconnecting'
+  }
 }
 
 /** What the scheduler must do next (D-130's "never stops" vs D-131's terminal). */
 export type SchedulerDecision = 'retry' | 'stop'
 
-/** D-131: `superseded` stops the automatic scheduler for this page instance. */
+/**
+ * D-131: `superseded` stops the automatic scheduler for this page instance.
+ * Stated as its own decision rather than left to the caller, because a 4001
+ * that still schedules is the page-supersedes-page fight Pitfall 12 describes.
+ */
 export function schedulerDecision(state: ReconnectState): SchedulerDecision {
-  return 'retry'
+  return state === 'superseded' ? 'stop' : 'retry'
 }
 
 /** D-134: the signals that end the restoring line before its bound. */
@@ -114,11 +166,18 @@ export const RESTORE_CLEARING_SIGNALS: readonly RestoreSignal[] = [
   'error',
 ]
 
-/** D-134's bounded restoring line: true while the mount is young and nothing cleared it. */
+/**
+ * D-134's bounded restoring line: true while the mount is younger than the
+ * bound and no clearing signal has arrived. The route owns the timer and the
+ * `clearedBy` bookkeeping; this is the rule they both read, so "there is no
+ * state in which the player has no path forward" is a checkable predicate
+ * rather than three scattered conditions.
+ */
 export function restoreActive(inputs: {
   mountedAt: number
   now: number
   clearedBy: RestoreSignal | null
 }): boolean {
-  return true
+  if (inputs.clearedBy !== null) return false
+  return inputs.now - inputs.mountedAt < RESTORE_BOUND_MS
 }

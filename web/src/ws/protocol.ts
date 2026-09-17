@@ -79,6 +79,10 @@ export const SERVER_MESSAGE_TYPES = [
   'leaderboard',
   'finale',
   'tunnel.status',
+  // Phase 7 (D-132): the application-level heartbeat, appended inside the
+  // server→client group beside the other control-plane frame — the same
+  // deliberate two-list edit internal/hub/protocol.go made.
+  'heartbeat',
   'error',
 ] as const
 
@@ -91,6 +95,10 @@ export const ERROR_CODES = [
   'bad_message',
   'unsupported',
   'not_authorized',
+  // Phase 7 (D-138): the inbound command bucket's informational refusal. It
+  // never closes the socket and never moves state; the UI renders nothing for
+  // it, so it must not be mapped to a player-actionable error row.
+  'rate_limited',
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]
@@ -101,6 +109,13 @@ export const STATE_SNAPSHOT = 'state.snapshot'
 export const ERROR = 'error'
 /** Control plane: applied regardless of seq, never gated on rev (D-24). */
 export const TUNNEL_STATUS = 'tunnel.status'
+/**
+ * The application-level liveness beat (D-132) — the second control-plane frame,
+ * applied at any seq and never through the revision gate. It is the only
+ * message a quiet LOBBY/INTRO/SETTLED stream carries, so the client's staleness
+ * detector depends on it; its payload is `{ts}` and nothing else.
+ */
+export const HEARTBEAT = 'heartbeat'
 /** The Phase-3 state events the view reducer consumes (D-57). */
 export const PHASE_CHANGED = 'phase.changed'
 export const ITEM_INTRO = 'item.intro'
