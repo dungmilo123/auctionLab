@@ -334,6 +334,86 @@ exit 0
 		}
 	})
 
+	t.Run("an unexpected exit reports the child's last output lines", func(t *testing.T) {
+		// D-125: "log reason (exit code + a few last lines)". The reason a
+		// cloudflared died is printed to its merged output and nowhere else, so
+		// the exit line has to carry it — that is what makes the venue's
+		// no-laptop diagnosis possible.
+		dir := t.TempDir()
+		bin := stubBin(t, dir, `
+echo "ERR Failed to create tunnel: dial tcp: lookup api.trycloudflare.com: no such host" >&2
+exit 1
+`)
+
+		rec := newStatusRecorder()
+		logs := &logRecorder{}
+		cfg := baseConfig(t, rec, logs)
+		cfg.Bin = bin
+		cfg.BackoffBase = 10 * time.Millisecond
+		cfg.BackoffCap = 20 * time.Millisecond
+		cfg.Jitter = func(d time.Duration) time.Duration { return d }
+
+		m := New(cfg)
+		m.Start()
+		t.Cleanup(m.Close)
+
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) && !logs.contains("no such host") {
+			time.Sleep(10 * time.Millisecond)
+		}
+		log := logs.all()
+		if !logs.contains("last output:") {
+			t.Fatalf("the exit line carries no output tail:\n%s", log)
+		}
+		if !strings.Contains(log, "no such host") {
+			t.Fatalf("the tail dropped the reason the child printed:\n%s", log)
+		}
+		if !strings.Contains(log, "exit status 1") {
+			t.Fatalf("the exit line dropped the exit status:\n%s", log)
+		}
+	})
+
+	t.Run("the reported output tail stays bounded", func(t *testing.T) {
+		// A chatty child must not be able to grow the diagnostic without limit:
+		// only the newest maxTailLines lines survive, so the oldest are gone.
+		dir := t.TempDir()
+		bin := stubBin(t, dir, `
+i=1
+while [ $i -le 15 ]; do
+  echo "ERR tail-line-$i" >&2
+  i=$((i+1))
+done
+exit 1
+`)
+
+		rec := newStatusRecorder()
+		logs := &logRecorder{}
+		cfg := baseConfig(t, rec, logs)
+		cfg.Bin = bin
+		cfg.BackoffBase = 10 * time.Millisecond
+		cfg.BackoffCap = 20 * time.Millisecond
+		cfg.Jitter = func(d time.Duration) time.Duration { return d }
+
+		m := New(cfg)
+		m.Start()
+		t.Cleanup(m.Close)
+
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) && !logs.contains("tail-line-15") {
+			time.Sleep(10 * time.Millisecond)
+		}
+		log := logs.all()
+		if !logs.contains("last output:") {
+			t.Fatalf("the exit line carries no output tail:\n%s", log)
+		}
+		if !strings.Contains(log, "tail-line-15") || !strings.Contains(log, "tail-line-6") {
+			t.Fatalf("the tail dropped lines newer than the bound:\n%s", log)
+		}
+		if strings.Contains(log, "tail-line-5") {
+			t.Fatalf("the tail is not bounded to the newest %d lines:\n%s", maxTailLines, log)
+		}
+	})
+
 	t.Run("backoffDelay doubles from the base and stops at the cap", func(t *testing.T) {
 		base, top := 5*time.Second, 60*time.Second
 		want := []time.Duration{

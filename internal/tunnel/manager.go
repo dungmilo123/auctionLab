@@ -70,6 +70,14 @@ const (
 // past it ends the line-scanner without ending the drain.
 const maxLineBytes = 64 * 1024
 
+// maxTailLines bounds the output tail the supervisor remembers per generation
+// and prints beside an unexpected exit (D-125's "exit code + a few last lines").
+// cloudflared's own messages are one to three lines; ten is generous for a
+// reason to be visible while still bounding what a chatty child can make the
+// log write. Together with maxLineBytes the whole tail is bounded at
+// maxTailLines × maxLineBytes.
+const maxTailLines = 10
+
 // Config is the manager's full surface, seams included. Production fills in
 // Port, Bin, Protocol, Publish and Home; everything else has a default.
 type Config struct {
@@ -303,7 +311,7 @@ func (m *Manager) run() {
 
 	attempt := 0
 	for {
-		lived, err, ran := m.runGeneration()
+		lived, err, ran, tail := m.runGeneration()
 		if m.stopping.Load() {
 			return
 		}
@@ -334,12 +342,25 @@ func (m *Manager) run() {
 		if err != nil {
 			reason = err.Error()
 		}
-		m.cfg.Logf("tunnel: cloudflared exited (%s) after %s; restarting in %s",
-			reason, lived.Round(time.Millisecond), delay.Round(time.Millisecond))
+		// D-125: the reason, the exit code and a few of the child's last lines.
+		// The tail is what makes a bad --protocol, a rerouted proxy or a DNS
+		// failure readable at the venue without a laptop.
+		m.cfg.Logf("tunnel: cloudflared exited (%s) after %s; restarting in %s%s",
+			reason, lived.Round(time.Millisecond), delay.Round(time.Millisecond), tailSuffix(tail))
 		if !m.wait(delay) {
 			return
 		}
 	}
+}
+
+// tailSuffix renders a generation's bounded output tail for the exit line. It
+// is empty when the child said nothing, so the restart line never ends in a
+// dangling separator.
+func tailSuffix(tail []string) string {
+	if len(tail) == 0 {
+		return ""
+	}
+	return "; last output: " + strings.Join(tail, " | ")
 }
 
 // wait sleeps for delay, returning false when the manager is stopping. With a
@@ -363,11 +384,13 @@ func (m *Manager) wait(delay time.Duration) bool {
 
 // generation is one cloudflared process's observable state: the last URL it
 // announced (woke is signalled on every announcement, so the probe fires
-// immediately rather than waiting out a cadence) and whether it has already
+// immediately rather than waiting out a cadence), the newest bounded output
+// lines it printed (reported with the exit, D-125), and whether it has already
 // reported a throttled creation.
 type generation struct {
 	mu       sync.Mutex
 	url      string
+	tail     []string
 	woke     chan struct{}
 	throttle atomic.Bool
 }
@@ -392,9 +415,33 @@ func (g *generation) current() string {
 	return g.url
 }
 
+// remember keeps the newest maxTailLines output lines, oldest first. Without it
+// the venue's most diagnosable failures arrive as a bare "exit status 1": a bad
+// --protocol, a rerouted connection, a DNS failure and a creation refusal that
+// does not match isThrottleLine all print their reason to this pipe and nowhere
+// else, and D-125 makes that reason the restart line's deliverable.
+func (g *generation) remember(line string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if len(g.tail) == maxTailLines {
+		g.tail = g.tail[1:]
+	}
+	g.tail = append(g.tail, line)
+}
+
+// tailLines is a copy of the bounded output tail, oldest first. Safe to call
+// after the child exited and the drain returned; the copy keeps the slice from
+// being aliased by a late writer.
+func (g *generation) tailLines() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.tail...)
+}
+
 // runGeneration spawns one cloudflared, supervises it until it exits, and
 // reports how long it lived. `ran` is false when the process never started at
-// all — the one failure that is not an exit.
+// all — the one failure that is not an exit. `tail` is the newest bounded lines
+// the child printed, which the caller reports with the exit (D-125).
 //
 // Two windows make a stop racing a spawn dangerous, and both are closed here
 // rather than left to the caller: Close() sets `stopping` BEFORE it looks at
@@ -406,9 +453,9 @@ func (g *generation) current() string {
 // cannot close until the child exits — and a long-lived cloudflared would
 // survive the process: the deferred mgr.Close in the boot would never return,
 // and the SIGTERM/SIGKILL policy would be skipped entirely.
-func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool) {
+func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool, tail []string) {
 	if m.stopping.Load() {
-		return 0, nil, false
+		return 0, nil, false, nil
 	}
 
 	args := []string{
@@ -430,7 +477,7 @@ func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool)
 	// write(2) — the failure mode D-124 explicitly forbids.
 	pr, pw, err := os.Pipe()
 	if err != nil {
-		return 0, err, false
+		return 0, err, false, nil
 	}
 	cmd.Stdout = pw
 	cmd.Stderr = pw
@@ -439,7 +486,7 @@ func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool)
 	if err := cmd.Start(); err != nil {
 		_ = pw.Close()
 		_ = pr.Close()
-		return 0, err, false
+		return 0, err, false, nil
 	}
 	// The child holds its own descriptors now; the parent's write end must close
 	// or the read end would never see EOF when the child exits.
@@ -484,7 +531,7 @@ func (m *Manager) runGeneration() (lived time.Duration, waitErr error, ran bool)
 	_ = pr.Close()
 	<-drained
 
-	return lived, waitErr, true
+	return lived, waitErr, true, gen.tailLines()
 }
 
 // drain reads the merged stream line by line for the process's whole lifetime.
@@ -503,9 +550,11 @@ func (m *Manager) drain(r io.Reader, gen *generation) {
 	_, _ = io.Copy(io.Discard, r)
 }
 
-// handleLine is the two things a line of cloudflared output can mean to this
-// package: a newly announced URL, or a refused creation.
+// handleLine is the three things a line of cloudflared output can mean to this
+// package: a newly announced URL, a refused creation, and — always — one more
+// line of the bounded tail the exit diagnostic carries (D-125).
 func (m *Manager) handleLine(line string, gen *generation) {
+	gen.remember(line)
 	if url, ok := scrapeURL([]byte(line)); ok {
 		gen.setURL(url)
 		// Published UNHEALTHY: the box is printed about a second before the edge
