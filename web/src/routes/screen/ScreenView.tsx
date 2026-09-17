@@ -286,11 +286,14 @@ function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
       <h2 className="shrink-0 text-xl leading-[1.2] font-bold tracking-[-0.01em]">
         {t('screen.standingsHeading')}
       </h2>
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto xl:grid-cols-3">
+      {/* 04-UI-SPEC §standings-block deviation: this compact rendition matches
+          the lobby grid (no min-h-11, no py-1) and preserves the row content,
+          typography and 4px border. */}
+      <div className="grid min-h-0 flex-1 grid-cols-2 gap-1 overflow-y-auto xl:grid-cols-3">
         {entries.map((entry) => (
           <div
             key={entry.nickname}
-            className="flex min-h-11 items-center gap-2 border-2 border-border bg-card px-2 py-1"
+            className="flex items-center gap-1 border-2 border-border bg-card px-2 py-0"
           >
             <p className="text-sm leading-[1.5] font-bold">{entry.rank}</p>
             <p className="min-w-0 flex-1 break-words text-base leading-[1.5]">{entry.nickname}</p>
@@ -558,7 +561,10 @@ function SettledBody({
   const sold = settle.outcome === 'sold'
 
   return (
-    <>
+    // One bounded flex child of ScreenView's body, exactly like FINALE: the
+    // ceremony stays shrink-0 and the shared Standings takes the remainder, so
+    // the reclaimed budget is what allocates two full rows (D-01/D-02).
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-col gap-1">
         <h2 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">
           {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
@@ -566,7 +572,7 @@ function SettledBody({
         <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2">
+      <div className="flex shrink-0 flex-col gap-1">
         {/* Omitted entirely when there is no winner — which is exactly the
             unsold case: a blank winner slot would read as a missing value
             rather than as "nobody won" (ECON-03). */}
@@ -583,7 +589,7 @@ function SettledBody({
 
         {/* The one accent fill of this state: the teaching moment of the whole
             app (§Color item 8). */}
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-2 text-primary-foreground">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-1 text-primary-foreground">
           <p className="text-sm leading-[1.5] font-bold">{t('settle.truthLabel')}</p>
           <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">
             <span>{formatVND(settle.truthValue)}</span>
@@ -609,7 +615,7 @@ function SettledBody({
       {!sold && <p className="shrink-0 text-base leading-[1.5]">{t('settle.unsoldBody')}</p>}
 
       <Standings entries={standings} />
-    </>
+    </div>
   )
 }
 
@@ -626,8 +632,8 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
   return (
     // `items-end`, not `items-stretch`: the podium is a STEPPED hierarchy, so
     // each block keeps its own height and sits on the same baseline — rank 1
-    // (Display nickname, `py-6`) is genuinely the tallest, and #2/#3 stay
-    // shorter (UI-review finding 4).
+    // (Display nickname and its larger type) is genuinely the tallest, and
+    // #2/#3 stay shorter (UI-review finding 4).
     <div className="flex shrink-0 flex-wrap items-end gap-4">
       {entries.map((entry, index) => {
         const first = index === 0
@@ -638,7 +644,7 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
             // while they fit and stack below when they do not, always in rank
             // order in the DOM.
             className={`flex min-w-40 flex-1 basis-0 flex-col gap-1 border-2 border-border ${
-              first ? 'bg-primary px-6 py-6 text-primary-foreground' : 'bg-card px-4 py-4'
+              first ? 'bg-primary px-6 py-4 text-primary-foreground' : 'bg-card px-4 py-4'
             }`}
           >
             <p className={first ? 'text-xl leading-[1.2] font-bold' : 'text-sm leading-[1.5] font-bold'}>
@@ -677,7 +683,9 @@ function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
   const { t } = useLanguage()
 
   return (
-    <>
+    // The same bounded composition as SETTLED: heading and podium are shrink-0
+    // ceremony, and the shared standings block takes what is left (D-02).
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <h2 className="shrink-0 text-xl leading-[1.2] font-bold tracking-[-0.01em]">
         {t('finale.heading')}
       </h2>
@@ -687,7 +695,7 @@ function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
       {/* The podium is the celebration and this is the result: everyone renders,
           in the server's order, in the route's second scroll region. */}
       <Standings entries={standings} />
-    </>
+    </div>
   )
 }
 
@@ -758,7 +766,7 @@ function ScreenView() {
   return (
     // The app's only 100dvh page: nothing scrolls except the two declared
     // regions, because nobody is standing at the projector.
-    <main className="flex h-dvh flex-col gap-6 p-8">
+    <main className="flex h-dvh flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">{t('screen.brand')}</h1>
 
@@ -770,7 +778,7 @@ function ScreenView() {
       {/* The last known body deliberately stays on screen through a `lost`
           connection: the room keeps seeing the last real auction state and the
           presenter reloads when the socket is back. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {view === null ? (
           <p className="text-base leading-[1.5]">{t('screen.starting')}</p>
         ) : (
