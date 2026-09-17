@@ -6,7 +6,7 @@ SERVER_PORT ?= 8080
 VITE_PORT   ?= 5173
 DB_PATH     ?= ./auction.db
 
-.PHONY: dev dev-go dev-web build run tunnel loadtest test test-go test-web test-race test-lint clean
+.PHONY: dev dev-go dev-web build run tunnel loadtest loadtest-20 loadtest-race loadtest-tunnel test test-go test-web test-race test-lint clean
 
 # One command, two processes, zero extra dependencies. `kill 0` reaps the whole
 # process group — including the binary `go run` spawns, which a PID-based kill
@@ -42,6 +42,33 @@ tunnel: build
 
 loadtest:
 	$(GO) run ./scripts/loadtest
+
+# D-135/D-136's acceptance layer. `loadtest` above stays the two-bot smoke the
+# Phase 2 gate has always run; these targets run the fleet — 20 bots, a bounded
+# burst, one deliberately stalled reader — against a REAL server on a temporary
+# database, plus the tunnel-death drill. LOADTEST_PORT keeps the run off the dev
+# server's 8080, and LOADTEST_RACE=1 makes the HARNESS race-instrumented too, so
+# `loadtest-race` instruments both sides of the wire (the script verifies the
+# server binary carries the race runtime).
+LOADTEST_PORT    ?= 8199
+LOADTEST_BOTS    ?= 20
+LOADTEST_BURST   ?= 40
+LOADTEST_ROUNDS  ?= 3
+LOADTEST_STALLED ?= 19
+
+loadtest-20:
+	$(GO) build -o bin/auctionlab-loadtest ./cmd/server
+	LOADTEST_PORT=$(LOADTEST_PORT) ./scripts/loadtest-acceptance.sh ./bin/auctionlab-loadtest --bots $(LOADTEST_BOTS) --rapid-fire --burst $(LOADTEST_BURST) --rounds $(LOADTEST_ROUNDS) --stalled-index $(LOADTEST_STALLED)
+
+loadtest-race:
+	$(GO) build -race -o bin/auctionlab-race ./cmd/server
+	LOADTEST_RACE=1 LOADTEST_PORT=$(LOADTEST_PORT) ./scripts/loadtest-acceptance.sh ./bin/auctionlab-race --bots $(LOADTEST_BOTS) --rapid-fire --burst $(LOADTEST_BURST) --rounds $(LOADTEST_ROUNDS) --stalled-index $(LOADTEST_STALLED)
+
+# D-137's desk drill: the stub tunnel is killed mid-game and the production
+# wire (manager → sink → hub frame + engine projection) must publish the death,
+# fall back to LAN, restart with a rotated URL and keep local play settling.
+loadtest-tunnel:
+	$(GO) test ./cmd/server -run TestTunnelDeathDrill -count=1
 
 test: test-go test-web test-lint
 

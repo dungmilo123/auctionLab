@@ -671,7 +671,9 @@ var (
 	rapidFlag = flag.Bool("rapid-fire", false,
 		"blast --burst bid commands from every bot, then assert the room converged (D-135)")
 	burstFlag = flag.Int("burst", 30,
-		"bids each bot sends in rapid-fire mode (bounded; stays inside burst 40, D-138)")
+		"bids each bot sends per rapid-fire round (bounded; stays inside burst 40, D-138)")
+	roundsFlag = flag.Int("rounds", 1,
+		"burst rounds to run while the stalled bot stays paused (--stalled-index; D-136's fence needs volume)")
 	stalledFlag = flag.Int("stalled-index", -1,
 		"bot index that stops reading during the burst so the fence and its repair are exercised (D-136; -1: none)")
 )
@@ -696,6 +698,7 @@ func main() {
 			bots:    *botsFlag,
 			rapid:   *rapidFlag,
 			burst:   *burstFlag,
+			rounds:  *roundsFlag,
 			stalled: *stalledFlag,
 		}, start))
 	}
@@ -1192,7 +1195,7 @@ func runRound(target, run, adminKey string) roundReport {
 func resolveTarget() string {
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
-		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url] [--admin-key KEY] [--bots N] [--rapid-fire] [--burst K] [--stalled-index I]\n\n")
+		fmt.Fprintf(out, "usage: go run ./scripts/loadtest [ws-url] [--admin-key KEY] [--bots N] [--rapid-fire] [--burst K] [--rounds R] [--stalled-index I]\n\n")
 		fmt.Fprintf(out, "Dials %d player bots against a live /ws, asserts the real protocol's\n", bots)
 		fmt.Fprintf(out, "seq/rev contract, then plays one bounded English round (an admin bot\n")
 		fmt.Fprintf(out, "creates and drives an item, two players bid, and the round ends on the\n")
@@ -1202,8 +1205,10 @@ func resolveTarget() string {
 		fmt.Fprintf(out, "--bots N raises the pool; --rapid-fire makes every bot blast --burst\n")
 		fmt.Fprintf(out, "bids and then asserts the whole room converged (D-135); --stalled-index\n")
 		fmt.Fprintf(out, "names the one bot that stops reading during the burst, so the fence and\n")
-		fmt.Fprintf(out, "its repair are exercised for real (D-136). The two-bot default is the\n")
-		fmt.Fprintf(out, "smoke run: no burst, nobody stalled, the stream still strict.\n\n")
+		fmt.Fprintf(out, "its repair are exercised for real (D-136); --rounds keeps bursting while\n")
+		fmt.Fprintf(out, "it stays paused, because the fence needs volume, not intent. The\n")
+		fmt.Fprintf(out, "two-bot default is the smoke run: no burst, nobody stalled, the stream\n")
+		fmt.Fprintf(out, "still strict.\n\n")
 		fmt.Fprintf(out, "The admin bot is authorized (ADMN-04): --admin-key, or ADMIN_KEY in the\n")
 		fmt.Fprintf(out, "environment, must carry the key the server printed at boot. --rapid-fire\n")
 		fmt.Fprintf(out, "needs it too: the burst bids against an item the fleet's own admin starts.\n\n")
@@ -1309,7 +1314,8 @@ func runBot(target string, spec botSpec) result {
 type fleetConfig struct {
 	bots    int  // how many player bots dial (D-135's --bots)
 	rapid   bool // blast a bounded burst and assert convergence (--rapid-fire)
-	burst   int  // bids per bot in the burst (--burst)
+	burst   int  // bids per bot per round (--burst)
+	rounds  int  // burst rounds while the stalled bot stays paused (--rounds)
 	stalled int  // the bot that stops reading during the burst (-1: none)
 }
 
@@ -1345,22 +1351,92 @@ const burstTimeout = 60 * time.Second
 // private monologues.
 const commandSpacing = 2 * time.Millisecond
 
-// smallReceiveBuffer dials with a 2 KiB receive buffer so the server's writes
-// stop being absorbed after a couple of kilobytes. That is the real "phone that
-// stopped reading" case made deterministic instead of a race against loopback
-// buffering — internal/hub/ordering_test.go's documented seam, inlined because
+// constrainedLink dials the stalled bot's socket the way a phone on a weak link
+// looks to the server: a 2 KiB receive buffer AND a deliberately small MSS.
+// Both matter, and neither is cosmetic:
+//
+//   - The receive buffer bounds what the local kernel can absorb before the
+//     server's writes stop making progress.
+//   - The MSS is the larger lever by far. Linux sizes the sender's transmit
+//     buffer as 2×cwnd×MSS, and loopback's MSS is ~64 KiB, so the SERVER will
+//     quietly buffer megabytes before its writer blocks — and a drill that
+//     needs megabytes of fan-out never overflows the hub's FIFO, which is the
+//     exact "drill that never stalls proves nothing" failure D-136 names.
+//     Measured on this machine: ~2.1 MiB absorbed at the default MSS versus
+//     ~14–32 KiB at 256–536 bytes.
+//
+// The seam is the one internal/hub/ordering_test.go documents, inlined because
 // the harness is package main and cannot import the hub's test helpers.
-func smallReceiveBuffer(network, addr string) (net.Conn, error) {
+func constrainedLink(network, addr string) (net.Conn, error) {
 	d := net.Dialer{Control: func(_, _ string, c syscall.RawConn) error {
 		var sockErr error
 		if err := c.Control(func(fd uintptr) {
-			sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, 2048)
+			if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, 2048); err != nil {
+				sockErr = err
+				return
+			}
+			sockErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_MAXSEG, stalledMSS)
 		}); err != nil {
 			return err
 		}
 		return sockErr
 	}}
 	return d.Dial(network, addr)
+}
+
+// stalledMSS is the stalled bot's advertised segment size. 256 bytes is
+// deliberately below the 536-byte IPv4 minimum reassembly size: the fence must
+// be crossed by the fan-out a burst actually produces (hundreds of frames), not
+// by a lucky megabyte of kernel buffering.
+const stalledMSS = 256
+
+// burstSpacing paces a burst so the D-138 bucket never runs dry: the bucket
+// lets CommandBurst commands through at once and refills at CommandRate per
+// second, so a burst of N needs a window of at least (N - CommandBurst) /
+// CommandRate seconds. Without this, a burst past the allowance is answered
+// with rate_limited refusals — legitimate traffic by the bucket's definition,
+// but useless as fan-out for the fence the stalled bot has to cross.
+//
+// The 2 ms floor is the shipped smoke cadence: a 30-command burst is already
+// inside the allowance, and spacing it wider would only slow the drill down.
+func burstSpacing(burst int) time.Duration {
+	const (
+		allowance = 40 // hub.DefaultPolicy.CommandBurst
+		rate      = 20 // hub.DefaultPolicy.CommandRate
+		// The theoretical window is (burst-allowance)/rate seconds. It is
+		// doubled here because the arithmetic assumes perfect pacing: the join
+		// and resync frames come out of the same bucket, and a scheduling hiccup
+		// that bunches two commands together would otherwise refuse the last
+		// one — and a refusal is a real error frame, not a retryable blip.
+		safety = 2
+	)
+	if burst <= allowance {
+		return commandSpacing
+	}
+	window := time.Duration(float64(burst-allowance) / rate * safety * float64(time.Second))
+	// The window is spread over the whole burst, and never below the floor.
+	if paced := window / time.Duration(burst); paced > commandSpacing {
+		return paced
+	}
+	return commandSpacing
+}
+
+// burstRefill is how long the bucket needs to hand back what one burst spent.
+// A burst of N commands at the pacing floor empties the bucket outright — the
+// join and the resync come out of the same allowance — so the wait is the time
+// to refill the whole allowance, plus a margin. Waiting less is not enough: a
+// round that starts on an empty bucket is a wall of refusals, and a refusal is
+// a real error frame that fails the drill.
+func burstRefill(burst int) time.Duration {
+	const (
+		allowance = 40
+		rate      = 20
+	)
+	refill := allowance
+	if burst > refill {
+		refill = burst
+	}
+	return time.Duration(float64(refill) / rate * 1.2 * float64(time.Second)) // 20% margin
 }
 
 // fleetBot is one bot inside an N-bot run: its socket, its stream, and the
@@ -1382,6 +1458,7 @@ type fleetBot struct {
 	mu     sync.Mutex
 	s      *stream
 	frames int
+	bytes  int64 // payload bytes this bot actually pulled off the socket
 	err    error
 	at     []time.Time // when each command was sent (the measured rate)
 }
@@ -1392,7 +1469,7 @@ type fleetBot struct {
 func dialFleet(target string, spec botSpec, rapid, stalled bool) (*fleetBot, error) {
 	dialer := websocket.DefaultDialer
 	if stalled {
-		dialer = &websocket.Dialer{NetDial: smallReceiveBuffer}
+		dialer = &websocket.Dialer{NetDial: constrainedLink}
 	}
 
 	conn, resp, err := dialer.Dial(target, nil)
@@ -1446,6 +1523,7 @@ func (b *fleetBot) read() {
 		b.mu.Lock()
 		observeErr := b.s.observe(env)
 		b.frames++
+		b.bytes += int64(len(raw))
 		b.mu.Unlock()
 		if observeErr != nil {
 			b.fail(fmt.Errorf("%s: %w", b.spec.nickname, observeErr))
@@ -1697,32 +1775,58 @@ func runFleet(target, run string, cfg fleetConfig) fleetReport {
 		return report
 	}
 
+	// The burst is paced so it stays inside D-138's bucket: every command is
+	// then legitimate traffic working the fence, not a rate_limited refusal.
+	spacing := burstSpacing(cfg.burst)
+	report.ok("the burst is paced at %s/command across %d commands per bot (inside D-138's 40-burst, 20/s bucket)",
+		spacing.Round(100*time.Microsecond), cfg.burst)
+
 	// The stall: the reader stops pulling frames off this socket for the whole
 	// burst, so the fence and its repair are exercised for real (D-41/D-136).
 	if cfg.stalled >= 0 {
 		bots[cfg.stalled].paused.Store(true)
-		report.ok("bot %02d is not reading during the burst: the fence and its repair are being exercised", cfg.stalled)
+		report.ok("bot %02d is not reading across %d burst round(s): the fence and its repair are being exercised",
+			cfg.stalled, cfg.rounds)
 	}
 
 	var wg sync.WaitGroup
-	for i, b := range bots {
-		wg.Add(1)
-		go func(i int, b *fleetBot) {
-			defer wg.Done()
-			for c := 0; c < cfg.burst; c++ {
-				amount := int64(100_000 + (c*cfg.bots+i+1)*1_000)
-				if err := b.send(fmt.Sprintf(`{"type":"bid.place","amount":%d}`, amount)); err != nil {
-					b.fail(err)
-					return
+	for round := 0; round < cfg.rounds; round++ {
+		// Between rounds the bucket is allowed to refill, so the next round is
+		// another burst of legitimate commands rather than a wall of refusals.
+		// The stalled bot stays paused: the point of a second round is to keep
+		// pushing fan-out at a socket that is provably not draining, until its
+		// kernel buffers and the hub's 64-frame FIFO are both full.
+		if round > 0 {
+			time.Sleep(burstRefill(cfg.burst))
+		}
+		for i, b := range bots {
+			wg.Add(1)
+			go func(i int, b *fleetBot, round int) {
+				defer wg.Done()
+				for c := 0; c < cfg.burst; c++ {
+					// The ladder continues across rounds: a repeated rung
+					// would be refused as below the standing bid.
+					rung := round*cfg.burst + c
+					amount := int64(100_000 + (rung*cfg.bots+i+1)*1_000)
+					if err := b.send(fmt.Sprintf(`{"type":"bid.place","amount":%d}`, amount)); err != nil {
+						b.fail(err)
+						return
+					}
+					b.noteCommand()
+					if c < cfg.burst-1 {
+						time.Sleep(spacing)
+					}
 				}
-				b.noteCommand()
-				if c < cfg.burst-1 {
-					time.Sleep(commandSpacing)
-				}
-			}
-		}(i, b)
+			}(i, b, round)
+		}
+		wg.Wait()
+		if cfg.rounds > 1 {
+			bots[0].mu.Lock()
+			rev := bots[0].s.lastRev
+			bots[0].mu.Unlock()
+			report.ok("round %d/%d done: the room is at rev %d", round+1, cfg.rounds, rev)
+		}
 	}
-	wg.Wait()
 
 	if cfg.stalled >= 0 {
 		bots[cfg.stalled].paused.Store(false)
@@ -1773,12 +1877,13 @@ func runFleet(target, run string, cfg fleetConfig) fleetReport {
 	for i, b := range bots {
 		b.mu.Lock()
 		commands, rate, frames, rev := len(b.at), peakCommandRate(b.at), b.frames, b.s.lastRev
+		absorbed := b.bytes
 		b.mu.Unlock()
 		tag := ""
 		if i == cfg.stalled {
 			tag = " (stalled)"
 		}
-		report.ok("bot %02d%s: %d commands, peak %g cmd/s, %d frames, last state rev %d", i, tag, commands, rate, frames, rev)
+		report.ok("bot %02d%s: %d commands, peak %g cmd/s, %d frames (%d bytes), last state rev %d", i, tag, commands, rate, frames, absorbed, rev)
 	}
 	return report
 }
@@ -1832,6 +1937,9 @@ func runFleetMain(target, run string, cfg fleetConfig, start time.Time) int {
 	case cfg.burst < 1:
 		fmt.Printf("loadtest: --burst must be at least 1 (got %d)\n", cfg.burst)
 		return 2
+	case cfg.rounds < 1:
+		fmt.Printf("loadtest: --rounds must be at least 1 (got %d)\n", cfg.rounds)
+		return 2
 	case cfg.stalled >= cfg.bots:
 		fmt.Printf("loadtest: --stalled-index %d is outside the pool (0..%d)\n", cfg.stalled, cfg.bots-1)
 		return 2
@@ -1850,7 +1958,7 @@ func runFleetMain(target, run string, cfg fleetConfig, start time.Time) int {
 
 	mode := "join-only"
 	if cfg.rapid {
-		mode = fmt.Sprintf("rapid-fire burst=%d stalled=%d", cfg.burst, cfg.stalled)
+		mode = fmt.Sprintf("rapid-fire burst=%d rounds=%d stalled=%d", cfg.burst, cfg.rounds, cfg.stalled)
 	}
 	verdict, code := "converged", 0
 	if !report.passed() {
