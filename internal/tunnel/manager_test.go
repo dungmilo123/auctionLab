@@ -111,6 +111,23 @@ func (r *statusRecorder) await(t *testing.T, want func(Status) bool) Status {
 	}
 }
 
+// awaitNewURL waits for a non-empty URL that has not been published before. The
+// restart cases use it instead of comparing against one remembered URL: a
+// generation publishes both its announcement and its healthy transition, so
+// "different from the first" would be satisfied by the second frame of the same
+// generation.
+func (r *statusRecorder) awaitNewURL(t *testing.T) Status {
+	t.Helper()
+
+	seen := make(map[string]bool)
+	for _, s := range r.snapshot() {
+		if s.URL != "" {
+			seen[s.URL] = true
+		}
+	}
+	return r.await(t, func(s Status) bool { return s.URL != "" && !seen[s.URL] })
+}
+
 // assertQuiet fails the case when a new non-empty URL appears within d. It is
 // how "Close never schedules a successor" is asserted without racing the
 // manager's own shutdown publish.
@@ -226,8 +243,8 @@ exit 1
 		if first.Healthy {
 			t.Fatalf("a freshly announced URL must not be healthy before the probe answers: %+v", first)
 		}
-		second := rec.await(t, func(s Status) bool { return s.URL != "" && s.URL != first.URL })
-		rec.await(t, func(s Status) bool { return s.URL != "" && s.URL != first.URL && s.URL != second.URL })
+		rec.awaitNewURL(t)
+		rec.awaitNewURL(t)
 
 		mu.Lock()
 		got := append([]time.Duration(nil), delays...)
@@ -284,9 +301,9 @@ exit 0
 		m.Start()
 		t.Cleanup(m.Close)
 
-		first := rec.await(t, func(s Status) bool { return strings.HasPrefix(s.URL, "https://stable-") })
-		rec.await(t, func(s Status) bool { return s.URL != "" && s.URL != first.URL })
-		rec.await(t, func(s Status) bool { return s.URL != "" && s.URL != first.URL })
+		rec.await(t, func(s Status) bool { return strings.HasPrefix(s.URL, "https://stable-") })
+		rec.awaitNewURL(t)
+		rec.awaitNewURL(t)
 
 		mu.Lock()
 		got := append([]time.Duration(nil), delays...)
@@ -322,13 +339,13 @@ exit 0
 		// child blocked in write(2) and the second URL would never arrive
 		// (D-124's explicit prohibition).
 		dir := t.TempDir()
-		bin := stubBin(t, dir, urlLine("first")+`
+		bin := stubBin(t, dir, urlLine("first-host")+`
 i=0
 while [ $i -lt 4096 ]; do
   echo "INF filler filler filler filler filler filler filler filler filler filler" >&2
   i=$((i+1))
 done
-`+urlLine("second")+`
+`+urlLine("second-host")+`
 while :; do sleep 0.05; done
 `)
 
@@ -343,8 +360,8 @@ while :; do sleep 0.05; done
 		m.Start()
 		t.Cleanup(m.Close)
 
-		rec.await(t, func(s Status) bool { return strings.Contains(s.URL, "https://first.trycloudflare.com") })
-		rec.await(t, func(s Status) bool { return strings.Contains(s.URL, "https://second.trycloudflare.com") })
+		rec.await(t, func(s Status) bool { return strings.Contains(s.URL, "https://first-host.trycloudflare.com") })
+		rec.await(t, func(s Status) bool { return strings.Contains(s.URL, "https://second-host.trycloudflare.com") })
 	})
 
 	t.Run("Close terminates the child and never schedules a successor", func(t *testing.T) {
@@ -354,7 +371,7 @@ while :; do sleep 0.05; done
 trap 'printf term > %q; exit 0' TERM
 %s
 while :; do sleep 0.05; done
-`, marker, urlLine("term")))
+`, marker, urlLine("term-now")))
 
 		rec := newStatusRecorder()
 		logs := &logRecorder{}
@@ -398,7 +415,7 @@ while [ $i -lt 200 ]; do
   sleep 0.05
   i=$((i+1))
 done
-`, urlLine("hang"), beats))
+`, urlLine("hang-on"), beats))
 
 		rec := newStatusRecorder()
 		logs := &logRecorder{}
@@ -572,7 +589,7 @@ exit 1
 
 	t.Run("health flips only after two consecutive probe failures", func(t *testing.T) {
 		dir := t.TempDir()
-		bin := stubBin(t, dir, urlLine("health")+`
+		bin := stubBin(t, dir, urlLine("health-ok")+`
 while :; do sleep 0.05; done
 `)
 
