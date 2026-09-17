@@ -3,12 +3,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"auctionlab"
@@ -234,7 +236,9 @@ func newServer(addr string, handler http.Handler) *http.Server {
 // idempotent because the hub's own stops are.
 func startLiveness(ws *hub.Hub) (stop func()) {
 	stopTicker := ws.StartTicker()
+	stopHeartbeat := ws.StartHeartbeat()
 	return func() {
+		stopHeartbeat()
 		stopTicker()
 	}
 }
@@ -249,13 +253,72 @@ func startLiveness(ws *hub.Hub) (stop func()) {
 // candidate (D-129). The value itself is deliberately never echoed — a
 // PUBLIC_URL may carry a query string, and a boot log is not the place for it.
 func resolvePublicURL(flagValue string, getenv func(string) string) (value string, source string, warning string) {
-	return "", "", ""
+	raw, source := flagValue, "--public-url"
+	if raw == "" {
+		raw, source = strings.TrimSpace(getenv("PUBLIC_URL")), "PUBLIC_URL"
+	}
+	if raw == "" {
+		return "", "", ""
+	}
+	if game.ValidateJoinURL(raw) != nil {
+		// The validator's own message would name the value, so it is
+		// deliberately not used here: a PUBLIC_URL may carry a query string and
+		// a boot log is not the place for it (the same rule that keeps ADMIN_KEY
+		// out of every line, T-04-04).
+		return "", "", fmt.Sprintf("%s was ignored: it is not a usable join URL (the D-86 rules apply), so the show keeps its selection", source)
+	}
+	return raw, source, ""
+}
+
+// proxyEnvNames are the variables http.ProxyFromEnvironment honours — and the
+// tunnel probe's websocket.DefaultDialer goes through it, so a venue proxy would
+// silently reroute the health check. Only their NAMES are ever reported: a proxy
+// URL routinely carries credentials.
+var proxyEnvNames = []string{"HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"}
+
+// proxyEnvName names the proxy variables that are set, or "".
+func proxyEnvName(getenv func(string) string) string {
+	var set []string
+	for _, name := range proxyEnvNames {
+		if getenv(name) != "" {
+			set = append(set, name)
+		}
+	}
+	return strings.Join(set, ", ")
+}
+
+// cloudflaredVersionTimeout bounds the one-shot version probe. It is short on
+// purpose: the boot must not wait on a diagnostic.
+const cloudflaredVersionTimeout = 3 * time.Second
+
+// cloudflaredVersion asks the resolved binary for its version, once, at boot, so
+// the operator log names exactly what is running. Best-effort by contract: a
+// binary that cannot answer within the budget prints nothing, and the supervisor
+// will name whatever goes wrong later.
+func cloudflaredVersion(bin string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), cloudflaredVersionTimeout)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, bin, "--version").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // tunnelStatusSink is D-123's one-way wire between the isolated tunnel package
 // and the two components that consume its status.
+//
+// Both halves are idempotent and neither can fail, which matters because the
+// manager calls this from its own goroutine: the hub fans the control frame out
+// to admin and screen, and the engine records the runtime URL whose projection
+// the QR is rendered from (D-128). Nothing here is persisted, and nothing here
+// moves the game revision.
 func tunnelStatusSink(ws *hub.Hub, engine *game.Engine) tunnel.PublishFunc {
-	return func(s tunnel.Status) {}
+	return func(status tunnel.Status) {
+		ws.BroadcastTunnelStatus(status.URL, status.Healthy)
+		engine.SetTunnelStatus(status.URL, status.Healthy)
+	}
 }
 
 // tunnelPlan is the boot's decision about the OPTIONAL tunnel (D-124): whether a
@@ -273,5 +336,28 @@ type tunnelPlan struct {
 // environment or a conflicting cloudflared config are logged and the auction
 // runs on LAN/local.
 func planTunnel(enabled bool, flagBin string, getenv func(string) string, lookPath func(string) (string, error), home string) tunnelPlan {
-	return tunnelPlan{}
+	if !enabled {
+		return tunnelPlan{}
+	}
+
+	bin, ok := tunnel.ResolveBinary(flagBin, getenv, lookPath)
+	if !ok {
+		return tunnelPlan{Log: []string{
+			"tunnel: --tunnel is set but no cloudflared binary was found — pass --cloudflared-bin, set TUNNEL_BIN, or run scripts/install-cloudflared.sh; continuing on LAN/local",
+		}}
+	}
+
+	logs := []string{
+		fmt.Sprintf("tunnel: starting cloudflared (%s); the join URL appears once the edge accepts it", bin),
+	}
+	if version := cloudflaredVersion(bin); version != "" {
+		logs = append(logs, "tunnel: "+version)
+	}
+	if names := proxyEnvName(getenv); names != "" {
+		logs = append(logs, fmt.Sprintf("tunnel: %s is set — the cloudflared process and the health probe follow it, so a venue proxy can reroute them", names))
+	}
+	if path, found := tunnel.ConfigConflict(home); found {
+		logs = append(logs, fmt.Sprintf("tunnel: %s exists — cloudflared quick tunnels are unsupported while it does; remove or rename it if the tunnel refuses to start", path))
+	}
+	return tunnelPlan{Start: true, Bin: bin, Log: logs}
 }

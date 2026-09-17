@@ -555,3 +555,81 @@ func TestTunnelURLIsNeverPersisted(t *testing.T) {
 		}
 	}
 }
+
+// TestJoinURLRotatesWithTunnelStatus is D-128's rotation half: a restarted
+// cloudflared announces a NEW origin, and the projection every projector renders
+// its QR from follows it in place — no mutation, no restart, no revision move.
+// It also pins the tag's audience: `join_url_source` is additive on the ADMIN
+// view alone, so neither the projector nor a player ever learns why the URL
+// moved (T-07-05).
+func TestJoinURLRotatesWithTunnelStatus(t *testing.T) {
+	const (
+		first  = "https://first-rotated-label.trycloudflare.com"
+		second = "https://second-rotated-label.trycloudflare.com"
+	)
+	selected := configCandidates[1]
+
+	env := newConfigEnv(t, filepath.Join(t.TempDir(), "auction.db"), &testClock{t: testStart}, configCandidates)
+	selection := selected
+	if err := env.engine.UpdateConfig(ConfigInput{JoinURL: &selection}); err != nil {
+		t.Fatalf("UpdateConfig: %v", err)
+	}
+
+	screenOf := func() ScreenView {
+		t.Helper()
+		view, ok := env.engine.Snapshot(RoleScreen, "").(ScreenView)
+		if !ok {
+			t.Fatalf("screen snapshot has type %T", env.engine.Snapshot(RoleScreen, ""))
+		}
+		return view
+	}
+	adminOf := func() AdminView {
+		t.Helper()
+		view, ok := env.engine.Snapshot(RoleAdmin, "").(AdminView)
+		if !ok {
+			t.Fatalf("admin snapshot has type %T", env.engine.Snapshot(RoleAdmin, ""))
+		}
+		return view
+	}
+
+	env.engine.SetTunnelStatus(first, true)
+	if got := screenOf().JoinURL; got != first {
+		t.Fatalf("screen join_url = %q, want %q", got, first)
+	}
+	if admin := adminOf(); admin.SelectedJoinURL != first || admin.JoinURLSource != "tunnel" {
+		t.Fatalf("admin selection = %q (%q), want %q (\"tunnel\")", admin.SelectedJoinURL, admin.JoinURLSource, first)
+	}
+
+	// A restart: the supervisor publishes a NEW origin, and the QR follows it.
+	env.engine.SetTunnelStatus(second, true)
+	if got := screenOf().JoinURL; got != second {
+		t.Errorf("screen join_url after the tunnel rotated = %q, want the new origin %q", got, second)
+	}
+	if got := adminOf().JoinURLSource; got != "tunnel" {
+		t.Errorf("admin join_url_source after the rotation = %q, want %q", got, "tunnel")
+	}
+
+	// The tag is admin-only: the projector renders a QR from join_url and has no
+	// business guessing which rung produced it.
+	screenJSON, err := json.Marshal(screenOf())
+	if err != nil {
+		t.Fatalf("marshalling the screen snapshot: %v", err)
+	}
+	var screenKeys map[string]any
+	if err := json.Unmarshal(screenJSON, &screenKeys); err != nil {
+		t.Fatalf("unmarshalling the screen snapshot: %v", err)
+	}
+	if _, present := screenKeys["join_url_source"]; present {
+		t.Error("the screen snapshot carries join_url_source: the source tag is additive on the admin view alone")
+	}
+
+	// The tunnel dies: the QR falls straight back to the persisted selection and
+	// the tag names that rung instead.
+	env.engine.SetTunnelStatus(second, false)
+	if got := screenOf().JoinURL; got != selected {
+		t.Errorf("screen join_url after the tunnel went unhealthy = %q, want the persisted %q (D-129)", got, selected)
+	}
+	if admin := adminOf(); admin.JoinURLSource != "selected" {
+		t.Errorf("admin join_url_source after the fallback = %q, want %q", admin.JoinURLSource, "selected")
+	}
+}
