@@ -405,8 +405,8 @@ func TestEffectiveJoinURLPrecedence(t *testing.T) {
 			wantURL: configCandidates[1], wantSource: "selected",
 		},
 		{
-			name:      "an unhealthy tunnel falls back to the first candidate",
-			tunnelURL: tunnelURL,
+			name:       "an unhealthy tunnel falls back to the first candidate",
+			tunnelURL:  tunnelURL,
 			candidates: configCandidates,
 			wantURL:    configCandidates[0], wantSource: "candidate",
 		},
