@@ -268,11 +268,13 @@ describe('the Dutch arm is public-only and read-only (D-105)', () => {
 
   it('invents no reconnect affordance, keeping the lost-socket recovery the presenter reload', () => {
     // D-130's rename brings the state NAME into this file — `reconnecting` is
-    // the shared four-value vocabulary's own key, so the banned words are the
-    // AFFORDANCES rather than the vocabulary: no retry, no backoff, and no
-    // reconnect entry point (07-04 lifts the map into the shared component, at
-    // which point even the state name leaves this file).
-    expect(screenViewSource).not.toMatch(/retry|backoff/i)
+    // the shared four-value vocabulary's own key — and 07-04 renders the
+    // indicator through the shared component, so the lock is the AFFORDANCES:
+    // no backoff, no reconnecting entry point of the route's own, and no retry
+    // callback passed to `ConnectionLine` (the structural case above proves no
+    // handler is declared at all).
+    expect(screenViewSource).not.toMatch(/backoff/i)
     expect(screenViewSource).not.toMatch(/reconnect[A-Z(]/)
+    expect(screenViewSource).not.toMatch(/onRetry/)
   })
 })

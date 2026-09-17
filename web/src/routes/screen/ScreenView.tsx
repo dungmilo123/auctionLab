@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { ConnectionLine } from '@/components/ConnectionLine'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
 import { anchorDutch, atFloor, dutchPrice, elapsedOf } from '@/lib/dutch'
@@ -43,24 +44,14 @@ import type { LiveOverlay, ViewState } from '@/ws/view'
 // mid-run paints the whole screen from the trailing snapshot alone — and no
 // client-side sort ever reorders the server's standings (ECON-05).
 
-const STATUS_COPY: Record<ConnectionStatus, CopyKey> = {
-  reconnecting: 'status.connecting',
-  live: 'status.open',
-  offline: 'status.lost',
-  superseded: 'status.superseded',
-}
-
-// The operator's cue, deliberately NOT the player route's: the screen spends its
-// one accent fill on the datum the room is watching, so `live` is near-black
-// here (§Color item 10). The square never carries the state alone — the word is
-// always beside it, and this route has no live region at all (a price that
-// re-announces four times a second is unusable).
-const STATUS_FILL: Record<ConnectionStatus, string> = {
-  reconnecting: 'bg-muted-foreground',
-  live: 'bg-foreground',
-  offline: 'bg-destructive',
-  superseded: 'bg-destructive',
-}
+// The operator's cue is the SHARED indicator (G-11), with the two cells this
+// route owns passed in: the live square is near-black here — the screen spends
+// its one accent fill on the datum the room is watching, so its connection
+// square is never accent (§Color item 10) — and the word keeps the carried
+// muted Caption role, which is what keeps the projector's operator chrome
+// chrome. No live region is requested: a price that re-announces four times a
+// second is unusable, and no retry callback is passed, so the route declares no
+// handler and stays structurally read-only (G-3).
 
 // The four frozen auction types, mapped to their approved names. `ItemIntro`
 // carries the same map for the player route; lifting it would touch a shipped
@@ -703,15 +694,22 @@ function FinaleBody({ standings }: { standings: readonly LeaderEntry[] }) {
 function ScreenView() {
   const { t } = useLanguage()
   const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
+  // G-1: the machine's first-open boolean, mirrored for the shared indicator's
+  // `Connecting…`/`Reconnecting…` split (the rule stays in `reconnect.ts`).
+  const [lastOpenAt, setLastOpenAt] = useState<number | null>(null)
   // `null` until the first admitted snapshot: before it the route shows the
   // header row and one line, and nothing else (no QR, no skeleton).
   const [view, setView] = useState<ViewState | null>(null)
 
   // The socket is created INSIDE the effect and closed in its cleanup — at
-  // module scope it would open twice under StrictMode and supersede itself.
+  // module scope it would open twice under StrictMode and supersede itself. The
+  // handle has `close()` and nothing else: read-only by API, not by promise.
   useEffect(() => {
     const connection = openScreenSocket({
-      onStatus: setStatus,
+      onStatus: (next) => {
+        if (next === 'live') setLastOpenAt(Date.now())
+        setStatus(next)
+      },
       onView: (next) => setView(next),
     })
 
@@ -765,14 +763,8 @@ function ScreenView() {
         <h1 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">{t('screen.brand')}</h1>
 
         {/* Operator chrome, not content: no live region on this route, and the
-            word always carries the state beside the square. */}
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`inline-block size-3 border-2 border-border ${STATUS_FILL[status]}`}
-          />
-          <p className="text-sm leading-[1.5] text-muted-foreground">{t(STATUS_COPY[status])}</p>
-        </div>
+            shared indicator's word always carries the state beside the square. */}
+        <ConnectionLine status={status} lastOpenAt={lastOpenAt} liveFill="bg-foreground" muted />
       </div>
 
       {/* The last known body deliberately stays on screen through a `lost`
