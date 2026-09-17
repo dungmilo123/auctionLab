@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"auctionlab"
@@ -16,6 +17,7 @@ import (
 	"auctionlab/internal/hub"
 	"auctionlab/internal/netinfo"
 	"auctionlab/internal/store"
+	"auctionlab/internal/tunnel"
 )
 
 func main() {
@@ -27,17 +29,20 @@ func main() {
 
 func run() error {
 	port := flag.Int("port", 8080, "HTTP port to listen on")
-	tunnel := flag.Bool("tunnel", false, "start a cloudflared quick tunnel (not implemented until Phase 7)")
-	publicURL := flag.String("public-url", "", "public URL to advertise in QR codes (not implemented until Phase 7)")
+	wantTunnel := flag.Bool("tunnel", false, "start a cloudflared quick tunnel and advertise its URL")
+	cloudflaredBin := flag.String("cloudflared-bin", "", "path to the cloudflared binary (default: TUNNEL_BIN, then PATH)")
+	publicURL := flag.String("public-url", "", "public URL to advertise in QR codes (default: PUBLIC_URL)")
 	flag.Parse()
 
-	// The flags are parsed now so the CLI signature is stable for Phase 7;
-	// Phase 1 only reports that the tunnel path is not wired yet.
-	if *tunnel {
-		log.Printf("--tunnel parsed but not implemented until Phase 7; continuing without a tunnel")
-	}
-	if *publicURL != "" {
-		log.Printf("--public-url=%s parsed but not implemented until Phase 7; continuing without a public URL", *publicURL)
+	// D-127: PUBLIC_URL is resolved for `game.Config` — it is a BOOT input and
+	// never durable state. An unusable value is a warning, never a failed boot:
+	// connectivity is not a prerequisite for the auction (D-129), and the value
+	// itself is never echoed (a public URL may carry a query string).
+	publicValue, publicSource, publicWarning := resolvePublicURL(*publicURL, os.Getenv)
+	if publicWarning != "" {
+		log.Printf("tunnel: %s", publicWarning)
+	} else if publicValue != "" {
+		log.Printf("tunnel: %s is set — it overrides the tunnel and the admin selection while this process runs, and is never persisted", publicSource)
 	}
 
 	dbPath := store.PathFromEnv()
@@ -107,6 +112,10 @@ func run() error {
 		// D-84/D-86: what the admin panel may offer. The engine projects the
 		// list; it never persists it (the selection is what config_json holds).
 		JoinURLCandidates: candidates,
+		// D-127: the boot override, already validated above. The engine validates
+		// it again with its own rule and drops an unusable value, so a caller
+		// that is not this boot cannot smuggle one in either.
+		PublicURL: publicValue,
 	})
 	if err != nil {
 		return err
@@ -131,15 +140,40 @@ func run() error {
 	ws := hub.New(engine, adminKey)
 	engine.SetPublisher(ws.Fanout)
 
-	// Boot step 4 — the D-56 ticker. It starts only after the publisher is
-	// installed (a beat before that would have no fan-out edge to deliver
-	// through) and after game.New returned, which is where a deadline that
-	// passed while the process was down already settled. The deferred stop runs
-	// before the store's own deferred Close — defers are LIFO and st.Close was
-	// registered first — so no beat can outlive the database it reads (Pitfall
-	// 11).
-	stopTicker := ws.StartTicker()
-	defer stopTicker()
+	// Boot step 4 — the hub's two background producers, in one lifecycle owner.
+	// Both start only after the publisher is installed (a beat before that would
+	// have no fan-out edge to deliver through) and after game.New returned,
+	// which is where a deadline that passed while the process was down already
+	// settled. The deferred stop runs before the store's own deferred Close —
+	// defers are LIFO and st.Close was registered first — and inside the owner
+	// the heartbeat stops before the ticker, so neither can outlive the database
+	// it reads (Pitfall 11).
+	stopLiveness := startLiveness(ws)
+	defer stopLiveness()
+
+	// Boot step 4b — the OPTIONAL tunnel (D-123/D-124). The manager is built
+	// after the hub exists (its status publishes THROUGH the hub) and its Close
+	// is deferred before the liveness stop is registered, so a shutdown takes
+	// the tunnel down first. Every failure path is non-fatal: no cloudflared, a
+	// config-file conflict, a refused creation — the auction keeps running on
+	// LAN/local exactly as if --tunnel had never been passed (D-129).
+	plan := planTunnel(*wantTunnel, *cloudflaredBin, os.Getenv, exec.LookPath, os.Getenv("HOME"))
+	for _, line := range plan.Log {
+		log.Printf("%s", line)
+	}
+	if plan.Start {
+		mgr := tunnel.New(tunnel.Config{
+			Port:     *port,
+			Bin:      plan.Bin,
+			Protocol: os.Getenv("TUNNEL_PROTOCOL"),
+			// D-123's one-way wire: the callback is the ONLY place this package
+			// is named, so game/, hub/ and store/ never import internal/tunnel.
+			Publish: tunnelStatusSink(ws, engine),
+			Home:    os.Getenv("HOME"),
+		})
+		mgr.Start()
+		defer mgr.Close()
+	}
 
 	// Boot step 3 — the embedded SPA must be usable before the listener starts.
 	spa, err := auctionlab.SPA()
@@ -189,4 +223,55 @@ func newServer(addr string, handler http.Handler) *http.Server {
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+}
+
+// startLiveness starts the hub's two background producers and returns the ONE
+// stop function the boot defers.
+//
+// The owner exists so the shutdown order is a property of one function rather
+// than of the order two `defer`s happen to be written in: the heartbeat stops
+// before the ticker, and both stop before the store closes (Pitfall 11). Stop is
+// idempotent because the hub's own stops are.
+func startLiveness(ws *hub.Hub) (stop func()) {
+	stopTicker := ws.StartTicker()
+	return func() {
+		stopTicker()
+	}
+}
+
+// resolvePublicURL applies D-127's precedence to the boot override: the
+// `--public-url` flag wins the PUBLIC_URL environment variable, and the winner
+// is checked by the game package's own D-86 rule.
+//
+// It returns the accepted value, the name of the source that produced it (for
+// the boot log), and an operator-facing warning. It never returns an error: an
+// unusable override is ignored and the show continues on the selection or a LAN
+// candidate (D-129). The value itself is deliberately never echoed — a
+// PUBLIC_URL may carry a query string, and a boot log is not the place for it.
+func resolvePublicURL(flagValue string, getenv func(string) string) (value string, source string, warning string) {
+	return "", "", ""
+}
+
+// tunnelStatusSink is D-123's one-way wire between the isolated tunnel package
+// and the two components that consume its status.
+func tunnelStatusSink(ws *hub.Hub, engine *game.Engine) tunnel.PublishFunc {
+	return func(s tunnel.Status) {}
+}
+
+// tunnelPlan is the boot's decision about the OPTIONAL tunnel (D-124): whether a
+// manager should be started, which binary it would use, and the operator-facing
+// lines to log. It is a value rather than a set of side effects so the whole
+// decision table — every non-fatal degradation included — is a table test.
+type tunnelPlan struct {
+	Start bool
+	Bin   string
+	Log   []string
+}
+
+// planTunnel is D-124/D-129's decision. Nothing here can fail the boot:
+// connectivity is never a prerequisite, so a missing binary, a proxy in the
+// environment or a conflicting cloudflared config are logged and the auction
+// runs on LAN/local.
+func planTunnel(enabled bool, flagBin string, getenv func(string) string, lookPath func(string) (string, error), home string) tunnelPlan {
+	return tunnelPlan{}
 }

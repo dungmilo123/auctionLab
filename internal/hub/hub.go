@@ -134,6 +134,17 @@ func New(engine *game.Engine, adminKey string) *Hub {
 	return newHub(engine, DefaultPolicy, adminKey)
 }
 
+// NewWithPolicy is New with the D-40/D-132 policy injected.
+//
+// It exists for one reason: cmd/server's integration test drives the PRODUCTION
+// heartbeat lifecycle (startLiveness) and needs a beat cadence short enough to
+// observe, exactly as this package's own tests use the unexported newHub. The
+// production constructor stays New, so a caller that does not think about the
+// policy always gets DefaultPolicy's numbers.
+func NewWithPolicy(engine *game.Engine, policy Policy, adminKey string) *Hub {
+	return newHub(engine, policy, adminKey)
+}
+
 // newHub is New with the policy injected, so a test can pin the liveness
 // mechanism and the FIFO depth with values short enough to observe (D-40).
 func newHub(engine *game.Engine, policy Policy, adminKey string) *Hub {

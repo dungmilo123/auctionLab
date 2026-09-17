@@ -150,6 +150,15 @@ func resolveBinary(flagPath string, getenv func(string) string, lookPath func(st
 	return found, true
 }
 
+// ResolveBinary is resolveBinary's exported form: cmd/server resolves the binary
+// at boot (D-124) so it can report which rung won and whether the tunnel is
+// startable BEFORE a manager exists. Keeping one implementation is the point — a
+// second copy of the precedence order in cmd/server is exactly where it would
+// drift.
+func ResolveBinary(flagPath string, getenv func(string) string, lookPath func(string) (string, error)) (string, bool) {
+	return resolveBinary(flagPath, getenv, lookPath)
+}
+
 // backoffDelay is D-125's restart schedule: base doubled once per attempt and
 // capped. It is deliberately separate from the jitter that follows it, so a
 // test can pin the schedule itself (5s, 10s, 20s, 40s, 60s, 60s…) without
