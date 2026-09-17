@@ -4,13 +4,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"auctionlab"
@@ -208,7 +211,31 @@ func run() error {
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("listening on %s", addr)
 
-	return newServer(addr, mux).ListenAndServe()
+	// The shutdown path (WR-04). Without a signal handler a Ctrl-C ends the
+	// process inside ListenAndServe and every defer above is skipped — and the
+	// deferred chain is the ONLY thing that runs the tunnel supervisor's
+	// SIGTERM → bounded wait → SIGKILL policy, so the cloudflared child would
+	// survive as an orphan holding a live quick tunnel (verified with the real
+	// binary; the phase logged it in deferred-items.md). Shutdown closes the
+	// listeners, ListenAndServe returns, and the defers run in their intended
+	// LIFO order: tunnel close, liveness stop, store close.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop() // registered last, so a second signal during the stop gets default behaviour
+
+	srv := newServer(addr, mux)
+	go func() {
+		<-ctx.Done()
+		// A hijacked /ws connection is not waited on (net/http untracks it on
+		// StateHijacked), so the audience's phones never hold the shutdown open.
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	// A graceful shutdown is not a boot failure: Shutdown makes ListenAndServe
+	// return ErrServerClosed, which must exit cleanly rather than as "fatal:".
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 // newServer builds the HTTP server this project can live with: a client that
