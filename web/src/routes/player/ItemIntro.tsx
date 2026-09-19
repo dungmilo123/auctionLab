@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import ItemImage from '@/components/ItemImage'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
 import { formatUSD } from '@/lib/format'
 import type { PublicItem } from '@/ws/protocol'
@@ -9,6 +10,10 @@ import type { PublicItem } from '@/ws/protocol'
 // rendered comes from the self-sufficient snapshot (D-25) plus the player's own
 // row, so a reload mid-intro paints the whole screen with no event history.
 // There is no action here and therefore no accent on this screen.
+//
+// D-01 adds the item's picture between the name and the info rows. It is the
+// same element the projector and the admin render (one resolution rule, one
+// failure rule), and it renders nothing at all when the item carries no image.
 
 // The four frozen auction types, mapped to their approved type names. A value
 // outside the set cannot be created (the admin editor offers exactly four and
@@ -57,6 +62,16 @@ function ItemIntro({ item, budget }: ItemIntroProps) {
       <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
         {item.name}
       </h2>
+
+      {/* D-01: the lot's picture, above the facts it belongs to. A fixed height
+          with `object-contain` letterboxes a photo of any shape rather than
+          resizing the body or cropping it, and an unconfigured item renders no
+          element at all (so there is no empty frame to read as a broken one). */}
+      <ItemImage
+        src={item.imageUrl}
+        alt={item.name}
+        className="h-40 w-full border-2 border-border bg-card object-contain"
+      />
 
       <div className="flex flex-col gap-2">
         <InfoRow label={t('intro.typeLabel')}>

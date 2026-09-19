@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ItemImage from '@/components/ItemImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -282,11 +283,24 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
-          {item.name}
-        </h2>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('auction.english')}</p>
+      <div className="flex items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
+            {item.name}
+          </h2>
+          <p className="text-sm leading-[1.5] text-muted-foreground">{t('auction.english')}</p>
+        </div>
+
+        {/* D-01: the lot's picture BESIDE the name rather than above it. This is
+            the densest player body — the bid field, the quick steps and the CTA
+            all live below — so a hero image would push the one control the
+            player needs out of thumb reach. An unconfigured item renders
+            nothing here and the heading collapses back to its shipped shape. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="size-20 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       <LiveStats live={live} />

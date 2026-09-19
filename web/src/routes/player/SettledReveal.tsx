@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import ItemImage from '@/components/ItemImage'
 import { bidReasonKey } from '@/lib/bid'
 import { formatUSD } from '@/lib/format'
 import { useLanguage } from '@/lib/i18n'
@@ -60,11 +61,22 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em]">
-          {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
-        </h2>
-        <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
+      <div className="flex items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
+            {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
+          </h2>
+          <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
+        </div>
+
+        {/* D-01: the picture of the lot the reveal is about, beside the outcome
+            heading. The reveal rows below are the ceremony's facts and keep
+            their shipped positions; an unconfigured item renders no element. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="size-20 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       {/* D-97: the first thing the loser reads — directly under the outcome and

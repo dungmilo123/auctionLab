@@ -236,6 +236,10 @@ export const COPY = {
   'admin.editorNew': { en: 'New item', vi: 'Item mới' },
   'admin.editorEdit': { en: 'Edit item', vi: 'Sửa item' },
   'admin.field.name': { en: 'Name', vi: 'Tên item' },
+  // D-01: the item editor's image field. A bare file name is resolved under the
+  // server's own /images/ route; a full http(s)/data URL or a root-relative
+  // path passes through, so the label names both accepted forms.
+  'admin.field.imageUrl': { en: 'Image (URL or file name)', vi: 'Ảnh (URL hoặc tên tệp)' },
   'admin.field.auctionType': { en: 'Auction type', vi: 'Loại đấu giá' },
   'admin.field.truthValue': { en: 'True value', vi: 'Giá trị thật' },
   'admin.field.hintMin': { en: 'Hint min', vi: 'Gợi ý thấp nhất' },

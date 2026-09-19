@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ItemImage from '@/components/ItemImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -219,13 +220,24 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
-          {item.name}
-        </h2>
-        <p className="text-sm leading-[1.5] text-muted-foreground">
-          {t(item.auctionType === 'vickrey' ? 'auction.vickrey' : 'auction.sealedFirst')}
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
+            {item.name}
+          </h2>
+          <p className="text-sm leading-[1.5] text-muted-foreground">
+            {t(item.auctionType === 'vickrey' ? 'auction.vickrey' : 'auction.sealedFirst')}
+          </p>
+        </div>
+
+        {/* D-01: the lot's picture beside the name, so the close clock, the
+            amount field and the one CTA keep the positions the shipped layout
+            gave them. An unconfigured item renders no element. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="size-20 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       {/* The body's one moving number (mono + tabular, so the digits cannot

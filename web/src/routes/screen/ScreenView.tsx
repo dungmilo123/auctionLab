@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ConnectionLine } from '@/components/ConnectionLine'
+import ItemImage from '@/components/ItemImage'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
 import { anchorDutch, atFloor, dutchPrice, elapsedOf } from '@/lib/dutch'
@@ -465,25 +466,42 @@ function ItemBody({
 
   return (
     <>
-      <div className="flex shrink-0 flex-col gap-1">
-        {/* Item names run to 80 runes: the heading wraps, it never truncates. */}
-        <h2 className="min-w-0 break-words text-xl leading-[1.2] font-bold tracking-[-0.01em]">
-          {item.name}
-        </h2>
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <p className="text-sm leading-[1.5] font-bold">{t('intro.typeLabel')}</p>
-          <p className="text-sm leading-[1.5] text-muted-foreground">
-            {typeKey === undefined ? item.auctionType : t(typeKey)}
-          </p>
-          <p className="text-sm leading-[1.5] font-bold">{t('intro.hintLabel')}</p>
-          {hint === null ? (
-            // The both-null case is a fact about the item, not an error, so it
-            // gets the carried sentence rather than an empty value slot.
-            <p className="text-sm leading-[1.5] text-muted-foreground">{t('intro.hintNone')}</p>
-          ) : (
-            <p className="text-sm leading-[1.5] text-muted-foreground">{hint}</p>
-          )}
+      <div className="flex shrink-0 items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          {/* Item names run to 80 runes: the heading wraps, it never truncates. */}
+          <h2 className="min-w-0 break-words text-xl leading-[1.2] font-bold tracking-[-0.01em]">
+            {item.name}
+          </h2>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <p className="text-sm leading-[1.5] font-bold">{t('intro.typeLabel')}</p>
+            <p className="text-sm leading-[1.5] text-muted-foreground">
+              {typeKey === undefined ? item.auctionType : t(typeKey)}
+            </p>
+            <p className="text-sm leading-[1.5] font-bold">{t('intro.hintLabel')}</p>
+            {hint === null ? (
+              // The both-null case is a fact about the item, not an error, so it
+              // gets the carried sentence rather than an empty value slot.
+              <p className="text-sm leading-[1.5] text-muted-foreground">{t('intro.hintNone')}</p>
+            ) : (
+              <p className="text-sm leading-[1.5] text-muted-foreground">{hint}</p>
+            )}
+          </div>
         </div>
+
+        {/* D-01: the lot's picture BESIDE the heading, so the transition into
+            LIVE still changes numbers, never layout, and no typography or well
+            below is compressed. `h-16 w-24` is bounded on purpose: at the 4.2vmin
+            projector root it is 4rem × 6rem (181 × 272px at 1920×1080), and the
+            heading row's own height is 4.15rem+ — measured live at 1920×1080 the
+            row is 188px with AND without the image, so the picture costs this
+            body exactly 0px and can never clip a feed row. An unconfigured item
+            renders no element at all and the heading keeps its shipped
+            footprint exactly. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="h-16 w-24 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       {/* Both wells keep their footprint in every arm: the transition into LIVE
@@ -582,11 +600,27 @@ function SettledBody({
     // ceremony stays shrink-0 and the shared Standings takes the remainder, so
     // the reclaimed budget is what allocates the standings rows (D-01/D-02).
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-col gap-1">
-        <h2 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">
-          {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
-        </h2>
-        <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
+      <div className="flex shrink-0 items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-display leading-[1.2] font-bold tracking-[-0.01em]">
+            {sold ? t('settle.soldHeading') : t('settle.unsoldHeading')}
+          </h2>
+          <p className="min-w-0 break-words text-base leading-[1.5]">{item.name}</p>
+        </div>
+
+        {/* D-01: the picture of the lot the reveal is about, beside the outcome
+            heading. `h-16 w-24` (4rem × 6rem = 181 × 272px at 1920×1080) is
+            deliberately UNDER this block's own 4.15rem height (Display 2.4 +
+            gap-1 0.25 + Body 1.5) — measured live at 1920×1080 the heading row
+            is 188px and the standings grid's clientHeight is identical with and
+            without the image, so the ceremony cannot grow and the standings'
+            four-row budget below is untouched. An unconfigured item renders no
+            element. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="h-16 w-24 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       {/* 04-UI-SPEC §Body 3 amendment (quick 260917-sfp, D-02): the reveal facts

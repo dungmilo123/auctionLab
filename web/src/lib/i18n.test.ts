@@ -183,6 +183,7 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   'admin.editorNew': { en: 'New item', vi: 'Item mới' },
   'admin.editorEdit': { en: 'Edit item', vi: 'Sửa item' },
   'admin.field.name': { en: 'Name', vi: 'Tên item' },
+  'admin.field.imageUrl': { en: 'Image (URL or file name)', vi: 'Ảnh (URL hoặc tên tệp)' },
   'admin.field.auctionType': { en: 'Auction type', vi: 'Loại đấu giá' },
   'admin.field.truthValue': { en: 'True value', vi: 'Giá trị thật' },
   'admin.field.hintMin': { en: 'Hint min', vi: 'Gợi ý thấp nhất' },
@@ -420,8 +421,8 @@ describe('the approved copy table', () => {
     }
   })
 
-  it('carries exactly the 206 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch + 13 Phase 6 − 1 deleted + 15 Phase 7)', () => {
-    expect(KEYS).toHaveLength(206)
+  it('carries exactly the 207 approved keys (25 carried + 105 Phase 3 + 42 Phase 4 + 7 Dutch + 13 Phase 6 − 1 deleted + 15 Phase 7 + 1 quick-260919-xbg)', () => {
+    expect(KEYS).toHaveLength(207)
   })
 })
 

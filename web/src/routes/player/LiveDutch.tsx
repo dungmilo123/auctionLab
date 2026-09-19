@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ItemImage from '@/components/ItemImage'
 import { Button } from '@/components/ui/button'
 import { bidReasonKey, type BidReasonKey } from '@/lib/bid'
 import {
@@ -184,11 +185,22 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
-          {item.name}
-        </h2>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('auction.dutch')}</p>
+      <div className="flex items-start gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-xl leading-[1.2] font-bold tracking-[-0.01em] break-words">
+            {item.name}
+          </h2>
+          <p className="text-sm leading-[1.5] text-muted-foreground">{t('auction.dutch')}</p>
+        </div>
+
+        {/* D-01: the lot's picture beside the name — the ACCEPT below is the
+            body's one control and stays exactly where the shipped layout put it.
+            An unconfigured item renders no element. */}
+        <ItemImage
+          src={item.imageUrl}
+          alt={item.name}
+          className="size-20 shrink-0 border-2 border-border bg-card object-contain"
+        />
       </div>
 
       {/* The body's one moving number, and its first block: mono + tabular so

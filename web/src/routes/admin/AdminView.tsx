@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
 import { ConnectionLine } from '@/components/ConnectionLine'
+import ItemImage from '@/components/ItemImage'
 import LanguageControl, { SegmentedChoice } from '@/components/LanguageControl'
 import { QrPanel } from '@/components/QrPanel'
 import { Button } from '@/components/ui/button'
@@ -107,6 +108,14 @@ const LOCKED_STATUSES = ['live', 'settled']
  * Never a bare class the button's own `cn` would have to fight.
  */
 const CONFIRM_FILL = 'bg-destructive text-primary-foreground hover:bg-destructive'
+
+/**
+ * D-01's image-url field id. The value lives on the draft (`EditorDraft.imageUrl`)
+ * rather than in `DraftFields`, so it has no entry in `FIELD_IDS` — and it has no
+ * validation, because the server stores the string verbatim and `itemImageSrc`
+ * resolves it at render time (an unknown name can only ever 404).
+ */
+const IMAGE_URL_FIELD_ID = 'admin-field-image-url'
 
 /** The three tabs, in the UI-SPEC's fixed order. Control is the default (the presenter's hand). */
 type AdminTab = 'setup' | 'control' | 'players'
@@ -535,6 +544,17 @@ function SetupPanel({
     setDraft({ ...editor, fields: { ...editor.fields, [key]: value } })
   }
 
+  /**
+   * The image field's own setter: `imageUrl` is a sibling of `fields` on the
+   * draft (D-01), and nothing validates it — the presenter may type a file name,
+   * a root-relative path or an external URL, and the preview shows exactly what
+   * the room would get.
+   */
+  function editImageUrl(value: string) {
+    if (editor === null) return
+    setDraft({ ...editor, imageUrl: value })
+  }
+
   function save() {
     if (editor === null) return
     const invalid = Object.keys(errors)
@@ -627,6 +647,18 @@ function SetupPanel({
                   className="flex min-h-11 flex-wrap items-center gap-2 border-t-2 border-t-border px-2 py-1 first:border-t-0"
                 >
                   <span className="text-sm leading-[1.5] font-bold">{index + 1}</span>
+                  {/* D-01: the item's picture at catalog scale, exactly the
+                      element the room sees. `size-9` is the min-h-11 row's own
+                      content box (44px minus py-1), so the thumbnail never
+                      widens the row and only a row that already wrapped grows by
+                      the 12px it adds to its first line (measured live: 84px
+                      without, 96px with, on a wrapped row); an empty value
+                      renders nothing at all. */}
+                  <ItemImage
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="size-9 shrink-0 border-2 border-border bg-card object-contain"
+                  />
                   {/* The name keeps a 10rem floor, so a crowded line breaks
                       BELOW it: the row's `flex-wrap` drops the action group to
                       the next line instead of squeezing the name to a sliver
@@ -740,6 +772,28 @@ function SetupPanel({
             disabled={flags.saving}
             onChange={(value) => editField('name', value)}
           />
+
+          {/* D-01: the image-url field, beside the name it belongs to. It is
+              NEVER a `DraftFields` member and never validated — the value rides
+              the draft and `draftPayload` echoes it back untouched — while the
+              preview below is the same shared element the room renders, so what
+              the presenter types here is what every other surface shows. An
+              empty value leaves the field with no preview element at all. */}
+          <div className="flex flex-col gap-2">
+            <TextField
+              id={IMAGE_URL_FIELD_ID}
+              labelKey="admin.field.imageUrl"
+              value={editor.imageUrl}
+              errorKey={undefined}
+              disabled={flags.saving}
+              onChange={editImageUrl}
+            />
+            <ItemImage
+              src={editor.imageUrl}
+              alt={editor.fields.name}
+              className="h-40 w-full max-w-64 border-2 border-border bg-card object-contain"
+            />
+          </div>
 
           <div className="flex flex-col gap-2">
             <Label>{t('admin.field.auctionType')}</Label>
