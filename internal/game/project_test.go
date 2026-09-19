@@ -26,6 +26,10 @@ const (
 	// fixtureToken is one player's session token: admin only, and the only
 	// message allowed to carry a token is that player's own hello (D-29).
 	fixtureToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	// fixtureImageURL is D-01's public image value: unlike the two above it is
+	// NOT a secret, so the leak lock asserts it is present rather than absent —
+	// a positive control in the other direction.
+	fixtureImageURL = "bức-tranh.png"
 )
 
 // forbiddenKey is D-26's key rule: the common value, any sealed-bid key, and any
@@ -178,7 +182,7 @@ func populatedState() *state {
 		phase:         PhaseLobby,
 		revision:      7,
 		currentItemID: "it-1",
-		config:        engineConfig{StartingBudget: 1_000_000, Currency: "VND"},
+		config:        engineConfig{StartingBudget: 1_000_000, Currency: "USD"},
 		players: map[string]*player{
 			"p-an": {
 				id: "p-an", nickname: "An", nicknameKey: "an", token: fixtureToken,
@@ -196,6 +200,7 @@ func populatedState() *state {
 		items: map[string]*item{
 			"it-1": {
 				id: "it-1", orderIndex: 1, name: "Bức tranh", description: "Sơn dầu",
+				imageURL:    fixtureImageURL,
 				auctionType: "english", truthValue: fixtureTruthValue,
 				hintMin: 200_000, hintMax: 500_000, startPrice: 100_000, status: "live",
 			},
@@ -300,6 +305,13 @@ func TestPlayerAndScreenPayloadsLeakNothing(t *testing.T) {
 				}
 				if item["hint_min"] != float64(200_000) || item["hint_max"] != float64(500_000) {
 					t.Errorf("item hint range = %#v..%#v, want 200000..500000", item["hint_min"], item["hint_max"])
+				}
+				// D-01's positive control: the presenter's image is public, so a
+				// player and the projector must BOTH receive it — and it must
+				// reach them without any secret crossing over (assertNoSecrets
+				// above is the other half of this pair).
+				if item["image_url"] != fixtureImageURL {
+					t.Errorf("item.image_url = %#v, want the fixture's %q: a configured image must reach %s (D-01)", item["image_url"], fixtureImageURL, tc.name)
 				}
 
 				if !tc.wantMe {
@@ -712,7 +724,9 @@ func TestLateJoinSnapshotIsSelfSufficientAtEveryPhase(t *testing.T) {
 	env := newTestEnv(t, filepath.Join(t.TempDir(), "auction.db"))
 
 	// --- every phase, from a snapshot alone -----------------------------------
-	introKeys := []string{"id", "name", "description", "auction_type", "hint_min", "hint_max", "start_price", "status"}
+	// D-01 adds image_url: always public, and present only when the presenter
+	// configured one (the fixtures do, so the positive control keeps it here).
+	introKeys := []string{"id", "name", "description", "image_url", "auction_type", "hint_min", "hint_max", "start_price", "status"}
 	runKeys := []string{"current_price", "top_bidder", "deadline_at", "extensions_used"}
 	// D-94: a Dutch run swaps the ladder fields for the falling price's clock —
 	// no top_bidder, no deadline_at, no min_next_bid, but the anchor and the
@@ -1321,7 +1335,7 @@ func rankFixture() *state {
 	return &state{
 		phase:    PhaseFinale,
 		revision: 11,
-		config:   engineConfig{StartingBudget: 1_000_000, Currency: "VND"},
+		config:   engineConfig{StartingBudget: 1_000_000, Currency: "USD"},
 		players: map[string]*player{
 			"p-d": {id: "p-d", nickname: "Dung", budget: 1_000_000, joinedAt: base + 4_000, lastSeenAt: base + 4_000},
 			"p-a": {id: "p-a", nickname: "An", budget: 900_000, totalValue: 500_000, joinedAt: base + 3_000, lastSeenAt: base + 3_000},

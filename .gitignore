@@ -6,8 +6,12 @@ bin/
 *.db
 *.db-wal
 *.db-shm
+# D-01: the local image folder the presenter drops files into — runtime data
+# beside auction.db, never committed (the venue's own pictures are not source).
+images/
 
 # GSD planning docs are local-only (commit_docs=false)
 .planning/
 .opencode/
 .gsd/
+.playwright-mcp/

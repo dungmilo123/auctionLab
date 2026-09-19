@@ -200,12 +200,20 @@ func run() error {
 	// registered here, ahead of the fallback, so no deep link can reach the SPA
 	// document without a valid capability cookie. Step 2b resolved the key.
 	admin := api.AdminGate(adminKey, spaHandler)
+	// D-01: the local image folder, served by the same binary as everything
+	// else. Both spellings are registered because the SPA fallback would
+	// otherwise answer an image URL with the document — and the handler is what
+	// keeps "/images" and "/images/<dir>/" from listing the folder. The route
+	// is chosen by specificity, not registration order (the comment above).
+	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
 	mux.HandleFunc("/ws", ws.ServeWS)
 	mux.Handle("GET /admin", admin)
 	mux.Handle("/admin/", admin)
+	mux.Handle("GET /images", images)
+	mux.Handle("GET /images/", images)
 	mux.Handle("/", spaHandler)
 
 	addr := fmt.Sprintf(":%d", *port)

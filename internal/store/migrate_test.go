@@ -267,10 +267,10 @@ func isLowerHex(s string) bool {
 }
 
 // TestMigrationV2ToV3 is D-74's contract: a populated v2 file migrates once to
-// user_version 3 with the additive `server_config` table, the row the file
-// already had survives, and a key written into the new table is still there
-// after a real restart (a new handle on the same file with Schema run again —
-// the boot a crash would perform).
+// the current UserVersion (the 2→3 step plus every later additive step), the row
+// the file already had survives, and a key written into the new table is still
+// there after a real restart (a new handle on the same file with Schema run
+// again — the boot a crash would perform).
 func TestMigrationV2ToV3(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	st := openMigrateStore(t, path)
@@ -294,13 +294,13 @@ func TestMigrationV2ToV3(t *testing.T) {
 		t.Fatalf("Schema on a v2 file: %v", err)
 	}
 
-	t.Run("reports user_version 3", func(t *testing.T) {
+	t.Run("reports the current user_version", func(t *testing.T) {
 		var got int
 		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 			t.Fatalf("PRAGMA user_version: %v", err)
 		}
-		if got != 3 {
-			t.Errorf("user_version = %d, want the D-74 version 3", got)
+		if got != UserVersion {
+			t.Errorf("user_version = %d, want %d", got, UserVersion)
 		}
 	})
 
@@ -371,8 +371,8 @@ func TestMigrationV2ToV3(t *testing.T) {
 		if err := reopened.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
 			t.Fatalf("PRAGMA user_version: %v", err)
 		}
-		if got != 3 {
-			t.Errorf("user_version = %d after a second pass, want 3", got)
+		if got != UserVersion {
+			t.Errorf("user_version = %d after a second pass, want %d", got, UserVersion)
 		}
 		var n int
 		if err := reopened.DB.QueryRow("SELECT COUNT(*) FROM server_config").Scan(&n); err != nil {

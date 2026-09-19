@@ -98,6 +98,12 @@ type PublicItem struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	// D-01 (additive): the item's image as the presenter stored it — a bare
+	// file name served from /images/, or any external/data/root-relative URL.
+	// It is public by definition (the same value already reaches the admin
+	// editor) and it shares AdminItem's key spelling, so one wire shape covers
+	// both roles and the client has one decoder.
+	ImageURL    string `json:"image_url,omitempty"`
 	AuctionType string `json:"auction_type"`
 	HintMin     *int64 `json:"hint_min,omitempty"`
 	HintMax     *int64 `json:"hint_max,omitempty"`
@@ -745,6 +751,11 @@ func (s *state) currentPublicItem(now int64) *PublicItem {
 		ID:          it.id,
 		Name:        it.name,
 		Description: it.description,
+		// D-01: the presenter's image field, carried verbatim. The stored value
+		// is a bare file name ("vase.png"), an external URL or empty; resolving
+		// it into a request path is the browser's one helper (lib/image.ts), so
+		// the server never rewrites a URL the admin typed.
+		ImageURL:    it.imageURL,
 		AuctionType: it.auctionType,
 		StartPrice:  it.startPrice,
 		Status:      it.status,

@@ -248,8 +248,8 @@ func TestUpdateConfig(t *testing.T) {
 	if persisted.JoinURL != selected {
 		t.Errorf("persisted join_url = %q, want %q", persisted.JoinURL, selected)
 	}
-	if persisted.Currency != "VND" {
-		t.Errorf("persisted currency = %q, want VND: the currency is not editable", persisted.Currency)
+	if persisted.Currency != "USD" {
+		t.Errorf("persisted currency = %q, want USD (D-02): the currency is not editable", persisted.Currency)
 	}
 
 	admin, ok := env.engine.Snapshot(RoleAdmin, "").(AdminView)

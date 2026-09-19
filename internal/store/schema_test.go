@@ -1,6 +1,8 @@
 package store
 
 import (
+	"database/sql"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -117,7 +119,7 @@ func TestSchema(t *testing.T) {
 		if got.CurrentItemID != "" {
 			t.Errorf("bootstrapped current_item_id = %q, want empty", got.CurrentItemID)
 		}
-		for _, want := range []string{`"starting_budget":1000000`, `"currency":"VND"`} {
+		for _, want := range []string{`"starting_budget":1000000`, `"currency":"USD"`} {
 			if !containsFold(got.ConfigJSON, want) {
 				t.Errorf("bootstrapped config_json = %q, want it to contain %s", got.ConfigJSON, want)
 			}
@@ -163,4 +165,152 @@ func TestStorePoolIsSingleConnection(t *testing.T) {
 // name what they look for without caring how the driver spells it back.
 func containsFold(haystack, needle string) bool {
 	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
+}
+
+// ---------------------------------------------------------------------------
+// D-02 (quick task 260919-xbg): the user_version 3→4 currency migration. The
+// fixture is written as a literal — the config_json the previous build seeded —
+// so the step is proved against a file that build could actually have produced.
+// ---------------------------------------------------------------------------
+
+// v3GameConfigJSON is the old bootstrap literal, plus the Phase 4 join_url key:
+// the migration must rewrite the currency and leave every other key alone.
+const v3GameConfigJSON = `{"starting_budget":1000000,"currency":"VND","join_url":"http://192.168.0.103:8080/"}`
+
+// v3GameFile writes a v3 file by hand: the full v4 schema (the two versions
+// differ only in data, so the DDL is not re-listed) with a VND game row and
+// user_version pushed back to 3 — exactly what a boot before this build left
+// behind.
+func v3GameFile(t *testing.T, path string) *Store {
+	t.Helper()
+
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open(%q): %v", path, err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema: %v", err)
+	}
+	if _, err := st.DB.Exec(
+		`INSERT INTO game (id, phase, current_item_id, revision, config_json, updated_at)
+		 VALUES (1, 'LOBBY', NULL, 0, ?, 1)`, v3GameConfigJSON); err != nil {
+		t.Fatalf("writing the v3 game row: %v", err)
+	}
+	setUserVersion(t, st.DB, 3)
+	return st
+}
+
+// storedConfigJSON reads game.config_json back verbatim.
+func storedGameConfigJSON(t *testing.T, db *sql.DB) string {
+	t.Helper()
+
+	var raw string
+	if err := db.QueryRow(`SELECT config_json FROM game WHERE id = 1`).Scan(&raw); err != nil {
+		t.Fatalf("reading game.config_json: %v", err)
+	}
+	return raw
+}
+
+// TestMigrationV3ToV4Currency is D-02's contract: a v3 file's persisted currency
+// becomes USD in the same guarded transaction as the version bump, the budget
+// amount is retained rather than converted, and every other config key survives
+// the re-encode. A second pass and a fresh bootstrap both leave the value alone.
+func TestMigrationV3ToV4Currency(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auction.db")
+	st := v3GameFile(t, path)
+
+	if err := Schema(st.DB); err != nil {
+		t.Fatalf("Schema on a v3 file: %v", err)
+	}
+
+	t.Run("reports the current user_version", func(t *testing.T) {
+		var got int
+		if err := st.DB.QueryRow("PRAGMA user_version").Scan(&got); err != nil {
+			t.Fatalf("PRAGMA user_version: %v", err)
+		}
+		if got != UserVersion {
+			t.Errorf("user_version = %d, want %d", got, UserVersion)
+		}
+	})
+
+	t.Run("rewrites the currency to USD and keeps every other key", func(t *testing.T) {
+		var cfg map[string]any
+		if err := json.Unmarshal([]byte(storedGameConfigJSON(t, st.DB)), &cfg); err != nil {
+			t.Fatalf("parsing the migrated config_json: %v", err)
+		}
+		if cfg["currency"] != currencyUSD {
+			t.Errorf("currency = %v, want %q", cfg["currency"], currencyUSD)
+		}
+		// The amount is retained, not converted: the game's integers are its own
+		// accounting units (D-02).
+		if budget, ok := cfg["starting_budget"].(float64); !ok || budget != 1_000_000 {
+			t.Errorf("starting_budget = %v, want the retained 1000000", cfg["starting_budget"])
+		}
+		if cfg["join_url"] != "http://192.168.0.103:8080/" {
+			t.Errorf("join_url = %v, want the untouched selection — the re-encode is not a rewrite", cfg["join_url"])
+		}
+	})
+
+	t.Run("a second pass does not re-issue the step", func(t *testing.T) {
+		after := storedGameConfigJSON(t, st.DB)
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("a second Schema pass failed: %v", err)
+		}
+		if got := storedGameConfigJSON(t, st.DB); got != after {
+			t.Errorf("config_json = %q after a second pass, want the unchanged %q", got, after)
+		}
+	})
+}
+
+// TestMigrationV4LeavesAUSDOrAKeylessFileAlone pins the guard's two other arms:
+// a file that already says USD is not rewritten (so a presenter's edit survives
+// a boot), and a file with no game row yet — a fresh database, where Bootstrap
+// runs after the migration — is left for the bootstrap to seed.
+func TestMigrationV4LeavesAUSDOrAKeylessFileAlone(t *testing.T) {
+	t.Run("an already-USD file is byte-for-byte untouched", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		st := openMigrateStore(t, path)
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("Schema on a fresh file: %v", err)
+		}
+		const current = `{"starting_budget":2000000,"currency":"USD"}`
+		if _, err := st.DB.Exec(
+			`INSERT INTO game (id, phase, current_item_id, revision, config_json, updated_at)
+			 VALUES (1, 'LOBBY', NULL, 0, ?, 1)`, current); err != nil {
+			t.Fatalf("writing the game row: %v", err)
+		}
+		setUserVersion(t, st.DB, 3)
+
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("Schema: %v", err)
+		}
+		if got := storedGameConfigJSON(t, st.DB); got != current {
+			t.Errorf("config_json = %q, want the untouched %q", got, current)
+		}
+	})
+
+	t.Run("a fresh file has no row and is left to Bootstrap", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "auction.db")
+		st := openMigrateStore(t, path)
+		if err := Schema(st.DB); err != nil {
+			t.Fatalf("Schema: %v", err)
+		}
+
+		var n int
+		if err := st.DB.QueryRow(`SELECT COUNT(*) FROM game`).Scan(&n); err != nil {
+			t.Fatalf("counting game rows: %v", err)
+		}
+		if n != 0 {
+			t.Fatalf("the fresh file carries %d game rows before Bootstrap, want 0", n)
+		}
+
+		now := time.UnixMilli(1_700_000_000_000)
+		if err := Bootstrap(st.DB, now); err != nil {
+			t.Fatalf("Bootstrap: %v", err)
+		}
+		if got := storedGameConfigJSON(t, st.DB); !containsFold(got, `"currency":"USD"`) {
+			t.Errorf("bootstrapped config_json = %q, want the USD default", got)
+		}
+	})
 }

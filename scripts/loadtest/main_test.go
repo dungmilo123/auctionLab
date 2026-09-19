@@ -426,7 +426,7 @@ func TestItemAndSettleDecoders(t *testing.T) {
 // TestRoundItemLookupFindsTheCreatedItem pins the admin-side read the round's
 // first step depends on: the CRUD snapshot's `items` array carries the new id.
 func TestRoundItemLookupFindsTheCreatedItem(t *testing.T) {
-	snapshot := `{"phase":"LOBBY","revision":2,"server_ts":1,"config":{"starting_budget":1000000,"currency":"VND"},` +
+	snapshot := `{"phase":"LOBBY","revision":2,"server_ts":1,"config":{"starting_budget":1000000,"currency":"USD"},` +
 		`"players":[],"items":[{"id":"it-9","name":"lt lot","auction_type":"english","status":"pending"}],` +
 		`"sealed_bids":[],"lobby":[],"leaderboard":[],"item":null}`
 	id, err := itemIDFromSnapshot(json.RawMessage(snapshot))

@@ -2,23 +2,39 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
 
-// UserVersion is D-36's schema version, raised to 2 by D-50 and to 3 by D-74:
-// Phase 3 adds `auction_runtime.extensions_used` because the anti-snipe cap must
-// survive a crash exactly (deriving it from deadline arithmetic does not
-// reconstruct the number of extends), and Phase 4 adds the `server_config` KV
-// table the boot admin capability persists into. The bootstrap stays one
-// idempotent DDL pass plus one guarded migration — deliberately no migration
-// framework, because a demo database is disposable (delete auction.db to reset).
-const UserVersion = 3
+// UserVersion is D-36's schema version, raised to 2 by D-50, to 3 by D-74 and
+// to 4 by D-02: Phase 3 adds `auction_runtime.extensions_used` because the
+// anti-snipe cap must survive a crash exactly (deriving it from deadline
+// arithmetic does not reconstruct the number of extends), Phase 4 adds the
+// `server_config` KV table the boot admin capability persists into, and the
+// currency migration rewrites the persisted display currency to USD. The
+// bootstrap stays one idempotent DDL pass plus one guarded migration —
+// deliberately no migration framework, because a demo database is disposable
+// (delete auction.db to reset).
+const UserVersion = 4
 
 // gameConfigJSON is the bootstrapped game row's default configuration (D-36 /
-// PLAN.md §5: starting_budget 1.000.000 VND). It is written by the schema
+// PLAN.md §5: starting_budget 1.000.000). It is written by the schema
 // bootstrap, so this is the one place the default lives.
-const gameConfigJSON = `{"starting_budget":1000000,"currency":"VND"}`
+//
+// D-02: the currency is USD. The amount itself is deliberately unchanged — the
+// stored integers are the game's own accounting, not a converted money value,
+// and the button/caption conversion happens in the browser's ONE formatter.
+const gameConfigJSON = `{"starting_budget":1000000,"currency":"USD"}`
+
+// The two currency literals D-02 knows: the value older files were seeded with,
+// and the one this build writes. They are compared, never rendered — the
+// admin projection carries whatever the file holds.
+const (
+	currencyVND = "VND"
+	currencyUSD = "USD"
+)
 
 // schemaDDL is PLAN.md §5 in full, plus D-28's nickname_key column and its
 // UNIQUE index. Every statement is CREATE … IF NOT EXISTS: the pass runs on
@@ -201,12 +217,64 @@ func migrate(db *sql.DB) error {
 		return fmt.Errorf("store: creating the server_config table: %w", err)
 	}
 
+	// v3 → v4 (D-02): the persisted display currency becomes USD. The step is
+	// its own crash-window probe for the same reason the CREATE above is: it
+	// rewrites only a file that still carries the old literal, so re-running it
+	// (a boot that died before the pragma) changes nothing the second time.
+	if err := migrateCurrencyToUSD(tx); err != nil {
+		return err
+	}
+
 	// PRAGMA cannot be parameterized; UserVersion is a compile-time constant.
 	if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", UserVersion)); err != nil {
 		return fmt.Errorf("store: setting user_version: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("store: committing the schema migration: %w", err)
+	}
+	return nil
+}
+
+// migrateCurrencyToUSD is D-02's data step: every file written before this
+// build persisted `"currency":"VND"` (the bootstrap literal), and the whole
+// display surface now renders USD, so the stored value is rewritten in place.
+//
+// Two deliberate properties:
+//
+//   - NO amounts are rescaled. `starting_budget` and every balance stay the
+//     same integers — they are the game's own accounting units, and the plan's
+//     USD surface is a display conversion, not a re-denomination. Rewriting the
+//     numbers would silently move budgets mid-game (D-02).
+//   - A file that already says USD, an unknown future literal, or no game row at
+//     all (a fresh file — Bootstrap writes the row later) is left untouched.
+//     The rewrite is decoded and re-encoded as a map rather than string-edited,
+//     so a config_json carrying unknown keys survives it byte-for-byte in
+//     meaning.
+func migrateCurrencyToUSD(tx *sql.Tx) error {
+	var raw string
+	err := tx.QueryRow(`SELECT config_json FROM game WHERE id = 1`).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("store: reading the game row for the currency migration: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return fmt.Errorf("store: parsing the persisted config_json %q: %w", raw, err)
+	}
+	if cfg["currency"] != currencyVND {
+		return nil
+	}
+	cfg["currency"] = currencyUSD
+
+	updated, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("store: re-encoding the migrated config_json: %w", err)
+	}
+	if _, err := tx.Exec(`UPDATE game SET config_json = ? WHERE id = 1`, string(updated)); err != nil {
+		return fmt.Errorf("store: writing the migrated config_json: %w", err)
 	}
 	return nil
 }

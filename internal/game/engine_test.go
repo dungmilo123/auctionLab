@@ -320,7 +320,7 @@ func TestBootRefusesStateTheMachineCannotUse(t *testing.T) {
 		if err := store.Bootstrap(st.DB, testStart); err != nil {
 			t.Fatalf("Bootstrap: %v", err)
 		}
-		if _, err := st.DB.Exec(`UPDATE game SET config_json = ? WHERE id = 1`, `{"starting_budget":0,"currency":"VND"}`); err != nil {
+		if _, err := st.DB.Exec(`UPDATE game SET config_json = ? WHERE id = 1`, `{"starting_budget":0,"currency":"USD"}`); err != nil {
 			t.Fatalf("corrupting the config: %v", err)
 		}
 		if err := st.Close(); err != nil {
