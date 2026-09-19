@@ -37,6 +37,13 @@
  * the suite asserts. `LIVE_PARAM_KEYS` is unchanged again: a source tag and a
  * retry label carry no placeholder.
  *
+ * The money rows are D-02's one deliberate rewording pass: the two `…caption`
+ * rows say `USD`, and every interpolated sentence that used to append ` VND`
+ * after a `{token}` now carries no currency word at all, because the value the
+ * caller passes in is already self-contained (`$1,000,000.00`). The keys are
+ * unchanged — only their text — so the 206-key assertion, `LIVE_PARAM_KEYS` and
+ * every call site stay exactly as they were.
+ *
  * This module also owns the language context and the `auctionlab.lang` storage
  * key. It is plain TypeScript (no JSX) because the UI-SPEC's file list puts the
  * dictionary in `lib/`; the provider therefore builds its element with
@@ -77,7 +84,7 @@ export const COPY = {
   'session.restoring': { en: 'Restoring your session…', vi: 'Đang khôi phục phiên…' },
   'lobby.heading': { en: 'Lobby', vi: 'Phòng chờ' },
   'lobby.budgetLabel': { en: 'Your budget', vi: 'Ngân sách của bạn' },
-  'lobby.budgetCaption': { en: 'VND', vi: 'VND' },
+  'lobby.budgetCaption': { en: 'USD', vi: 'USD' },
   'lobby.you': { en: 'you', vi: 'bạn' },
   'lobby.waiting': {
     en: 'Waiting for other players to join…',
@@ -107,7 +114,7 @@ export const COPY = {
   'lang.en': { en: 'English', vi: 'English' },
 
   // ---- Phase 3 shared vocabulary (15) ----
-  'amount.caption': { en: 'VND', vi: 'VND' },
+  'amount.caption': { en: 'USD', vi: 'USD' },
   'auction.english': { en: 'English auction', vi: 'Đấu giá kiểu Anh' },
   'auction.dutch': { en: 'Dutch auction', vi: 'Đấu giá kiểu Hà Lan' },
   'auction.sealedFirst': { en: 'First-price sealed bid', vi: 'Đấu giá kín — trả giá cao nhất' },
@@ -145,8 +152,8 @@ export const COPY = {
   'live.outbid': { en: "You've been outbid!", vi: 'Bạn đã bị vượt giá!' },
   'live.rebid': { en: 'Rebid at {amount}', vi: 'Đặt lại {amount}' },
   'live.budgetLow': {
-    en: 'Out of budget for this item — your budget is {budget} VND, the minimum bid is {min} VND. You can keep watching.',
-    vi: 'Hết ngân sách cho item này — ngân sách {budget} VND, mức đặt tối thiểu {min} VND. Bạn vẫn xem tiếp được.',
+    en: 'Out of budget for this item — your budget is {budget}, the minimum bid is {min}. You can keep watching.',
+    vi: 'Hết ngân sách cho item này — ngân sách {budget}, mức đặt tối thiểu {min}. Bạn vẫn xem tiếp được.',
   },
   'live.typePending': {
     en: "This auction type isn't available yet.",
@@ -154,18 +161,18 @@ export const COPY = {
   },
 
   // ---- Phase 3 bid rejection reasons (5) ----
-  'reason.invalidAmount': { en: 'Enter a whole number of VND.', vi: 'Nhập một số nguyên VND.' },
+  'reason.invalidAmount': { en: 'Enter a whole number amount.', vi: 'Nhập một số nguyên.' },
   'reason.windowClosed': {
     en: 'Bidding is closed for this item.',
     vi: 'Đã đóng nhận đặt giá cho item này.',
   },
   'reason.belowMinimum': {
-    en: 'Below the minimum — bid at least {min} VND.',
-    vi: 'Thấp hơn mức tối thiểu — đặt ít nhất {min} VND.',
+    en: 'Below the minimum — bid at least {min}.',
+    vi: 'Thấp hơn mức tối thiểu — đặt ít nhất {min}.',
   },
   'reason.exceedsBudget': {
-    en: "That's more than your budget ({budget} VND).",
-    vi: 'Vượt quá ngân sách của bạn ({budget} VND).',
+    en: "That's more than your budget ({budget}).",
+    vi: 'Vượt quá ngân sách của bạn ({budget}).',
   },
   'reason.alreadyLeading': { en: "You're already the top bidder.", vi: 'Bạn đang là người dẫn giá.' },
 
@@ -361,8 +368,8 @@ export const COPY = {
     vi: 'Đã tới giá sàn — không giảm thêm nữa.',
   },
   'dutch.tooExpensive': {
-    en: 'Above your budget ({budget} VND) — the price is still falling.',
-    vi: 'Cao hơn ngân sách của bạn ({budget} VND) — giá vẫn đang giảm.',
+    en: 'Above your budget ({budget}) — the price is still falling.',
+    vi: 'Cao hơn ngân sách của bạn ({budget}) — giá vẫn đang giảm.',
   },
   'reason.alreadySold': {
     en: 'Someone accepted first — this item is sold.',

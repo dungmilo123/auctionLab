@@ -86,7 +86,7 @@ function adminSnapshotData(): Record<string, unknown> {
     phase: 'LOBBY',
     revision: 1,
     server_ts: WS_TS,
-    config: { starting_budget: 1_000_000, currency: 'VND' },
+    config: { starting_budget: 1_000_000, currency: 'USD' },
     players: [],
     sealed_bids: [],
     lobby: [],

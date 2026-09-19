@@ -24,16 +24,28 @@ export function quickBidAmount(minNextBid: number, delta: number): number {
 }
 
 /**
- * Parse the bid field's raw digit string (D-71: the input carries no grouping
- * dots — FRMT-01 in Phase 8 owns formatted inputs). Anything that is not a
- * plain run of digits is `null`: letters, `1.000`-style grouping, decimals,
- * signs, surrounding whitespace, scientific notation, and values beyond the
- * safe-integer range where the browser could no longer represent the amount
- * exactly (the server bounds every amount to 1e12).
+ * Parse the bid field's raw string (D-71, extended by D-02) into a whole-number
+ * wire amount.
+ *
+ * Two spellings are accepted, and nothing else:
+ *
+ *   - a plain run of digits (`1500000`), and
+ *   - a correctly comma-grouped whole number (`1,500,000`) — the shape the app
+ *     itself displays and prefills, so a player who types the shown amount back
+ *     in is understood rather than refused.
+ *
+ * Everything else is `null`: a mis-grouped value (`1,00`, `1,0000`, `,000`), a
+ * dot-grouped one (`1.000`), any fraction or decimal point, a sign, surrounding
+ * whitespace, scientific notation, and values beyond the safe-integer range
+ * where the browser could no longer represent the amount exactly (the server
+ * bounds every amount to 1e12). The RESULT is always a plain integer — grouping
+ * is a display detail that never reaches the wire.
  */
 export function parseBidAmount(raw: string): number | null {
-  if (!/^\d+$/.test(raw)) return null
-  const amount = Number(raw)
+  const plain = /^\d+$/.test(raw)
+  const grouped = /^\d{1,3}(,\d{3})+$/.test(raw)
+  if (!plain && !grouped) return null
+  const amount = Number(raw.replace(/,/g, ''))
   return Number.isSafeInteger(amount) ? amount : null
 }
 

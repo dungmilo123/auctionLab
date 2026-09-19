@@ -32,6 +32,13 @@ describe('parseBidAmount (D-71)', () => {
     ['0', 0],
     ['000123', 123],
     ['9007199254740991', Number.MAX_SAFE_INTEGER],
+    // D-02: the field shows its prefill as a dollar amount, so a presenter or
+    // player who types the displayed grouping back in must be understood — the
+    // wire amount stays a plain integer either way.
+    ['1,000', 1_000],
+    ['12,345', 12_345],
+    ['1,500,000', 1_500_000],
+    ['9,007,199,254,740,991', Number.MAX_SAFE_INTEGER],
   ]
 
   it.each(accepted)('parses the raw digit string %s as %d', (raw, expected) => {
@@ -41,14 +48,24 @@ describe('parseBidAmount (D-71)', () => {
   const rejected: Array<[label: string, raw: string]> = [
     ['an empty field', ''],
     ['letters', 'abc'],
-    ['grouped VND input', '1.000'],
+    ['a dot-grouped amount', '1.000'],
     ['a decimal fraction', '1000.5'],
+    ['a comma fraction', '1,000.50'],
     ['whitespace around digits', ' 1000'],
     ['a trailing space', '1000 '],
+    ['a space as a thousands separator', '1 000'],
     ['a plus sign', '+1000'],
     ['a negative amount', '-1000'],
     ['scientific notation', '1e5'],
     ['a value beyond safe-integer precision', '9007199254740993'],
+    ['a grouped value beyond safe-integer precision', '9,007,199,254,740,993'],
+    ['an under-filled group', '1,00'],
+    ['an over-filled group', '1,0000'],
+    ['a missing leading group', ',000'],
+    ['a dangling separator', '1,'],
+    ['a doubled separator', '1,,000'],
+    ['a comma-grouped sign', '+1,000'],
+    ['a comma-grouped negative', '-1,000'],
   ]
 
   it.each(rejected)('rejects %s', (_label, raw) => {

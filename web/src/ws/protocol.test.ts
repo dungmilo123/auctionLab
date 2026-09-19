@@ -15,6 +15,7 @@ import {
   readHello,
   readPhaseChanged,
   readPlayerSnapshot,
+  readPublicItem,
   readPriceTick,
   readScreenSnapshot,
   readTunnelStatus,
@@ -285,6 +286,7 @@ const LIVE_ITEM = {
   id: 'i1',
   name: 'Bức tranh',
   description: 'Sơn dầu',
+  image_url: 'bức-tranh.png',
   auction_type: 'english',
   hint_min: 200_000,
   hint_max: 500_000,
@@ -404,6 +406,7 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
       id: 'i1',
       name: 'Bức tranh',
       description: 'Sơn dầu',
+      imageUrl: 'bức-tranh.png',
       auctionType: 'english',
       hintMin: 200_000,
       hintMax: 500_000,
@@ -585,6 +588,7 @@ describe('readPlayerSnapshot: the phase↔item invariant (UI-SPEC §Phase-body t
       id: 'i4',
       name: 'Đồng hồ',
       description: '',
+      imageUrl: '',
       auctionType: 'dutch',
       hintMin: null,
       hintMax: null,
@@ -771,6 +775,21 @@ describe('readBidRejected (D-53)', () => {
   })
 })
 
+describe('readPublicItem: the presenter image (D-01, additive)', () => {
+  it('decodes a configured image_url into imageUrl', () => {
+    expect(readPublicItem({ ...LIVE_ITEM, image_url: 'vase.png' })?.imageUrl).toBe('vase.png')
+    expect(readPublicItem({ ...LIVE_ITEM, image_url: 'https://cdn.example.com/v.png' })?.imageUrl).toBe(
+      'https://cdn.example.com/v.png',
+    )
+  })
+
+  it('reads an absent image_url as the empty string, exactly like description', () => {
+    const { image_url: _image, ...withoutImage } = LIVE_ITEM
+    expect(readPublicItem(withoutImage)?.imageUrl).toBe('')
+    expect(readPublicItem({ ...LIVE_ITEM, image_url: '' })?.imageUrl).toBe('')
+  })
+})
+
 describe('readPhaseChanged (D-57)', () => {
   it('decodes the new phase together with its item', () => {
     expect(readPhaseChanged({ phase: 'LIVE', item: LIVE_ITEM })).toEqual({
@@ -779,6 +798,7 @@ describe('readPhaseChanged (D-57)', () => {
         id: 'i1',
         name: 'Bức tranh',
         description: 'Sơn dầu',
+        imageUrl: 'bức-tranh.png',
         auctionType: 'english',
         hintMin: 200_000,
         hintMax: 500_000,
@@ -848,7 +868,7 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
       phase: 'LOBBY',
       revision: 2,
       server_ts: SERVER_TS,
-      config: { starting_budget: 1_000_000, currency: 'VND' },
+      config: { starting_budget: 1_000_000, currency: 'USD' },
       players: [ADMIN_PLAYER],
       sealed_bids: [],
       lobby: [{ nickname: 'An', connected: true }],
@@ -891,7 +911,7 @@ describe('readAdminSnapshot (D-64/D-66)', () => {
 
   it('decodes the presenter rows, the config and both halves of the URL panel', () => {
     const snapshot = readAdminSnapshot(adminSnapshotPayload())
-    expect(snapshot?.config).toEqual({ startingBudget: 1_000_000, currency: 'VND' })
+    expect(snapshot?.config).toEqual({ startingBudget: 1_000_000, currency: 'USD' })
     expect(snapshot?.players).toEqual([
       {
         id: 'p1',

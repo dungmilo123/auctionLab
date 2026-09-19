@@ -9,7 +9,7 @@ import {
   elapsedOf,
   type DutchAnchor,
 } from '@/lib/dutch'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import { fill, useLanguage } from '@/lib/i18n'
 import type { ConnectionStatus } from '@/ws/client'
 import type { BidRejected, PublicItem } from '@/ws/protocol'
@@ -66,9 +66,9 @@ function useNow(intervalMs: number): number {
 /** The hint range, or null when the item carries no hint at all. */
 function hintRange(item: PublicItem): string | null {
   const { hintMin, hintMax } = item
-  if (hintMin !== null && hintMax !== null) return `${formatVND(hintMin)} – ${formatVND(hintMax)}`
-  if (hintMin !== null) return formatVND(hintMin)
-  if (hintMax !== null) return formatVND(hintMax)
+  if (hintMin !== null && hintMax !== null) return `${formatUSD(hintMin)} – ${formatUSD(hintMax)}`
+  if (hintMin !== null) return formatUSD(hintMin)
+  if (hintMax !== null) return formatUSD(hintMax)
   return null
 }
 
@@ -178,7 +178,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
     // The server's own budget travels back with the refusal, so the sentence
     // names the number it was refused against rather than a stale render's.
     return key === 'reason.exceedsBudget'
-      ? fill(t(key), { budget: formatVND(rejection?.budget ?? budget) })
+      ? fill(t(key), { budget: formatUSD(rejection?.budget ?? budget) })
       : t(key)
   }
 
@@ -196,7 +196,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
       <div className="border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('live.priceLabel')}</p>
         <p className="font-mono text-xl leading-[1.2] font-bold tabular-nums whitespace-nowrap">
-          {formatVND(price)}
+          {formatUSD(price)}
         </p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
@@ -221,7 +221,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
       {/* The honest floor of the fall: the same number the price is clamped to. */}
       <div className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('dutch.floorLabel')}</p>
-        <p className="text-base leading-[1.5]">{formatVND(mechanics.floorPrice)}</p>
+        <p className="text-base leading-[1.5]">{formatUSD(mechanics.floorPrice)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
@@ -229,7 +229,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
           PERMANENTLY on this body (D-103), because the ACCEPT is spending it. */}
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold">{formatVND(budget)}</p>
+        <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 
@@ -247,7 +247,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
 
       {showTooExpensive && (
         <p className="text-base leading-[1.5]">
-          {fill(t('dutch.tooExpensive'), { budget: formatVND(me.budget) })}
+          {fill(t('dutch.tooExpensive'), { budget: formatUSD(me.budget) })}
         </p>
       )}
 

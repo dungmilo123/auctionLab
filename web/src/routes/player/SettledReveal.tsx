@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { bidReasonKey } from '@/lib/bid'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import { useLanguage } from '@/lib/i18n'
 import type { BidRejected, PlayerMe, PublicItem } from '@/ws/protocol'
 
@@ -92,12 +92,12 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
         )}
 
         <RevealRow label={t('settle.priceLabel')}>
-          <span>{formatVND(settle.price)}</span>
+          <span>{formatUSD(settle.price)}</span>
           <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
 
         <RevealRow label={t('settle.truthLabel')}>
-          <span>{formatVND(settle.truthValue)}</span>
+          <span>{formatUSD(settle.truthValue)}</span>
           <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
       </div>
@@ -118,13 +118,13 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
           `!== 0` alone would show a non-winner a change to money that never
           moved, while `me.budget` below renders unchanged. The winner gate is
           therefore the load-bearing half; a "0" delta stays hidden as noise
-          even for the winner, and `formatVND` already carries the minus sign of
+          even for the winner, and `formatUSD` already carries the minus sign of
           a negative delta, so the plus is added only when the value is positive. */}
       {iWon && settle.budgetDelta !== 0 && (
         <RevealRow label={t('settle.deltaLabel')}>
           <span>
             {settle.budgetDelta > 0 ? '+' : ''}
-            {formatVND(settle.budgetDelta)}
+            {formatUSD(settle.budgetDelta)}
           </span>
           <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
@@ -134,7 +134,7 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
           settle's own snapshot arrives before this body renders. */}
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold">{formatVND(me.budget)}</p>
+        <p className="text-xl leading-[1.2] font-bold">{formatUSD(me.budget)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 

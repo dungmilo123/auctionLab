@@ -8,7 +8,7 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatTimeOfDay, formatVND } from '@/lib/format'
+import { formatTimeOfDay, formatUSD } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
 import { isSealedAuction } from '@/lib/screen'
 import {
@@ -611,7 +611,7 @@ function SetupPanel({
           >
             {t('admin.newItem')}
           </Button>
-          {/* One caption for the whole list: the bare numbers below are all VND. */}
+          {/* One caption for the whole list: every money value below is USD. */}
           <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
         </div>
 
@@ -639,7 +639,7 @@ function SetupPanel({
                   </span>
                   {/* The presenter's own view: truth_value is never public. */}
                   <span className="text-sm leading-[1.5] text-muted-foreground">
-                    {formatVND(item.truthValue)}
+                    {formatUSD(item.truthValue)}
                   </span>
                   {/* A WORD, never a colour alone. */}
                   <span className="text-sm leading-[1.5] font-bold">
@@ -957,16 +957,16 @@ function PresenterSettleCard({ card }: { card: PresenterSettle }) {
         {card.winner !== null && (
           <SettleRow labelKey="settle.winnerLabel" value={card.winner} caption={false} />
         )}
-        <SettleRow labelKey="settle.priceLabel" value={formatVND(card.price)} caption />
+        <SettleRow labelKey="settle.priceLabel" value={formatUSD(card.price)} caption />
         {/* The presenter's secret view: truth_value is never public. */}
-        <SettleRow labelKey="settle.truthLabel" value={formatVND(card.truthValue)} caption />
+        <SettleRow labelKey="settle.truthLabel" value={formatUSD(card.truthValue)} caption />
         {card.outcome === 'sold' && (
           <SettleRow labelKey="settle.deltaLabel" value={card.deltaText} caption />
         )}
         {card.winnerBudget !== null && (
           <SettleRow
             labelKey="admin.winnerBudgetLabel"
-            value={formatVND(card.winnerBudget)}
+            value={formatUSD(card.winnerBudget)}
             caption
           />
         )}
@@ -1036,7 +1036,7 @@ function SealedBidsCard({
               {bid.nickname}
             </span>
             <span className="text-sm leading-[1.5] font-bold">{t('admin.sealedBidAmount')}</span>
-            <span className="text-base leading-[1.5]">{formatVND(bid.amount)}</span>
+            <span className="text-base leading-[1.5]">{formatUSD(bid.amount)}</span>
             {/* `updated_at` is the one time fact on this card: a submit and an
                 edit commit the same mutation, but only an edit moves it — so it
                 is the only column that can show a player changing their mind.
@@ -1334,9 +1334,9 @@ function PlayersPanel({
                 {player.nickname}
               </span>
               <span className="text-sm leading-[1.5] font-bold">{t('admin.playerBudget')}</span>
-              <span className="text-base leading-[1.5]">{formatVND(player.budget)}</span>
+              <span className="text-base leading-[1.5]">{formatUSD(player.budget)}</span>
               <span className="text-sm leading-[1.5] font-bold">{t('admin.playerValue')}</span>
-              <span className="text-base leading-[1.5]">{formatVND(player.totalValue)}</span>
+              <span className="text-base leading-[1.5]">{formatUSD(player.totalValue)}</span>
               <span className="text-sm leading-[1.5] font-bold">{t('admin.playerJoined')}</span>
               <span className="font-mono text-sm leading-[1.5] text-muted-foreground">
                 {formatTimeOfDay(player.joinedAt)}

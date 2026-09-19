@@ -191,6 +191,13 @@ export type PublicItem = {
   id: string
   name: string
   description: string
+  /**
+   * D-01 (additive): the image as the presenter stored it — a bare file name
+   * under /images/, an external URL, or ''. It is public by definition (the
+   * same value reaches the admin editor), and `itemImageSrc` in lib/image.ts is
+   * the ONE place it becomes a URL.
+   */
+  imageUrl: string
   auctionType: string
   hintMin: number | null
   hintMax: number | null
@@ -484,6 +491,10 @@ export function readPublicItem(value: unknown): PublicItem | null {
     id,
     name,
     description: readString(value.description) ?? '',
+    // D-01 (additive): the same optional-string semantics as `description` — an
+    // absent key reads as "no image configured", and a present one travels
+    // verbatim (the server never rewrites a URL the admin typed).
+    imageUrl: readString(value.image_url) ?? '',
     auctionType,
     hintMin: readInt(value.hint_min),
     hintMax: readInt(value.hint_max),

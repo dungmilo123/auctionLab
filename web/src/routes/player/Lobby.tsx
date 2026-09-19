@@ -1,5 +1,5 @@
 import { useLanguage } from '@/lib/i18n'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import type { PlayerSnapshot } from '@/ws/protocol'
 
 // Screen B of the player route (02-UI-SPEC.md §Screen B — Lobby).
@@ -26,7 +26,7 @@ function Lobby({ snapshot }: LobbyProps) {
 
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold">{formatVND(snapshot.me.budget)}</p>
+        <p className="text-xl leading-[1.2] font-bold">{formatUSD(snapshot.me.budget)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 

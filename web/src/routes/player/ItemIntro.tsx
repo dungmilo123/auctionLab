@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import type { PublicItem } from '@/ws/protocol'
 
 // Screen C of the player route (03-UI-SPEC §Screen C — ITEM_INTRO).
@@ -34,9 +34,9 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
 /** The hint range, or null when the item carries no hint at all. */
 function hintRange(item: PublicItem): string | null {
   const { hintMin, hintMax } = item
-  if (hintMin !== null && hintMax !== null) return `${formatVND(hintMin)} – ${formatVND(hintMax)}`
-  if (hintMin !== null) return formatVND(hintMin)
-  if (hintMax !== null) return formatVND(hintMax)
+  if (hintMin !== null && hintMax !== null) return `${formatUSD(hintMin)} – ${formatUSD(hintMax)}`
+  if (hintMin !== null) return formatUSD(hintMin)
+  if (hintMax !== null) return formatUSD(hintMax)
   return null
 }
 
@@ -81,7 +81,7 @@ function ItemIntro({ item, budget }: ItemIntroProps) {
         </InfoRow>
 
         <InfoRow label={t('intro.startLabel')}>
-          <span>{formatVND(item.startPrice)}</span>
+          <span>{formatUSD(item.startPrice)}</span>
           <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </InfoRow>
       </div>
@@ -90,7 +90,7 @@ function ItemIntro({ item, budget }: ItemIntroProps) {
           the player is about to spend, so it keeps its own bordered well. */}
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold">{formatVND(budget)}</p>
+        <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 

@@ -53,6 +53,7 @@ function snapshot(phase: PlayerSnapshot['phase'], itemId: string | null): Player
             id: itemId,
             name: 'Đồng hồ',
             description: '',
+            imageUrl: '',
             auctionType: 'dutch',
             hintMin: null,
             hintMax: null,

@@ -12,8 +12,9 @@ import {
 
 // The approved copy table, transcribed by hand from 04-UI-SPEC.md §Copywriting
 // Contract (Phase 2's rows carried verbatim, Phase 3's 105 appended, Phase 4's
-// 42 added and `admin.noKeyNote` deleted by 04-07) — NOT imported from the
-// module — so a reworded string fails here instead of shipping to a classroom.
+// 42 added and `admin.noKeyNote` deleted by 04-07, D-02's USD rewording applied
+// to the money rows) — NOT imported from the module — so a reworded string fails
+// here instead of shipping to a classroom.
 // Typing it as a full Record<CopyKey, …> means a new dictionary key is a
 // compile error until its copy is approved here too, which is the same
 // guarantee the typed dictionary gives on the other side.
@@ -30,7 +31,7 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   'session.restoring': { en: 'Restoring your session…', vi: 'Đang khôi phục phiên…' },
   'lobby.heading': { en: 'Lobby', vi: 'Phòng chờ' },
   'lobby.budgetLabel': { en: 'Your budget', vi: 'Ngân sách của bạn' },
-  'lobby.budgetCaption': { en: 'VND', vi: 'VND' },
+  'lobby.budgetCaption': { en: 'USD', vi: 'USD' },
   'lobby.you': { en: 'you', vi: 'bạn' },
   'lobby.waiting': {
     en: 'Waiting for other players to join…',
@@ -60,7 +61,7 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   'lang.en': { en: 'English', vi: 'English' },
 
   // Phase 3 — shared vocabulary
-  'amount.caption': { en: 'VND', vi: 'VND' },
+  'amount.caption': { en: 'USD', vi: 'USD' },
   'auction.english': { en: 'English auction', vi: 'Đấu giá kiểu Anh' },
   'auction.dutch': { en: 'Dutch auction', vi: 'Đấu giá kiểu Hà Lan' },
   'auction.sealedFirst': { en: 'First-price sealed bid', vi: 'Đấu giá kín — trả giá cao nhất' },
@@ -98,8 +99,8 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   'live.outbid': { en: "You've been outbid!", vi: 'Bạn đã bị vượt giá!' },
   'live.rebid': { en: 'Rebid at {amount}', vi: 'Đặt lại {amount}' },
   'live.budgetLow': {
-    en: 'Out of budget for this item — your budget is {budget} VND, the minimum bid is {min} VND. You can keep watching.',
-    vi: 'Hết ngân sách cho item này — ngân sách {budget} VND, mức đặt tối thiểu {min} VND. Bạn vẫn xem tiếp được.',
+    en: 'Out of budget for this item — your budget is {budget}, the minimum bid is {min}. You can keep watching.',
+    vi: 'Hết ngân sách cho item này — ngân sách {budget}, mức đặt tối thiểu {min}. Bạn vẫn xem tiếp được.',
   },
   'live.typePending': {
     en: "This auction type isn't available yet.",
@@ -107,18 +108,18 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
   },
 
   // Phase 3 — bid rejection reasons
-  'reason.invalidAmount': { en: 'Enter a whole number of VND.', vi: 'Nhập một số nguyên VND.' },
+  'reason.invalidAmount': { en: 'Enter a whole number amount.', vi: 'Nhập một số nguyên.' },
   'reason.windowClosed': {
     en: 'Bidding is closed for this item.',
     vi: 'Đã đóng nhận đặt giá cho item này.',
   },
   'reason.belowMinimum': {
-    en: 'Below the minimum — bid at least {min} VND.',
-    vi: 'Thấp hơn mức tối thiểu — đặt ít nhất {min} VND.',
+    en: 'Below the minimum — bid at least {min}.',
+    vi: 'Thấp hơn mức tối thiểu — đặt ít nhất {min}.',
   },
   'reason.exceedsBudget': {
-    en: "That's more than your budget ({budget} VND).",
-    vi: 'Vượt quá ngân sách của bạn ({budget} VND).',
+    en: "That's more than your budget ({budget}).",
+    vi: 'Vượt quá ngân sách của bạn ({budget}).',
   },
   'reason.alreadyLeading': { en: "You're already the top bidder.", vi: 'Bạn đang là người dẫn giá.' },
 
@@ -311,8 +312,8 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
     vi: 'Đã tới giá sàn — không giảm thêm nữa.',
   },
   'dutch.tooExpensive': {
-    en: 'Above your budget ({budget} VND) — the price is still falling.',
-    vi: 'Cao hơn ngân sách của bạn ({budget} VND) — giá vẫn đang giảm.',
+    en: 'Above your budget ({budget}) — the price is still falling.',
+    vi: 'Cao hơn ngân sách của bạn ({budget}) — giá vẫn đang giảm.',
   },
   'reason.alreadySold': {
     en: 'Someone accepted first — this item is sold.',
@@ -381,12 +382,13 @@ const APPROVED: Record<CopyKey, { en: string; vi: string }> = {
 const KEYS = Object.keys(APPROVED) as CopyKey[]
 
 // The documented values for each placeholder, transcribed from the same UI-SPEC
-// table (a VND amount for {amount}/{min}/{budget}, an item name for {name}).
+// table (D-02: a dollar amount for {amount}/{min}/{budget} — the rendered value
+// is self-contained, with its own `$` and grouping — an item name for {name}).
 const DOCUMENTED_VALUES: Record<keyof typeof LIVE_PARAM_KEYS, Record<string, string>> = {
-  'live.rebid': { amount: '1.250.000' },
-  'live.budgetLow': { budget: '500.000', min: '600.000' },
-  'reason.belowMinimum': { min: '600.000' },
-  'reason.exceedsBudget': { budget: '500.000' },
+  'live.rebid': { amount: '$1,250,000.00' },
+  'live.budgetLow': { budget: '$500,000.00', min: '$600,000.00' },
+  'reason.belowMinimum': { min: '$600,000.00' },
+  'reason.exceedsBudget': { budget: '$500,000.00' },
   'admin.moveUpLabel': { name: 'Đèn bàn' },
   'admin.moveDownLabel': { name: 'Đèn bàn' },
   'admin.editLabel': { name: 'Đèn bàn' },
@@ -395,7 +397,7 @@ const DOCUMENTED_VALUES: Record<keyof typeof LIVE_PARAM_KEYS, Record<string, str
   'admin.releaseConfirm': { name: 'Đèn bàn' },
   'screen.sealedProgress': { submitted: '3', total: '7' },
   'finale.yourRank': { rank: '2', total: '12' },
-  'dutch.tooExpensive': { budget: '500.000' },
+  'dutch.tooExpensive': { budget: '$500,000.00' },
 }
 
 describe('the approved copy table', () => {
@@ -425,13 +427,13 @@ describe('the approved copy table', () => {
 
 describe('placeholder substitution (fill)', () => {
   it('replaces every token it was given', () => {
-    expect(fill('Rebid at {amount}', { amount: '1.250.000' })).toBe('Rebid at 1.250.000')
+    expect(fill('Rebid at {amount}', { amount: '$1,250,000.00' })).toBe('Rebid at $1,250,000.00')
     expect(fill('{a} and {b}', { a: 'x', b: 'y' })).toBe('x and y')
   })
 
   it('leaves an unmatched token verbatim rather than blanking it', () => {
     expect(fill('Rebid at {amount}', {})).toBe('Rebid at {amount}')
-    expect(fill('{budget} / {min}', { budget: '500.000' })).toBe('500.000 / {min}')
+    expect(fill('{budget} / {min}', { budget: '$500,000.00' })).toBe('$500,000.00 / {min}')
     expect(fill('no tokens here', { amount: 'ignored' })).toBe('no tokens here')
   })
 

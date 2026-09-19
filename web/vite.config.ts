@@ -38,6 +38,11 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:8080', changeOrigin: false },
       '/ws': { target: 'ws://localhost:8080', ws: true },
+      // D-01: the local image folder. `vite dev` serves the SPA on :5173 while
+      // the Go process serves /images on :8080, so without this rule every item
+      // image would 404 in development while working in the built binary — the
+      // one difference that would surface only at the venue.
+      '/images': { target: 'http://localhost:8080', changeOrigin: false },
       // Do NOT add rewriteWsOrigin: it opens CSRF, and gorilla's default
       // same-origin CheckOrigin on the Go side is a real defence here.
     },

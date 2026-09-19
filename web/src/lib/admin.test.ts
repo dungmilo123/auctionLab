@@ -340,6 +340,7 @@ function settledItem(overrides: Partial<PublicItem> = {}): PublicItem {
     id: 'i1',
     name: 'Đèn bàn',
     description: '',
+    imageUrl: '',
     auctionType: 'english',
     hintMin: null,
     hintMax: null,
@@ -413,7 +414,7 @@ describe('the presenter settle card (D-81/ADMN-07)', () => {
       price: 300_000,
       truthValue: 350_000,
       budgetDelta: 50_000,
-      deltaText: '+50.000',
+      deltaText: '+$50,000.00',
     })
   })
 
@@ -435,7 +436,7 @@ describe('the presenter settle card (D-81/ADMN-07)', () => {
       headingKey: 'settle.unsoldHeading',
       winner: null,
       truthValue: 350_000,
-      deltaText: '0',
+      deltaText: '$0.00',
       winnerBudget: null,
     })
   })

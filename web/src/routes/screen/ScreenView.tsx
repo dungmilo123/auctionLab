@@ -3,7 +3,7 @@ import { ConnectionLine } from '@/components/ConnectionLine'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
 import { anchorDutch, atFloor, dutchPrice, elapsedOf } from '@/lib/dutch'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
 import {
   SCREEN_SCALE_CLASS,
@@ -173,7 +173,7 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
         <div className="border-2 border-border bg-primary px-4 py-2 text-primary-foreground">
           <p className="text-sm leading-[1.5] font-bold">{t('live.priceLabel')}</p>
           <p className="font-mono text-display leading-[1.2] font-bold tabular-nums whitespace-nowrap">
-            {formatVND(price)}
+            {formatUSD(price)}
           </p>
           <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
         </div>
@@ -182,7 +182,7 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
             not the datum — and it is deliberately not accent. */}
         <div className="border-2 border-border bg-background px-4 py-2">
           <p className="text-sm leading-[1.5] font-bold">{t('dutch.floorLabel')}</p>
-          <p className="text-xl leading-[1.2] font-bold">{formatVND(mechanics.floorPrice)}</p>
+          <p className="text-xl leading-[1.2] font-bold">{formatUSD(mechanics.floorPrice)}</p>
           <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
         </div>
       </div>
@@ -255,9 +255,9 @@ function SealedWells({ live, sealed }: { live: LiveOverlay | null; sealed: Seale
 /** The hint range, or null when the item carries no hint at all (a fact, not an error). */
 function hintRange(item: PublicItem): string | null {
   const { hintMin, hintMax } = item
-  if (hintMin !== null && hintMax !== null) return `${formatVND(hintMin)} – ${formatVND(hintMax)}`
-  if (hintMin !== null) return formatVND(hintMin)
-  if (hintMax !== null) return formatVND(hintMax)
+  if (hintMin !== null && hintMax !== null) return `${formatUSD(hintMin)} – ${formatUSD(hintMax)}`
+  if (hintMin !== null) return formatUSD(hintMin)
+  if (hintMax !== null) return formatUSD(hintMax)
   return null
 }
 
@@ -314,7 +314,7 @@ function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
           >
             <p className="text-sm leading-[1.5] font-bold">{entry.rank}</p>
             <p className="min-w-0 flex-1 break-words text-base leading-[1.5]">{entry.nickname}</p>
-            <p className="whitespace-nowrap text-base leading-[1.5]">{formatVND(entry.budget)}</p>
+            <p className="whitespace-nowrap text-base leading-[1.5]">{formatUSD(entry.budget)}</p>
             <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
           </div>
         ))}
@@ -410,7 +410,7 @@ function BidFeed({ bids }: { bids: readonly RecentBid[] }) {
               {bid.nickname}
             </p>
             <p className={`whitespace-nowrap text-base leading-[1.5] ${weight}`}>
-              {formatVND(bid.amount)}
+              {formatUSD(bid.amount)}
             </p>
             <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
           </div>
@@ -510,7 +510,7 @@ function ItemBody({
             </p>
             {price !== null && (
               <p className="text-display leading-[1.2] font-bold whitespace-nowrap">
-                {formatVND(price)}
+                {formatUSD(price)}
               </p>
             )}
             <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
@@ -609,7 +609,7 @@ function SettledBody({
         )}
 
         <RevealRow label={t('settle.priceLabel')}>
-          <span>{formatVND(settle.price)}</span>
+          <span>{formatUSD(settle.price)}</span>
           <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
 
@@ -618,20 +618,20 @@ function SettledBody({
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-2 border-border bg-primary px-4 py-0 text-primary-foreground">
           <p className="text-sm leading-[1.5] font-bold">{t('settle.truthLabel')}</p>
           <p className="flex flex-wrap items-baseline gap-2 text-base leading-[1.5]">
-            <span>{formatVND(settle.truthValue)}</span>
+            <span>{formatUSD(settle.truthValue)}</span>
             <span className="text-sm leading-[1.5]">{t('amount.caption')}</span>
           </p>
         </div>
 
         {/* `budget_delta` is the winner's net and is item-scoped, so it belongs
             to the reveal rather than to any one viewer; only an unsold item
-            omits it. The plus is presentation — `formatVND` already carries a
+            omits it. The plus is presentation — `formatUSD` already carries a
             minus sign when the value has one. */}
         {sold && (
           <RevealRow label={t('settle.deltaLabel')}>
             <span>
               {settle.budgetDelta > 0 ? '+' : ''}
-              {formatVND(settle.budgetDelta)}
+              {formatUSD(settle.budgetDelta)}
             </span>
             <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
           </RevealRow>
@@ -690,7 +690,7 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
                 first ? 'text-xl leading-[1.2] font-bold' : 'text-base leading-[1.5]'
               }`}
             >
-              {formatVND(entry.budget)}
+              {formatUSD(entry.budget)}
             </p>
             <p
               className={`text-sm leading-[1.5] ${first ? '' : 'text-muted-foreground'}`}

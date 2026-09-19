@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { bidReasonKey, parseBidAmount, type BidReasonKey } from '@/lib/bid'
 import { anchor, formatClock, remainingMs, type TimingAnchor } from '@/lib/countdown'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import { fill, useLanguage } from '@/lib/i18n'
 import { isSealedAuction } from '@/lib/screen'
 import { canSubmitSealed, sealedFieldError, sealedInputValue } from '@/lib/sealed'
@@ -66,9 +66,9 @@ function useNow(intervalMs: number): number {
 /** The hint range, or null when the item carries no hint at all. */
 function hintRange(item: PublicItem): string | null {
   const { hintMin, hintMax } = item
-  if (hintMin !== null && hintMax !== null) return `${formatVND(hintMin)} – ${formatVND(hintMax)}`
-  if (hintMin !== null) return formatVND(hintMin)
-  if (hintMax !== null) return formatVND(hintMax)
+  if (hintMin !== null && hintMax !== null) return `${formatUSD(hintMin)} – ${formatUSD(hintMax)}`
+  if (hintMin !== null) return formatUSD(hintMin)
+  if (hintMax !== null) return formatUSD(hintMax)
   return null
 }
 
@@ -190,9 +190,9 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
     // run has no ladder minimum to fall back to).
     switch (key) {
       case 'reason.belowMinimum':
-        return fill(t(key), { min: formatVND(rejection?.minNextBid ?? startPrice) })
+        return fill(t(key), { min: formatUSD(rejection?.minNextBid ?? startPrice) })
       case 'reason.exceedsBudget':
-        return fill(t(key), { budget: formatVND(rejection?.budget ?? budget) })
+        return fill(t(key), { budget: formatUSD(rejection?.budget ?? budget) })
       default:
         return t(key)
     }
@@ -251,7 +251,7 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
           ) : (
             <>
               <p className="text-xl leading-[1.2] font-bold whitespace-nowrap">
-                {formatVND(myBid)}
+                {formatUSD(myBid)}
               </p>
               <p className="text-sm leading-[1.5] text-muted-foreground">{t('sealed.editable')}</p>
             </>
@@ -288,7 +288,7 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
           field's own description target beside its feedback row. */}
       <div id={SEALED_START_ID} className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('intro.startLabel')}</p>
-        <p className="text-base leading-[1.5]">{formatVND(startPrice)}</p>
+        <p className="text-base leading-[1.5]">{formatUSD(startPrice)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
@@ -297,7 +297,7 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
           ceiling inferred from elsewhere is the D-82b mistake in player form. */}
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-        <p className="text-xl leading-[1.2] font-bold">{formatVND(budget)}</p>
+        <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 

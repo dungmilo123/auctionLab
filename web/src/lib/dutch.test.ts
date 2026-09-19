@@ -180,7 +180,7 @@ describe('canAccept (D-104/DTCH-02)', () => {
     expect(canAccept({ ...open, price: 1_000_000, budget: 1_000_000 })).toBe(true)
   })
 
-  it('refuses one VND above the budget', () => {
+  it('refuses one dollar above the budget', () => {
     expect(canAccept({ ...open, price: 1_000_001, budget: 1_000_000 })).toBe(false)
   })
 

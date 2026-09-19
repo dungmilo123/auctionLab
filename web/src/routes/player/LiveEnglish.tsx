@@ -13,7 +13,7 @@ import {
   type BidReasonKey,
 } from '@/lib/bid'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
-import { formatVND } from '@/lib/format'
+import { formatUSD } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
 import type { ConnectionStatus } from '@/ws/client'
 import type { BidRejected, PublicItem } from '@/ws/protocol'
@@ -120,7 +120,7 @@ function LiveStats({ live }: { live: LiveOverlay }) {
             there is a number, exactly as the deadline below it does. */}
         {live.currentPrice !== null && (
           <p className="text-xl leading-[1.2] font-bold whitespace-nowrap">
-            {formatVND(live.currentPrice)}
+            {formatUSD(live.currentPrice)}
           </p>
         )}
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
@@ -256,9 +256,9 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
   const reasonText = (key: BidReasonKey): string => {
     switch (key) {
       case 'reason.belowMinimum':
-        return fill(t(key), { min: formatVND(rejection?.minNextBid ?? live.minNextBid) })
+        return fill(t(key), { min: formatUSD(rejection?.minNextBid ?? live.minNextBid) })
       case 'reason.exceedsBudget':
-        return fill(t(key), { budget: formatVND(rejection?.budget ?? me.budget) })
+        return fill(t(key), { budget: formatUSD(rejection?.budget ?? me.budget) })
       default:
         return t(key)
     }
@@ -311,7 +311,7 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
           field's own description target. */}
       <div id={NEXT_BID_ID} className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('live.nextBidLabel')}</p>
-        <p className="text-base leading-[1.5]">{formatVND(live.minNextBid)}</p>
+        <p className="text-base leading-[1.5]">{formatUSD(live.minNextBid)}</p>
         <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
@@ -334,7 +334,7 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
             disabled={!canRebid}
             onClick={() => send(live.minNextBid)}
           >
-            {fill(t('live.rebid'), { amount: formatVND(live.minNextBid) })}
+            {fill(t('live.rebid'), { amount: formatUSD(live.minNextBid) })}
           </Button>
         </div>
       )}
@@ -385,7 +385,7 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
               >
                 <span>{t(QUICK_LABEL_KEYS[delta] ?? 'live.quick10k')}</span>
                 <span aria-hidden="true">→</span>
-                <span>{formatVND(amount)}</span>
+                <span>{formatUSD(amount)}</span>
               </Button>
             )
           })}
@@ -409,13 +409,13 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
             <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
-            <p className="text-xl leading-[1.2] font-bold">{formatVND(me.budget)}</p>
+            <p className="text-xl leading-[1.2] font-bold">{formatUSD(me.budget)}</p>
             <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
           </div>
           <p className="text-base leading-[1.5]">
             {fill(t('live.budgetLow'), {
-              budget: formatVND(me.budget),
-              min: formatVND(live.minNextBid),
+              budget: formatUSD(me.budget),
+              min: formatUSD(live.minNextBid),
             })}
           </p>
         </div>

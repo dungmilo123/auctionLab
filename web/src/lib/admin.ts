@@ -21,7 +21,7 @@ import type { AdminCommand, AdminConfigInput, ResetMode } from '@/ws/admin'
 import type { ConnectionStatus } from '@/ws/client'
 import type { AdminItem, AdminPlayer, Phase, PublicItem, TunnelStatus } from '@/ws/protocol'
 import { parseBidAmount } from './bid'
-import { formatVND } from './format'
+import { formatUSD } from './format'
 import type { CopyKey } from './i18n'
 import { isSealedAuction } from './screen'
 
@@ -161,8 +161,9 @@ export function validateDraft(draft: EditorDraft): DraftErrors {
       }
       return
     }
-    // One parse rule for both routes: a raw digit string, exactly what the bid
-    // field accepts (D-71). Grouped amounts are a display form only.
+    // One parse rule for both routes (D-71/D-02): the plain or comma-grouped
+    // whole numbers the bid field accepts. Whatever the field shows, the value
+    // parsed here is the plain integer the server validates.
     const parsed = parseBidAmount(raw)
     if (parsed === null || parsed < floor) {
       errors[key] = floor === 1 ? 'admin.err.positive' : 'admin.err.notNegative'
@@ -444,7 +445,7 @@ export type PresenterSettle = {
   truthValue: number
   /** the server's own net for the winner (ECON-02/ECON-03) */
   budgetDelta: number
-  /** `formatVND(budgetDelta)`, with a leading `+` only when positive */
+  /** `formatUSD(budgetDelta)`, with a leading `+` only when positive */
   deltaText: string
   /** the winner's budget NOW, from the presenter rows; null when unsold */
   winnerBudget: number | null
@@ -479,9 +480,10 @@ export function presenterSettle(
     truthValue: settle.truthValue,
     budgetDelta: settle.budgetDelta,
     // A `+` is presentation, never a second number: the delta is the server's
-    // own and `formatVND` already carries a minus sign when it has one.
+    // own and `formatUSD` already carries its own `$` and a minus sign when it
+    // has one.
     deltaText:
-      settle.budgetDelta > 0 ? `+${formatVND(settle.budgetDelta)}` : formatVND(settle.budgetDelta),
+      settle.budgetDelta > 0 ? `+${formatUSD(settle.budgetDelta)}` : formatUSD(settle.budgetDelta),
     winnerBudget:
       winner === null ? null : (players.find((player) => player.nickname === winner)?.budget ?? null),
   }

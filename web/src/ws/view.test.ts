@@ -23,6 +23,7 @@ function publicItem(overrides: Partial<PublicItem> = {}): PublicItem {
     id: 'i1',
     name: 'Bức tranh',
     description: '',
+    imageUrl: '',
     auctionType: 'english',
     hintMin: null,
     hintMax: null,
@@ -243,7 +244,7 @@ describe('the snapshot rule (RESEARCH Q3/Q4)', () => {
       phase: 'LOBBY',
       revision: 2,
       serverTs: TS,
-      config: { startingBudget: 1_000_000, currency: 'VND' },
+      config: { startingBudget: 1_000_000, currency: 'USD' },
       players: [
         {
           id: 'p1',
@@ -826,7 +827,7 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
       phase: 'LOBBY',
       revision: 3,
       serverTs: TS,
-      config: { startingBudget: 2_000_000, currency: 'VND' },
+      config: { startingBudget: 2_000_000, currency: 'USD' },
       players: [
         {
           id: 'p1',
@@ -856,7 +857,7 @@ describe('the presenter view (D-80/D-81/D-83)', () => {
       kind: 'admin-snapshot',
       snapshot: presenterSnapshot(),
     })
-    expect(state.config).toEqual({ startingBudget: 2_000_000, currency: 'VND' })
+    expect(state.config).toEqual({ startingBudget: 2_000_000, currency: 'USD' })
     expect(state.players.map((player) => player.nickname)).toEqual(['An'])
     expect(state.joinUrls).toEqual(['http://192.168.1.10:8080', 'http://10.0.0.5:8080'])
     // `joinUrl` is the SELECTED URL, whichever role supplied it: the QR takes

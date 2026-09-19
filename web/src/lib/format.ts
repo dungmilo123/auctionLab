@@ -1,20 +1,29 @@
 /**
- * VND amount rendering.
+ * USD amount rendering (D-02).
  *
- * Amounts are deliberately NOT localized: the dot-grouped `1.000.000` renders
- * identically in EN and VI, so the app has exactly one number format to apply
- * everywhere (FRMT-01 in Phase 8 owns the full formatting surface — this is the
- * one format Phase 2 ships).
+ * The wire and the database carry whole integers — the game's own accounting
+ * units — and every place they are shown to a human goes through this function,
+ * so "how much is this" has exactly one answer on every surface. The rendered
+ * value is SELF-CONTAINED: the `$`, the comma grouping and the two decimals are
+ * all in the string, so a caption or a sentence never has to append a currency
+ * symbol of its own (and can never append a stale one).
+ *
+ * Grouping is done by hand rather than with `Intl.NumberFormat`: the venue may
+ * be fully offline and a locale database is not worth loading for two commas.
+ * The sign goes before the `$` (`-$1,234.00`), which is how a negative amount is
+ * written everywhere else in the world.
  */
-export function formatVND(amount: number): string {
-  // Grouping is done by hand rather than with Intl.NumberFormat: the venue may
-  // be offline and a locale database is not worth loading for a dot every three
-  // digits. `\B` keeps the match off the first digit, and the lookahead only
-  // matches a position followed by complete groups of three.
+export function formatUSD(amount: number): string {
+  // `trunc` (never `round`) keeps the sign and the magnitude the amount already
+  // had: -1234.56 is $-1,234, not -$1,235. Auction amounts are whole numbers, so
+  // this only ever decides the edge the wire can never produce.
   const rounded = Math.trunc(amount)
   const sign = rounded < 0 ? '-' : ''
   const digits = Math.abs(rounded).toString()
-  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  // `\B` keeps the match off the first digit, and the lookahead only matches a
+  // position followed by complete groups of three.
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `${sign}$${grouped}.00`
 }
 
 /**
