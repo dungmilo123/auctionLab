@@ -367,6 +367,7 @@ export const COPY = {
   'dutch.accept': { en: 'Accept this price', vi: 'Nhận giá này' },
   'dutch.accepting': { en: 'Accepting…', vi: 'Đang nhận…' },
   'dutch.floorLabel': { en: 'Floor price', vi: 'Giá sàn' },
+  'dutch.nextDropLabel': { en: 'Next price drop in', vi: 'Rớt giá tiếp sau' },
   'dutch.atFloor': {
     en: 'At the floor price — this is as low as it goes.',
     vi: 'Đã tới giá sàn — không giảm thêm nữa.',

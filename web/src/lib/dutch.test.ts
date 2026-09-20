@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { anchorDutch, atFloor, canAccept, dutchPrice, elapsedOf, type DutchMechanics } from './dutch'
+import {
+  anchorDutch,
+  atFloor,
+  canAccept,
+  dutchDropCountdown,
+  dutchPrice,
+  elapsedOf,
+  type DutchMechanics,
+} from './dutch'
 
 // Frozen numbers only (D-61/D-73): the module never reads a clock and never
 // touches the DOM, so every case is a pure input→output pair this suite can pin
@@ -151,6 +159,25 @@ describe('dutchPrice (D-91)', () => {
     ]) {
       expect(dutchPrice(broken, 5_000)).toBe(MECHANICS.startPrice)
     }
+  })
+})
+
+describe('dutchDropCountdown', () => {
+  it('shows 2, 1, 0 before a three-second drop and resets at the boundary', () => {
+    expect(dutchDropCountdown(0, 3_000)).toBe(2)
+    expect(dutchDropCountdown(1_000, 3_000)).toBe(1)
+    expect(dutchDropCountdown(2_999, 3_000)).toBe(0)
+    expect(dutchDropCountdown(3_000, 3_000)).toBe(2)
+    expect(dutchDropCountdown(6_000, 3_000)).toBe(2)
+  })
+
+  it('never returns a negative value and has no fabricated value for invalid mechanics', () => {
+    expect(dutchDropCountdown(-1, 3_000)).toBe(2)
+    expect(dutchDropCountdown(2_000, 2_500)).toBe(0)
+    for (const interval of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(dutchDropCountdown(1_000, interval)).toBeNull()
+    }
+    expect(dutchDropCountdown(Number.NaN, 3_000)).toBeNull()
   })
 })
 

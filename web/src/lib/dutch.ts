@@ -114,6 +114,23 @@ export function dutchPrice(mechanics: DutchMechanics, elapsedMs: number): number
 }
 
 /**
+ * Seconds shown before the next Dutch price step. The display intentionally
+ * runs 2, 1, 0 for a three-second interval, then starts at 2 again on the
+ * boundary; it is a cue for the drop rather than a second auction clock.
+ * Invalid timing has no honest countdown and is represented by null.
+ */
+export function dutchDropCountdown(elapsedMs: number, decrementIntervalMs: number): number | null {
+  if (!Number.isFinite(elapsedMs) || !Number.isFinite(decrementIntervalMs) || decrementIntervalMs < 1) {
+    return null
+  }
+
+  const elapsed = Math.max(0, elapsedMs)
+  const remainder = elapsed % decrementIntervalMs
+  const untilDrop = remainder === 0 ? decrementIntervalMs : decrementIntervalMs - remainder
+  return Math.max(0, Math.ceil(untilDrop / 1_000) - 1)
+}
+
+/**
  * True exactly while the price is pinned at the floor (D-103's at-floor line):
  * the number has stopped moving, so the body says so instead of implying it can
  * still fall.
