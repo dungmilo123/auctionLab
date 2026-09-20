@@ -49,9 +49,9 @@ const FEEDBACK_ID = 'live-feedback'
 
 /** The three quick steps, in the UI-SPEC's order, each with its approved label. */
 const QUICK_LABEL_KEYS: Readonly<Record<number, CopyKey>> = {
-  10_000: 'live.quick10k',
-  50_000: 'live.quick50k',
-  100_000: 'live.quick100k',
+  1: 'live.quick10k',
+  5: 'live.quick50k',
+  10: 'live.quick100k',
 }
 
 /**

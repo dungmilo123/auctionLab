@@ -13,7 +13,7 @@
  */
 
 /** D-71's three quick steps, fixed by ENGL-01 — there is no configuration for them. */
-export const QUICK_BID_DELTAS = [10_000, 50_000, 100_000] as const
+export const QUICK_BID_DELTAS = [1, 5, 10] as const
 
 /**
  * The amount a quick button sets: the server's next valid bid plus the delta —

@@ -146,9 +146,9 @@ export const COPY = {
   'live.bidLabel': { en: 'Your bid', vi: 'Giá bạn đặt' },
   'live.placeBid': { en: 'Place bid', vi: 'Đặt giá' },
   'live.bidding': { en: 'Placing…', vi: 'Đang đặt…' },
-  'live.quick10k': { en: '+10k', vi: '+10k' },
-  'live.quick50k': { en: '+50k', vi: '+50k' },
-  'live.quick100k': { en: '+100k', vi: '+100k' },
+  'live.quick10k': { en: '+$1', vi: '+$1' },
+  'live.quick50k': { en: '+$5', vi: '+$5' },
+  'live.quick100k': { en: '+$10', vi: '+$10' },
   'live.outbid': { en: "You've been outbid!", vi: 'Bạn đã bị vượt giá!' },
   'live.rebid': { en: 'Rebid at {amount}', vi: 'Đặt lại {amount}' },
   'live.budgetLow': {

@@ -11,18 +11,18 @@ import {
 
 describe('the quick-bid arithmetic (D-71, ENGL-01)', () => {
   it('carries exactly the three fixed steps', () => {
-    expect([...QUICK_BID_DELTAS]).toEqual([10_000, 50_000, 100_000])
+    expect([...QUICK_BID_DELTAS]).toEqual([1, 5, 10])
   })
 
   it('adds each delta to the SERVER-provided minimum', () => {
-    expect(quickBidAmount(1_000_000, 10_000)).toBe(1_010_000)
-    expect(quickBidAmount(1_000_000, 50_000)).toBe(1_050_000)
-    expect(quickBidAmount(1_000_000, 100_000)).toBe(1_100_000)
+    expect(quickBidAmount(100, 1)).toBe(101)
+    expect(quickBidAmount(100, 5)).toBe(105)
+    expect(quickBidAmount(100, 10)).toBe(110)
   })
 
   it('never invents a ladder of its own — the minimum is the base', () => {
-    expect(quickBidAmount(0, 50_000)).toBe(50_000)
-    expect(quickBidAmount(5, 100_000)).toBe(100_005)
+    expect(quickBidAmount(0, 5)).toBe(5)
+    expect(quickBidAmount(5, 10)).toBe(15)
   })
 })
 
