@@ -88,16 +88,12 @@ function ItemIntro({ item, budget }: ItemIntroProps) {
           ) : (
             <>
               <span>{hint}</span>
-              <span className="text-sm leading-[1.5] text-muted-foreground">
-                {t('amount.caption')}
-              </span>
             </>
           )}
         </InfoRow>
 
         <InfoRow label={t('intro.startLabel')}>
           <span>{formatUSD(item.startPrice)}</span>
-          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </InfoRow>
       </div>
 
@@ -106,7 +102,6 @@ function ItemIntro({ item, budget }: ItemIntroProps) {
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
         <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 
       {/* The body's "what happens next" sentence — the host starts the run, not

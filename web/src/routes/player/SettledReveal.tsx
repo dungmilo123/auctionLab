@@ -105,12 +105,10 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
 
         <RevealRow label={t('settle.priceLabel')}>
           <span>{formatUSD(settle.price)}</span>
-          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
 
         <RevealRow label={t('settle.truthLabel')}>
           <span>{formatUSD(settle.truthValue)}</span>
-          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
       </div>
 
@@ -138,7 +136,6 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
             {settle.budgetDelta > 0 ? '+' : ''}
             {formatUSD(settle.budgetDelta)}
           </span>
-          <span className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</span>
         </RevealRow>
       )}
 
@@ -147,7 +144,6 @@ function SettledReveal({ item, me, rejection }: SettledRevealProps) {
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
         <p className="text-xl leading-[1.2] font-bold">{formatUSD(me.budget)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 
       {/* ECON-03: the unsold branch states the outcome and that no budget moved,

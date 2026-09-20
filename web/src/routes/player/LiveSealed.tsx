@@ -251,7 +251,6 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
           >
             {formatClock(remaining)}
           </p>
-          <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
         </div>
 
         <div className="border-2 border-border bg-background px-4 py-2">
@@ -291,7 +290,6 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
         ) : (
           <>
             <p className="text-base leading-[1.5]">{hint}</p>
-            <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
           </>
         )}
       </div>
@@ -301,7 +299,6 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
       <div id={SEALED_START_ID} className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('intro.startLabel')}</p>
         <p className="text-base leading-[1.5]">{formatUSD(startPrice)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
       {/* The shipped Phase-2 budget block, reused verbatim — and rendered
@@ -310,7 +307,6 @@ function LiveSealed({ view, status, rejection, onClearRejection, onSubmit }: Liv
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
         <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 
       {/* One tap, no confirmation (D-120): the accent marks the enabled submit,

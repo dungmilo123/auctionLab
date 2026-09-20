@@ -124,7 +124,6 @@ function LiveStats({ live }: { live: LiveOverlay }) {
             {formatUSD(live.currentPrice)}
           </p>
         )}
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
       <div className="border-2 border-border bg-background px-4 py-2">
@@ -326,7 +325,6 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
       <div id={NEXT_BID_ID} className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('live.nextBidLabel')}</p>
         <p className="text-base leading-[1.5]">{formatUSD(live.minNextBid)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
       {/* D-72's banner is derived from state and nothing else: it disappears by
@@ -424,7 +422,6 @@ function LiveEnglish({ view, status, rejection, onClearRejection, onPlaceBid }: 
           <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
             <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
             <p className="text-xl leading-[1.2] font-bold">{formatUSD(me.budget)}</p>
-            <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
           </div>
           <p className="text-base leading-[1.5]">
             {fill(t('live.budgetLow'), {
