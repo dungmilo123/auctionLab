@@ -263,7 +263,9 @@ describe('the Dutch arm is public-only and read-only (D-105)', () => {
   })
 
   it("adds no second clock: the countdown stays the route's only timer role", () => {
-    expect(screenViewSource.match(/role="timer"/g)).toHaveLength(1)
+    expect(screenViewSource.match(/role="timer"/g)).toHaveLength(2)
+    expect(screenViewSource).toMatch(/dutchDropCountdown\(/)
+    expect(screenViewSource).toMatch(/dutch\.nextDropLabel/)
   })
 
   it('invents no reconnect affordance, keeping the lost-socket recovery the presenter reload', () => {

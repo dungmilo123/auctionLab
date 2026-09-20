@@ -3,7 +3,7 @@ import { ConnectionLine } from '@/components/ConnectionLine'
 import ItemImage from '@/components/ItemImage'
 import { QrPanel } from '@/components/QrPanel'
 import { anchor, formatClock, remainingMs } from '@/lib/countdown'
-import { anchorDutch, atFloor, dutchPrice, elapsedOf } from '@/lib/dutch'
+import { anchorDutch, atFloor, dutchDropCountdown, dutchPrice, elapsedOf } from '@/lib/dutch'
 import { formatUSD } from '@/lib/format'
 import { fill, useLanguage, type CopyKey } from '@/lib/i18n'
 import {
@@ -161,7 +161,9 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
     decrementStep: item.decrementStep ?? 0,
     decrementIntervalMs: item.decrementIntervalMs ?? 0,
   }
-  const price = dutchPrice(mechanics, elapsedOf(frame.anchor, now))
+  const elapsed = elapsedOf(frame.anchor, now)
+  const price = dutchPrice(mechanics, elapsed)
+  const dropCountdown = dutchDropCountdown(elapsed, mechanics.decrementIntervalMs)
 
   return (
     <>
@@ -176,7 +178,11 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
           <p className="font-mono text-display leading-[1.2] font-bold tabular-nums whitespace-nowrap">
             {formatUSD(price)}
           </p>
-          <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
+          {dropCountdown !== null && (
+            <p className="text-sm leading-[1.5]">
+              {t('dutch.nextDropLabel')} <span role="timer">{dropCountdown}</span>
+            </p>
+          )}
         </div>
 
         {/* No clock, no timer role and no drop countdown: the floor is context,
@@ -184,7 +190,6 @@ function DutchWells({ item, live }: { item: PublicItem; live: LiveOverlay }) {
         <div className="border-2 border-border bg-background px-4 py-2">
           <p className="text-sm leading-[1.5] font-bold">{t('dutch.floorLabel')}</p>
           <p className="text-xl leading-[1.2] font-bold">{formatUSD(mechanics.floorPrice)}</p>
-          <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
         </div>
       </div>
 
@@ -247,7 +252,6 @@ function SealedWells({ live, sealed }: { live: LiveOverlay | null; sealed: Seale
         {live !== null && live.deadlineAt !== null && (
           <ScreenCountdown deadlineAt={live.deadlineAt} serverTs={live.serverTs} />
         )}
-        <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
       </div>
     </div>
   )
@@ -316,7 +320,6 @@ function Standings({ entries }: { entries: readonly LeaderEntry[] }) {
             <p className="text-sm leading-[1.5] font-bold">{entry.rank}</p>
             <p className="min-w-0 flex-1 break-words text-base leading-[1.5]">{entry.nickname}</p>
             <p className="whitespace-nowrap text-base leading-[1.5]">{formatUSD(entry.budget)}</p>
-            <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
           </div>
         ))}
       </div>
@@ -544,7 +547,6 @@ function ItemBody({
                 {live !== null && live.deadlineAt !== null && (
                   <ScreenCountdown deadlineAt={live.deadlineAt} serverTs={live.serverTs} />
                 )}
-                <p className="text-sm leading-[1.5]">{t('amount.caption')}</p>
               </>
             ) : (
               // No label row, no number and no timer role: there is no clock
@@ -687,8 +689,6 @@ function SettledBody({
  * nothing rather than a "3rd place: nobody" frame.
  */
 function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
-  const { t } = useLanguage()
-
   return (
     // `items-end`, not `items-stretch`: the podium is a STEPPED hierarchy, so
     // each block keeps its own height and sits on the same baseline — rank 1
@@ -725,11 +725,6 @@ function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
               }`}
             >
               {formatUSD(entry.budget)}
-            </p>
-            <p
-              className={`text-sm leading-[1.5] ${first ? '' : 'text-muted-foreground'}`}
-            >
-              {t('amount.caption')}
             </p>
           </div>
         )

@@ -6,6 +6,7 @@ import {
   anchorDutch,
   atFloor,
   canAccept,
+  dutchDropCountdown,
   dutchPrice,
   elapsedOf,
   type DutchAnchor,
@@ -150,6 +151,7 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
   const budget = me.budget
   // The SAME derived value feeds the price well and the CTA's predicate.
   const price = dutchPrice(mechanics, elapsedOf(frame.anchor, now))
+  const dropCountdown = dutchDropCountdown(elapsedOf(frame.anchor, now), mechanics.decrementIntervalMs)
   const flightSignal = `${status}|${live.serverTs}`
   // A refusal is an answer, so it releases the in-flight label on the spot —
   // the fourth releaser beside the next tick, the settle's snapshot and a
@@ -210,7 +212,11 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
         <p className="font-mono text-xl leading-[1.2] font-bold tabular-nums whitespace-nowrap">
           {formatUSD(price)}
         </p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
+        {dropCountdown !== null && (
+          <p className="text-sm leading-[1.5] text-muted-foreground">
+            {t('dutch.nextDropLabel')} <span role="timer">{dropCountdown}</span>
+          </p>
+        )}
       </div>
 
       {/* A fact about the price's own movement, not an error: it says the number
@@ -225,7 +231,6 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
         ) : (
           <>
             <p className="text-base leading-[1.5]">{hint}</p>
-            <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
           </>
         )}
       </div>
@@ -234,7 +239,6 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
       <div className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm leading-[1.5] font-bold">{t('dutch.floorLabel')}</p>
         <p className="text-base leading-[1.5]">{formatUSD(mechanics.floorPrice)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('amount.caption')}</p>
       </div>
 
       {/* The shipped Phase-2 budget block, reused verbatim — and rendered
@@ -242,7 +246,6 @@ function LiveDutch({ view, status, rejection, onClearRejection, onAccept }: Live
       <div className="flex flex-wrap items-baseline gap-2 border-2 border-border bg-background px-4 py-2">
         <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
         <p className="text-xl leading-[1.2] font-bold">{formatUSD(budget)}</p>
-        <p className="text-sm leading-[1.5] text-muted-foreground">{t('lobby.budgetCaption')}</p>
       </div>
 
       {/* One tap, no confirmation (D-104): the accent marks the enabled accept,
