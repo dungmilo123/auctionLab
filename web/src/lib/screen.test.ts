@@ -177,6 +177,26 @@ describe('the podium (D-89)', () => {
     expect(podiumEntries([row(1, 'An'), row(2, 'Bình')])).toHaveLength(2)
     expect(podiumEntries([])).toEqual([])
   })
+
+  it('pins one presentation role for each server-ordered podium place', () => {
+    expect(screenViewSource).toMatch(/podium-rank-1/)
+    expect(screenViewSource).toMatch(/podium-rank-2/)
+    expect(screenViewSource).toMatch(/podium-rank-3/)
+    expect(screenViewSource).toMatch(/podiumEntries\(standings\)/)
+    expect(screenViewSource).not.toMatch(/\.sort\(/)
+  })
+
+  it('pins the three-column ceremony composition and reduced-motion final state', () => {
+    expect(stylesheet()).toMatch(/\.podium-rank-1\s*\{[^}]*grid-column:\s*2/)
+    expect(stylesheet()).toMatch(/\.podium-rank-2\s*\{[^}]*grid-column:\s*1/)
+    expect(stylesheet()).toMatch(/\.podium-rank-3\s*\{[^}]*grid-column:\s*3/)
+    expect(stylesheet()).toMatch(/\.podium-rank-1\s*\{[^}]*min-height:\s*12rem/)
+    expect(stylesheet()).toMatch(/\.podium-rank-2\s*\{[^}]*min-height:\s*9rem/)
+    expect(stylesheet()).toMatch(/\.podium-rank-3\s*\{[^}]*min-height:\s*6rem/)
+    expect(stylesheet()).toMatch(/@keyframes\s+podium-rise/)
+    expect(stylesheet()).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/)
+    expect(stylesheet()).toMatch(/\.podium-rank-1[^}]*animation:\s*none/)
+  })
 })
 
 describe("the player's own rank (D-89/ECON-05)", () => {
