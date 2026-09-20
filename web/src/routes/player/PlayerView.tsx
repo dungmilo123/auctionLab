@@ -3,6 +3,7 @@ import { ConnectionLine } from '@/components/ConnectionLine'
 import LanguageControl from '@/components/LanguageControl'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { formatUSD } from '@/lib/format'
 import { useLanguage, type CopyKey } from '@/lib/i18n'
 import { keepRejection, type HeldRejection } from '@/lib/rejection'
 import { isSealedAuction } from '@/lib/screen'
@@ -372,6 +373,16 @@ function PlayerView() {
           region
           onRetry={socketRetryVisible ? retrySocket : undefined}
         />
+
+        {view.me !== null && (
+          <div className="border-2 px-3 py-2">
+            <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
+            <p className="text-xl leading-[1.2] font-bold">{formatUSD(view.me.budget)}</p>
+            <p className="text-sm leading-[1.5] text-muted-foreground">
+              {t('lobby.budgetCaption')}
+            </p>
+          </div>
+        )}
 
         {/* D-131: the terminal 4001 notice and its one deliberate rejoin. The
             stored token is KEPT (it is the identity the action re-claims), the
