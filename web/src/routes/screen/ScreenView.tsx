@@ -682,39 +682,33 @@ function SettledBody({
 }
 
 /**
- * The podium (SCRN-03/D-89): one to three blocks in rank order, the winner in
- * the accent fill and the tallest footprint. The blocks come from the standings'
- * own prefix, so a reload at FINALE — the trailing snapshot path — paints the
- * identical ceremony with no event history, and a zero-player list paints
- * nothing rather than a "3rd place: nobody" frame.
+ * The podium (SCRN-03/D-89): one to three blocks in server order, with
+ * presentation roles assigned by position rather than by a client ranking
+ * rule. The blocks come from the standings' own prefix, so a reload at FINALE
+ * — the trailing snapshot path — paints the identical ceremony with no event
+ * history, and a zero-player list paints nothing rather than a "3rd place:
+ * nobody" frame.
  */
 function Podium({ entries }: { entries: readonly LeaderEntry[] }) {
   return (
-    // `items-end`, not `items-stretch`: the podium is a STEPPED hierarchy, so
-    // each block keeps its own height and sits on the same baseline — rank 1
-    // (Display nickname and its larger type) is genuinely the tallest, and
-    // #2/#3 stay shorter (UI-review finding 4).
-    <div className="flex shrink-0 flex-wrap items-end gap-4">
+    // The three columns are always in DOM/server order. CSS places each
+    // presentation role on the ceremony's left/centre/right baseline.
+    <div className="podium shrink-0">
       {entries.map((entry, index) => {
+        const role =
+          index === 0 ? 'podium-rank-1' : index === 1 ? 'podium-rank-2' : 'podium-rank-3'
         const first = index === 0
         return (
           <div
             key={entry.nickname}
-            // `basis-0` + a `min-w-40` floor: the three blocks share one line
-            // while they fit and stack below when they do not, always in rank
-            // order in the DOM.
-            className={`flex min-w-40 flex-1 basis-0 flex-col gap-1 border-2 border-border ${
-              first ? 'bg-primary px-6 py-4 text-primary-foreground' : 'bg-card px-4 py-4'
-            }`}
+            className={`podium-pillar ${role} flex min-w-0 flex-col gap-1 border-2 border-border`}
           >
             <p className={first ? 'text-xl leading-[1.2] font-bold' : 'text-sm leading-[1.5] font-bold'}>
               {entry.rank}
             </p>
             <p
               className={`min-w-0 break-words font-bold ${
-                first
-                  ? 'text-display leading-[1.2]'
-                  : 'text-xl leading-[1.2] tracking-[-0.01em]'
+                first ? 'text-display leading-[1.2]' : 'text-xl leading-[1.2] tracking-[-0.01em]'
               }`}
             >
               {entry.nickname}
