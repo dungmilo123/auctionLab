@@ -71,10 +71,12 @@ export function PublicLotCard({
   lot,
   categories,
   now,
+  showCategory = true,
 }: {
   lot: PublicLot
   categories: Category[]
   now: number
+  showCategory?: boolean
 }) {
   const { d } = useDiscoveryCopy()
   return (
@@ -85,9 +87,9 @@ export function PublicLotCard({
         <h3>
           <a href={lotURL(lot.slug)}>{lot.title}</a>
         </h3>
-        <p className="muted">
+        {showCategory && <p className="muted">
           <CategoryName id={lot.category_id} categories={categories} />
-        </p>
+        </p>}
         <PlannedBadge open={lot.opens_at} close={lot.closes_at} now={now} />
         <p className="numeric">
           {d('opening')}: {formatCatalogMoney(lot.starting_price_minor)}

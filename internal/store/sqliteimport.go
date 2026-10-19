@@ -34,7 +34,7 @@ func (s *Store) ImportSQLite(ctx context.Context, source *sqliteimport.Snapshot)
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		for _, table := range []string{"players", "items", "sealed_bids", "bids", "auction_runtime", "game", "events", "server_config", "catalog_lots", "catalog_lot_images", "catalog_events", "catalog_event_lots", "catalog_seed_runs"} {
+		for _, table := range []string{"commerce_accounts", "commerce_sessions", "commerce_watchlist", "commerce_account_seed_runs", "players", "items", "sealed_bids", "bids", "auction_runtime", "game", "events", "server_config", "catalog_lots", "catalog_lot_images", "catalog_events", "catalog_event_lots", "catalog_seed_runs"} {
 			var n int64
 			if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM "+table).Scan(&n); err != nil {
 				return err

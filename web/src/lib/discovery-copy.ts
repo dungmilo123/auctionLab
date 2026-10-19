@@ -2,8 +2,8 @@ import { useLanguage } from './i18n'
 export const DISCOVERY_COPY = {
   published: ['Published collection', 'Bộ sưu tập đã công bố'],
   notice: [
-    'Explore published records and planned schedules. Bidding and purchases are not available yet.',
-    'Khám phá hiện vật đã công bố và lịch dự kiến. Chức năng đặt giá và mua hàng chưa khả dụng.',
+    'Explore published records, create an account and save lots. Bidding and purchases are not available yet.',
+    'Khám phá hiện vật đã công bố, tạo tài khoản và lưu hiện vật. Chức năng đặt giá và mua hàng chưa khả dụng.',
   ],
   featured: ['Featured events', 'Phiên nổi bật'],
   nearest: ['Nearest planned closes', 'Hiện vật gần giờ đóng dự kiến'],

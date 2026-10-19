@@ -1,11 +1,18 @@
 import { PageHeading, UnavailableState } from '@/components/site/Presentation'
-import { useSiteCopy, type SiteKey } from '@/lib/site-copy'
+import { useSiteCopy } from '@/lib/site-copy'
+import { useAccountCopy } from '@/lib/account-copy'
+import { useAccount } from '@/account/AccountProvider'
 import type { Page } from '@/lib/route'
-
+import AuthForm from './AuthForm'
+import Profile from './Profile'
+import Watchlist from './Watchlist'
+import { AccountStatus } from './AccountStatus'
 export default function AccountPage({ page }: { page: Page }) {
-  const { t } = useSiteCopy()
-  const key: SiteKey = page === 'watchlist' || page === 'bids' || page === 'orders' ? page : 'account'
-  const note: SiteKey = key === 'watchlist' ? 'watchlistNote' : key === 'bids' ? 'bidsNote' : key === 'orders' ? 'ordersNote' : 'accountIntro'
-  return <><PageHeading title={t(key)} intro={t('accountIntro')} />
-    <UnavailableState title={t('unavailable')}>{t(note)}</UnavailableState></>
+  const { t } = useSiteCopy(); const { a } = useAccountCopy(); const { state } = useAccount()
+  if (page === 'login' || page === 'register') return <AuthForm key={page} kind={page} />
+  if (page === 'bids' || page === 'orders') return <><PageHeading title={t(page)} intro={a('intro')} /><UnavailableState title={t('unavailable')}>{t(page === 'bids' ? 'bidsNote' : 'ordersNote')}</UnavailableState></>
+  return <><PageHeading title={page === 'watchlist' ? a('watchlist') : t('account')} intro={a('intro')} />
+    <AccountStatus target={page === 'watchlist' ? '/account/watchlist' : '/account'}>
+      {state.status === 'signed-in' && (page === 'watchlist' ? <Watchlist key={state.profile.id} /> : <Profile key={state.profile.id} profile={state.profile} />)}
+    </AccountStatus></>
 }

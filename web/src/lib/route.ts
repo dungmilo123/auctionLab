@@ -1,5 +1,5 @@
 export type Page = 'home' | 'auctions' | 'auctionDetail' | 'lots' | 'lotDetail'
-  | 'account' | 'watchlist' | 'bids' | 'orders'
+  | 'account' | 'login' | 'register' | 'watchlist' | 'bids' | 'orders'
   | 'admin' | 'adminAuctions' | 'adminLots' | 'adminOrders' | 'notFound'
 export type Layout = 'storefront' | 'account' | 'admin'
 export type Route = { page: Page; layout: Layout; path: string; slug?: string }
@@ -9,6 +9,8 @@ export const SITE_ROUTES = [
   ['/auctions', 'auctions', 'storefront'],
   ['/lots', 'lots', 'storefront'],
   ['/account', 'account', 'account'],
+  ['/account/login', 'login', 'account'],
+  ['/account/register', 'register', 'account'],
   ['/account/watchlist', 'watchlist', 'account'],
   ['/account/bids', 'bids', 'account'],
   ['/account/orders', 'orders', 'account'],

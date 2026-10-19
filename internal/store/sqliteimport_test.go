@@ -219,3 +219,35 @@ func TestSQLiteIdentityRestartRollbackAndOverflow(t *testing.T) {
 		t.Fatal("exhausted identity accepted")
 	}
 }
+
+func TestImportAccountOccupied(t *testing.T) {
+	source, e := sqliteimport.Read(context.Background(), sourceFixture(t))
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, seed := range []string{`INSERT INTO commerce_accounts VALUES('a','a@example.test','A','private','bidder',false,1,1)`, `INSERT INTO commerce_account_seed_runs VALUES(1,1)`} {
+		s, e := Open(testpg.NewURL(t))
+		if e != nil {
+			t.Fatal(e)
+		}
+		t.Cleanup(func() { s.Close() })
+		if e = s.Migrate(); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = s.DB.Exec(seed); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = s.ImportSQLite(context.Background(), source); e == nil || !strings.Contains(e.Error(), "occupied") {
+			t.Fatal("occupied target accepted")
+		}
+		var n int
+		s.DB.QueryRow(`SELECT count(*) FROM players`).Scan(&n)
+		if n != 0 {
+			t.Fatal("partial import")
+		}
+		s.DB.QueryRow(`SELECT count(*) FROM sqlite_import_runs`).Scan(&n)
+		if n != 0 {
+			t.Fatal("marker written")
+		}
+	}
+}

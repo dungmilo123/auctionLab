@@ -1,0 +1,43 @@
+import { useLanguage, type Lang } from './i18n'
+export const ACCOUNT_COPY = {
+  login: ['Sign in', 'Đăng nhập'], register: ['Create account', 'Tạo tài khoản'],
+  intro: ['Keep a private collection of the objects you like. Bidding and purchases are not available.', 'Lưu riêng những hiện vật bạn yêu thích. Đặt giá và mua hàng chưa khả dụng.'],
+  email: ['Email', 'Email'], name: ['Display name', 'Tên hiển thị'], password: ['Password', 'Mật khẩu'],
+  identityHelp: ['Your email is an unverified login identifier and cannot be changed here.', 'Email là tên đăng nhập chưa được xác minh và không thể đổi tại đây.'],
+  passwordHelp: ['Use 12–128 characters. Spaces and Unicode are preserved. No password recovery is available yet.', 'Dùng 12–128 ký tự. Khoảng trắng và Unicode được giữ nguyên. Chưa có chức năng khôi phục mật khẩu.'],
+  nameHelp: ['Use 1–80 characters without control characters.', 'Dùng 1–80 ký tự, không có ký tự điều khiển.'],
+  pending: ['Please wait…', 'Vui lòng chờ…'], checking: ['Checking your session…', 'Đang kiểm tra phiên đăng nhập…'],
+  signedOut: ['Sign in to your account', 'Đăng nhập tài khoản của bạn'],
+  loginRequired: ['Sign in to view or change your private saved lots.', 'Đăng nhập để xem hoặc thay đổi hiện vật đã lưu riêng.'],
+  unavailable: ['Account service unavailable', 'Dịch vụ tài khoản chưa kết nối được'],
+  recovery: ['Your session could not be checked. Public browsing is still available. Try again.', 'Chưa kiểm tra được phiên đăng nhập. Bạn vẫn có thể xem danh mục công khai. Hãy thử lại.'],
+  retry: ['Try again', 'Thử lại'], saveName: ['Save display name', 'Lưu tên hiển thị'],
+  profileSaved: ['Display name saved.', 'Đã lưu tên hiển thị.'], logout: ['Sign out', 'Đăng xuất'],
+  demo: ['Demo account', 'Tài khoản minh họa'], bidder: ['Bidder', 'Người tham gia'], admin: ['Admin account · catalog capability required separately', 'Tài khoản quản trị · cần quyền danh mục riêng'],
+  validation: ['Check the highlighted fields.', 'Kiểm tra các trường được đánh dấu.'],
+  invalid: ['This value does not meet the field requirements.', 'Giá trị chưa đáp ứng yêu cầu của trường.'],
+  duplicate_email: ['That email is already registered. Sign in instead.', 'Email này đã được đăng ký. Hãy đăng nhập.'],
+  invalid_credentials: ['Email or password is incorrect.', 'Email hoặc mật khẩu không đúng.'],
+  access_required: ['Your session ended. Sign in again.', 'Phiên đăng nhập đã kết thúc. Hãy đăng nhập lại.'],
+  throttled: ['Too many attempts. Wait one minute, then try again.', 'Quá nhiều lần thử. Đợi một phút rồi thử lại.'],
+  commit_unknown: ['The result could not be confirmed. For registration, try signing in. For saved lots, reload their state before another action.', 'Chưa xác nhận được kết quả. Nếu đăng ký, hãy thử đăng nhập. Với hiện vật đã lưu, tải lại trạng thái trước khi thao tác tiếp.'],
+  failed: ['The request failed. Your change has not been confirmed. Try again.', 'Yêu cầu thất bại. Thay đổi chưa được xác nhận. Hãy thử lại.'],
+  continue: ['Continue', 'Tiếp tục'],
+  watchlist: ['Your watchlist', 'Danh sách theo dõi của bạn'],
+  empty: ['No saved lots yet', 'Chưa có hiện vật đã lưu'],
+  emptyHelp: ['Explore the collection and save a published lot from its detail page.', 'Khám phá bộ sưu tập và lưu hiện vật đã công bố từ trang chi tiết.'],
+  browse: ['Browse lots', 'Khám phá hiện vật'],
+  watchError: ['Saved lots could not be loaded', 'Chưa tải được hiện vật đã lưu'],
+  watchLoading: ['Loading saved lots…', 'Đang tải hiện vật đã lưu…'],
+  countOne: ['{count} saved lot', '{count} hiện vật đã lưu'],
+  count: ['{count} saved lots', '{count} hiện vật đã lưu'],
+  saveLot: ['Save to watchlist', 'Lưu vào danh sách theo dõi'], removeLot: ['Remove from watchlist', 'Bỏ khỏi danh sách theo dõi'],
+  saved: ['Saved to your watchlist.', 'Đã lưu vào danh sách theo dõi.'], removed: ['Removed from your watchlist.', 'Đã bỏ khỏi danh sách theo dõi.'],
+  loginSave: ['Sign in to save this lot', 'Đăng nhập để lưu hiện vật này'],
+  reload: ['Reload saved state', 'Tải lại trạng thái đã lưu'],
+  watchHelp: ['Saved lots follow planned schedules; saving creates no bid, reservation or purchase.', 'Hiện vật đã lưu theo lịch dự kiến; lưu không tạo lượt đặt giá, giữ chỗ hay mua hàng.'],
+} as const satisfies Record<string, readonly [string, string]>
+export type AccountKey = keyof typeof ACCOUNT_COPY
+export function accountText(lang: Lang, key: AccountKey, values: Record<string, string> = {}) { return ACCOUNT_COPY[key][lang === 'vi' ? 1 : 0].replace(/\{(\w+)\}/g, (token, name: string) => values[name] ?? token) }
+export function useAccountCopy() { const { lang } = useLanguage(); return { a: (key: AccountKey, values?: Record<string, string>) => accountText(lang, key, values) } }
+export function accountErrorKey(code: string): AccountKey { return ['validation', 'duplicate_email', 'invalid_credentials', 'access_required', 'throttled', 'commit_unknown'].includes(code) ? code as AccountKey : 'failed' }

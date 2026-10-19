@@ -1,0 +1,14 @@
+{
+  "scope": "production website bundle static inspection; not a runtime network trace",
+  "assets": [
+    {
+      "file": "index-B-rPxs-_.js",
+      "sha256": "1da1f08753344ef15c723c08489a1452d73b2805925228bbed9e0a1713efc7b0",
+      "forbidden_markers_found": {
+        "websocket_constructor": false,
+        "game_ws_endpoint": false,
+        "legacy_token_storage": false
+      }
+    }
+  ]
+}

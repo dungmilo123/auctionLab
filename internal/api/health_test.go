@@ -1,6 +1,7 @@
 package api
 
 import (
+	"auctionlab/internal/store"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,7 +15,7 @@ type testReadiness bool
 
 func (b testReadiness) Ready(context.Context) (int, error) {
 	if b {
-		return 1, nil
+		return store.UserVersion, nil
 	}
 	return 0, errors.New("credential sentinel")
 }
@@ -35,6 +36,9 @@ func TestHealth(t *testing.T) {
 		var body map[string]any
 		if err := json.Unmarshal(r.Body.Bytes(), &body); err != nil || body["ready"] != ready {
 			t.Fatal(body, err)
+		}
+		if ready && body["schema_version"] != float64(store.UserVersion) {
+			t.Fatal("health version", body)
 		}
 	}
 }

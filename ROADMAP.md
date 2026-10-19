@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-19.
 
-Trạng thái: Change 1 đã hoàn thành; Change 2 `manage-vintage-lots-and-auction-events` đã triển khai và kiểm chứng cục bộ với PostgreSQL 18 cho toàn bộ runtime; đã archive tại `openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/`. Các change sau vẫn là định hướng, chưa phải chức năng đã triển khai.
+Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Các Changes 5–8 và ML extension vẫn là định hướng.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -108,6 +108,8 @@ Dữ liệu demo đề xuất: 15–20 lot trong ba phiên có chủ đề, ví 
 **Hoàn thành khi:** người dùng khám phá được từ homepage đến chi tiết lot bằng dữ liệu lưu thật, trên desktop và mobile.
 
 ### Change 4 — `add-bidder-accounts-and-watchlists`
+
+**Trạng thái:** đã triển khai và archive theo yêu cầu, còn 2/34 task nghiệm thu zoom 200% chưa xác minh. [Bản ghi archive](openspec/changes/archive/2026-10-20-add-bidder-accounts-and-watchlists/ARCHIVE.md) và [bằng chứng](openspec/changes/archive/2026-10-20-add-bidder-accounts-and-watchlists/verification/REPORT.md) giữ nguyên giới hạn này; chưa đánh dấu nghiệm thu hoàn tất.
 
 **Mục tiêu:** thiết lập danh tính và lưu sở thích của người tham gia.
 

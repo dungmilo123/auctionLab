@@ -308,3 +308,11 @@ html.screen-scale .border-2 {
 .bid-panel button { align-self: flex-start; }
 @media (min-width: 640px) { .discovery-controls { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (min-width: 1024px) { .discovery-controls { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+
+/* Commerce forms share the vintage controls and remain readable at narrow widths. */
+.website .account-panel { max-width: 38rem; min-width: 0; }
+.website .account-panel input { width: 100%; min-width: 0; min-height: 44px; }
+.website .account-panel label { font-weight: 600; }
+.website .account-panel input[readonly] { background: var(--muted); padding: 12px; border: 1px solid var(--border); }
+.website .account-panel button { white-space: normal; overflow-wrap: anywhere; }
+.website .lot-grid > div { min-width: 0; }

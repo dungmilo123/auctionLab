@@ -20,7 +20,7 @@ Normal server and catalog seed modes SHALL use PostgreSQL 18 through required `D
 - **AND** neither database credentials nor a fallback SQLite database is exposed or created
 
 ### Requirement: Versioned PostgreSQL schema
-PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. A fresh schema SHALL support retained game data and the vintage catalog. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
+PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. Fresh and upgraded schemas SHALL support retained game, catalog, accounts, sessions, and watchlists. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
 
 #### Scenario: Fresh and repeated migration
 - **WHEN** schema initialization runs against a fresh PostgreSQL application schema and runs again
@@ -31,6 +31,11 @@ PostgreSQL migrations SHALL have their own ordered version ledger and serialize 
 - **WHEN** a migration fails or the target ledger is newer than the app supports
 - **THEN** initialization fails without a partial applied-version claim
 - **AND** existing committed application data is retained
+
+#### Scenario: Upgrade the Change 3 database
+- **WHEN** the supported previous PostgreSQL schema is upgraded
+- **THEN** account/session/watchlist storage becomes available without rewriting existing catalog content, game identities/amounts/revisions, publication state, or admin capability
+- **AND** no accounts or watchlist entries are inferred from legacy players or created automatically
 
 ### Requirement: Explicit read-only SQLite import
 An operator-only import mode SHALL accept a consistent SQLite snapshot at source schema version 4 and copy all retained application tables into an initialized but otherwise unused PostgreSQL application schema. Source access SHALL be read-only, and import SHALL not run an engine, start HTTP/tunnel services, seed demo records, or execute auction settlement. Other source versions SHALL be rejected with preparation guidance.
@@ -75,6 +80,11 @@ Import SHALL commit its data and completion marker together, reject unrelated po
 - **WHEN** verification-only compares a source snapshot to a target with a changed amount or missing row
 - **THEN** it exits unsuccessfully with a table/count/digest mismatch summary
 - **AND** source/target data, sequence state, and migration metadata remain unchanged
+
+#### Scenario: Account data occupies the target
+- **WHEN** a first-time SQLite import targets a migrated schema containing commerce accounts, sessions, watchlist entries, or an account-seed marker
+- **THEN** it refuses the occupied target before copying any source row
+- **AND** account data and the read-only SQLite source remain unchanged
 
 ### Requirement: Preserve game persistence and process ownership
 PostgreSQL storage SHALL retain commit-before-publish, monotonic game revisions, nickname uniqueness, bid ordering, atomic budget changes, and wall-clock restart behavior. One server process SHALL own a given application schema's in-memory game writer. Another server or write-mode maintenance command SHALL be refused while that owner is active. Loss of writer ownership SHALL fail closed.
@@ -129,9 +139,27 @@ The app SHALL retain a no-CGO binary containing the frontend, while requiring a 
 - **AND** post-cutover PostgreSQL data is preserved separately and any discarded writes are disclosed
 
 ### Requirement: Real PostgreSQL acceptance
-Database-backed repository, game, hub, server, migration, and publication checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
+Database-backed repository, game, hub, server, migration, publication, account, and watchlist checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
 
 #### Scenario: Required database suite
 - **WHEN** full verification runs with an isolated PostgreSQL test service
-- **THEN** legacy game and new catalog correctness checks run against PostgreSQL with multiple pool connections
+- **THEN** legacy game, catalog, account, and watchlist correctness checks run against PostgreSQL with multiple pool connections
 - **AND** a missing test service does not silently skip required acceptance or substitute SQLite
+
+#### Scenario: Durable ownership and restart acceptance
+- **WHEN** account/watchlist checks register two users, save independently, revoke a session, and reopen the same owned test schema
+- **THEN** account identity and each watchlist persist, valid unexpired sessions still resolve, and revoked sessions remain invalid
+- **AND** fixture cleanup touches only schemas created by that run
+
+### Requirement: Account writes respect database ownership and commit boundaries
+Account/session/watchlist writes and account provisioning SHALL honor the existing schema writer lease and database timeouts. Lost ownership SHALL fail closed without reacquiring a writer for stale process state. Failure or uncertain commit SHALL NOT be reported as confirmed success, and account mutations SHALL NOT change game revisions or publication state.
+
+#### Scenario: Lost writer or database outage
+- **WHEN** schema ownership is lost or PostgreSQL fails during registration, login, logout, profile update, or membership change
+- **THEN** the operation returns a sanitized failure or uncertain-result response and issues no newly successful session response
+- **AND** the process does not reacquire ownership to continue with stale memory
+
+#### Scenario: Watchlist operation commits
+- **WHEN** a save or remove response reports success
+- **THEN** a subsequent authenticated read observes the committed membership
+- **AND** game revisions, catalog publication, and other accounts' memberships remain unchanged

@@ -118,3 +118,15 @@ func (s *Service) PublicLot(ctx context.Context, slug string) (PublicLot, error)
 	}
 	return PublicLot{}, Fail("not_found")
 }
+
+// PublishedLots projects an already coherent repository snapshot. Private readers
+// reuse this boundary without issuing a separate public-catalog transaction.
+func PublishedLots(data Snapshot) []PublicLot {
+	out := []PublicLot{}
+	for _, e := range data.Events {
+		if e.State == "published" {
+			out = append(out, projectEvent(data, e).Lots...)
+		}
+	}
+	return out
+}

@@ -123,14 +123,35 @@ func OpenConfig(c Config) (*Store, error) {
 }
 
 // withWriter never replaces the leased connection, even after it breaks.
-func (s *Store) withWriter(fn func(context.Context, *sql.Conn) error) error {
-	s.writerMu.Lock()
+func (s *Store) withWriter(fn func(context.Context, *sql.Conn) error, parents ...context.Context) error {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if len(parents) > 0 {
+		ctx, cancel = context.WithTimeout(parents[0], OperationTimeout)
+		defer cancel()
+		// Account requests may abandon the queue without touching the leased connection.
+		ticker := time.NewTicker(2 * time.Millisecond)
+		defer ticker.Stop()
+		for !s.writerMu.TryLock() {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-ticker.C:
+			}
+		}
+	} else {
+		s.writerMu.Lock()
+		ctx, cancel = context.WithTimeout(context.Background(), OperationTimeout)
+		defer cancel()
+	}
 	defer s.writerMu.Unlock()
 	if s.writer == nil || s.lost {
 		return ErrWriterLost
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), OperationTimeout)
-	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	err := fn(ctx, s.writer)
 	if err != nil && (errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) || ctx.Err() != nil || SQLState(err) == "57P01" || SQLState(err) == "08006") {
 		s.lost = true
@@ -199,7 +220,11 @@ func (s *Store) Ready(ctx context.Context) (int, error) {
 }
 
 func (e safeError) CommitUncertain() bool {
-	return e.op == "catalog commit" && SQLState(e.cause) != "40001" && SQLState(e.cause) != "40P01"
+	var nested interface{ CommitUncertain() bool }
+	if errors.As(e.cause, &nested) && nested.CommitUncertain() {
+		return true
+	}
+	return (e.op == "catalog commit" || e.op == "account commit") && SQLState(e.cause) != "40001" && SQLState(e.cause) != "40P01"
 }
 
 func (e safeError) Unavailable() bool {

@@ -4,12 +4,13 @@ import { routeFor, type Page } from '@/lib/route'
 import { siteText, type SiteKey } from '@/lib/site-copy'
 import { AccountLayout, AdminLayout, StorefrontLayout } from '@/layouts/SiteLayout'
 import StorefrontPage from '@/routes/storefront/StorefrontPage'
+import { AccountProvider } from '@/account/AccountProvider'
 import AccountPage from '@/routes/account/AccountPage'
 import AdminPage from '@/routes/admin-preview/AdminPage'
 
 const titles: Record<Page, SiteKey> = {
   home: 'homeTitle', auctions: 'auctions', auctionDetail: 'auctionDetail', lots: 'lots', lotDetail: 'lotDetail',
-  account: 'account', watchlist: 'watchlist', bids: 'bids', orders: 'orders',
+  account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', orders: 'orders',
   admin: 'admin', adminAuctions: 'adminAuctions', adminLots: 'adminLots', adminOrders: 'adminOrders', notFound: 'notFound',
 }
 
@@ -23,10 +24,10 @@ export default function App() {
   function changeLang(next: Lang) { setLang(next); writeStoredLang(next) }
   const Layout = route.layout === 'account' ? AccountLayout : route.layout === 'admin' ? AdminLayout : StorefrontLayout
   return <LanguageProvider lang={lang} setLang={changeLang}>
-    <Layout route={route}>
+    <AccountProvider><Layout route={route}>
       {route.layout === 'account' ? <AccountPage page={route.page} />
         : route.layout === 'admin' ? <AdminPage page={route.page} />
           : <StorefrontPage route={route} />}
-    </Layout>
+    </Layout></AccountProvider>
   </LanguageProvider>
 }

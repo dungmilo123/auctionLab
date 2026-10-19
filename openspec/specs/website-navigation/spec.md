@@ -16,8 +16,13 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 
 #### Scenario: Account destinations
 - **WHEN** a visitor opens `/account`, `/account/watchlist`, `/account/bids`, or `/account/orders`
-- **THEN** the corresponding account preview appears with account navigation
-- **AND** no private information or simulated authenticated identity is displayed
+- **THEN** `/account` resolves a real session and safe profile or a signed-out introduction, and `/account/watchlist` resolves the private list or login-required state
+- **AND** bids and orders remain explicitly unavailable previews without invented activity or another account's data
+
+#### Scenario: Authentication destinations
+- **WHEN** a visitor opens `/account/login` or `/account/register`
+- **THEN** the matching labeled email/password form appears within the account shell with native links between the forms
+- **AND** the form offers a safe return destination and explicit validation, pending, or service-failure states
 
 #### Scenario: Administration destinations
 - **WHEN** an authorized operator opens `/admin`, `/admin/auctions`, `/admin/lots`, or `/admin/orders` through the Go server
@@ -27,7 +32,7 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 #### Scenario: Exact matching and normalization
 - **WHEN** a visitor opens `/lots/sample-camera/?view=preview#details`
 - **THEN** the lot detail route resolves the published `sample-camera` record or its record-not-found state
-- **AND** `/administrator`, `/account/unknown`, `/lots/sample-camera/extra`, and `/Lots` render the not-found view
+- **AND** `/administrator`, `/account/unknown`, `/account/login/extra`, `/lots/sample-camera/extra`, and `/Lots` render the not-found view
 
 ### Requirement: Navigable layout shells
 The storefront SHALL have brand navigation, links to auctions, lots, and account, a main content landmark, and a footer. Account and admin shells SHALL add contextual navigation and a route back to the storefront. Every displayed navigation link SHALL resolve to an implemented foundation destination, identify the current destination accessibly, and remain usable on mobile.
@@ -46,7 +51,7 @@ Recognized website routes SHALL render after direct entry, bookmark navigation, 
 
 #### Scenario: Public nested page refresh
 - **WHEN** a visitor directly loads or refreshes `/auctions/analog-memories`, `/lots/sample-camera`, or `/account/watchlist`
-- **THEN** the matching published record or record-not-found view, or account preview respectively, loads without requiring a prior visit to `/`
+- **THEN** the matching published record or record-not-found view, or session-owned watchlist/login-required state respectively, loads without requiring a prior visit to `/`
 - **AND** the embedded build returns the SPA document with `Cache-Control: no-cache`
 
 #### Scenario: Authorized admin nested page refresh
@@ -64,6 +69,11 @@ Recognized website routes SHALL render after direct entry, bookmark navigation, 
 - **THEN** its public discovery controls and results restore the supported query selections after loading
 - **AND** normal document links still support refresh, new tabs, Back and Forward
 
+#### Scenario: Account refresh and history after logout
+- **WHEN** a browser directly loads an authentication destination or navigates Back to an account page after logout
+- **THEN** the page checks the current server session before showing private data
+- **AND** restored pages clear stale private state and show login-required recovery when the session is invalid
+
 ### Requirement: Preserve the admin capability boundary
 The Go server SHALL retain the existing key and cookie gate on `/admin` and its subtree until account authorization replaces it in a later change. Its entry page SHALL use the vintage palette, readable typography, and accessible controls without external network dependencies. Website preview links SHALL not expose keys or authorize admin operations.
 
@@ -78,12 +88,12 @@ The Go server SHALL retain the existing key and cookie gate on `/admin` and its 
 - **AND** the operator can subsequently navigate to the admin preview destinations
 
 ### Requirement: Honest preview boundaries
-Public discovery SHALL identify stored published content, demos, planned schedules and unavailable transactions accurately. Account and order-preview pages SHALL identify illustrative content and unavailable features. Website pages SHALL avoid game sessions and game WebSocket connections. Only authorized catalog administration SHALL mutate catalog data; account, bid, watchlist, payment and order mutations SHALL remain unavailable, with future controls omitted or disabled and explained.
+Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts and watchlists SHALL show only server-confirmed identity and saved data. Bids, payments, and orders SHALL remain unavailable with omitted or disabled explained controls. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation SHALL remain capability-authorized.
 
 #### Scenario: Exploring the foundation
-- **WHEN** a visitor browses public discovery, an account preview, or an order preview, or activates a preview-only control
-- **THEN** the website does not join a game, submit a business mutation, or show a fabricated successful transaction
-- **AND** published public records and labeled demos are distinguishable from illustrative account/order content and unavailable live commerce data
+- **WHEN** a visitor browses public discovery, account pages, or an order preview, or activates a preview-only control
+- **THEN** working account/watchlist actions report only their confirmed result and preview-only controls create no transaction or game connection
+- **AND** published records and labeled demos remain distinguishable from unavailable bid/order activity
 
 #### Scenario: Existing game identity in browser storage
 - **WHEN** a browser with a saved game token opens the new storefront or account shell
@@ -92,12 +102,17 @@ Public discovery SHALL identify stored published content, demos, planned schedul
 #### Scenario: Working catalog administration
 - **WHEN** an authorized operator saves a lot draft or publishes an auction event
 - **THEN** catalog management reports only the committed catalog operation and indicates that bidding and purchases are unavailable
-- **AND** the next successful public discovery read reflects committed publication while account/order previews remain unchanged and no game connection or commerce transaction is created
+- **AND** the next successful public discovery read reflects committed publication without creating a game connection, account session, watchlist entry, or commerce transaction
 
 #### Scenario: Public notices reflect stored data
 - **WHEN** a visitor browses a non-demo published event or lot
 - **THEN** shared notices and footer copy do not describe the record as an imagined object, generic preview, or necessarily an illustration
-- **AND** the website still explains that bidding and purchases are unavailable and labels demo records when applicable
+- **AND** notices distinguish available accounts/watchlists from unavailable bidding and purchases and label demo records when applicable
+
+#### Scenario: Account service unavailable during discovery
+- **WHEN** account state cannot be loaded but the published catalog read succeeds
+- **THEN** discovery remains usable and watch controls identify their account-service recovery state
+- **AND** the site does not present service failure as a confirmed signed-out identity or activate bidding
 
 ### Requirement: Retire the old game route surface
 The website SHALL replace the player experience at `/` and the game control room at `/admin`. `/screen` and all its descendants SHALL render the not-found view. Foundation navigation SHALL not expose a legacy player, projector, or control-room route alias. This change SHALL not delete existing game data.
@@ -131,3 +146,15 @@ Missing requests in reserved static asset namespaces SHALL return HTTP 404 rathe
 #### Scenario: Unknown API request
 - **WHEN** a client requests an unrecognized `/api/` endpoint
 - **THEN** it receives the existing API error response rather than a website preview
+### Requirement: Safe authentication return navigation
+Authentication links SHALL use a `return_to` destination limited to recognized storefront or account pages on this site. Invalid, external, admin, API, WebSocket, asset, authentication-loop, or malformed destinations SHALL fall back to `/account`. Successful login/registration SHALL navigate only after confirmed success and SHALL NOT replay a save or bid automatically.
+
+#### Scenario: Return to the saved-lot context
+- **WHEN** a visitor logs in from `/account/login?return_to=%2Flots%2Fsample-camera`
+- **THEN** confirmed login navigates to the matching local lot URL
+- **AND** the visitor explicitly chooses whether to save it
+
+#### Scenario: Reject unsafe return target
+- **WHEN** `return_to` contains a scheme, protocol-relative URL, backslash, control character, malformed encoding, or excluded destination
+- **THEN** authentication uses `/account` as its destination
+- **AND** the supplied target is never used as an unchecked redirect or HTML value

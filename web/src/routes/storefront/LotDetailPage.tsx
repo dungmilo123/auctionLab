@@ -1,3 +1,5 @@
+import WatchControl from '@/routes/account/WatchControl'
+import { lotURL } from '@/lib/discovery-links'
 import { useCallback } from 'react'
 import { publicCatalog } from '@/api/public-catalog'
 import { useDiscoveryCopy } from '@/lib/discovery-copy'
@@ -106,6 +108,7 @@ export default function LotDetailPage({ slug }: { slug: string }) {
           <p>{d('noPickup')}</p>
         )}
       </section>
+      <WatchControl id={lot.id} target={lotURL(lot.slug)} />
       <section className="bid-panel stack">
         <p className="numeric">
           {d('opening')}: {formatCatalogMoney(lot.starting_price_minor)}

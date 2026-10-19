@@ -33,7 +33,7 @@ const category = (v: unknown): v is Category =>
   object(v) &&
   texts(v, ['id', 'slug', 'name_en', 'name_vi']) &&
   Number.isSafeInteger(v.sort_order)
-const lot = (v: unknown): v is PublicLot =>
+export const isPublicLot = (v: unknown): v is PublicLot =>
   object(v) &&
   texts(v, [
     'id',
@@ -78,7 +78,7 @@ const event = (v: unknown): v is PublicEvent =>
     (k) => timing(v[k]),
   ) &&
   Array.isArray(v.lots) &&
-  v.lots.every(lot)
+  v.lots.every(isPublicLot)
 const list =
   <T>(check: (v: unknown) => v is T) =>
   (v: unknown): v is T[] =>
@@ -131,7 +131,7 @@ export const publicCatalog = {
   events: (signal?: AbortSignal) => read('events', list(event), signal),
   event: (slug: string, signal?: AbortSignal) =>
     read(`events/${encodeURIComponent(slug)}`, event, signal),
-  lots: (signal?: AbortSignal) => read('lots', list(lot), signal),
+  lots: (signal?: AbortSignal) => read('lots', list(isPublicLot), signal),
   lot: (slug: string, signal?: AbortSignal) =>
-    read(`lots/${encodeURIComponent(slug)}`, lot, signal),
+    read(`lots/${encodeURIComponent(slug)}`, isPublicLot, signal),
 }

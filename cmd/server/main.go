@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"auctionlab"
+	"auctionlab/internal/account"
 	"auctionlab/internal/api"
 	"auctionlab/internal/catalog"
 	"auctionlab/internal/game"
@@ -42,9 +43,13 @@ func run() error {
 	publicURL := flag.String("public-url", "", "public URL to advertise in QR codes (default: PUBLIC_URL)")
 	importPath := flag.String("import-sqlite", "", "stopped standalone SQLite v4 snapshot")
 	verifyOnly := flag.Bool("verify-only", false, "read-only source/target comparison; requires --import-sqlite")
+	seedAccounts := flag.Bool("seed-accounts", false, "provision commerce demo accounts and exit")
 	seedCatalog := flag.Bool("seed-catalog", false, "seed catalog drafts and exit")
 	seedAt := flag.String("seed-at", "", "explicit RFC3339 seed reference instant")
 	flag.Parse()
+	if err := validateAccountSeedMode(*seedAccounts, *seedCatalog, *importPath, *verifyOnly, *seedAt, *wantTunnel); err != nil {
+		return err
+	}
 	if *seedCatalog && (*importPath != "" || *verifyOnly) || !*seedCatalog && *seedAt != "" {
 		return errors.New("seed and import modes are mutually exclusive; --seed-at requires --seed-catalog")
 	}
@@ -108,6 +113,9 @@ func run() error {
 	}
 	if err = st.Migrate(); err != nil {
 		return err
+	}
+	if *seedAccounts {
+		return seedAccountMaintenance(st, os.Getenv, os.Stdout)
 	}
 	if *seedCatalog {
 		spa, err := auctionlab.SPA()
@@ -266,6 +274,7 @@ func run() error {
 	// is chosen by specificity, not registration order (the comment above).
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
+	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}))
 	api.RegisterCatalog(mux, adminKey, catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa}))
 	mux.HandleFunc("GET /api/health", api.NewHealth(st))
 	mux.HandleFunc("/api/", api.NotFoundJSON)

@@ -1,6 +1,6 @@
 # AuctionLab — Collected Stories
 
-A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Account and order pages remain previews; authentication, watchlists, executable auctions, live bids, checkout and orders are unavailable.
+A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Commerce registration, sessions, self-profiles and private watchlists are available. Executable auctions, live bids, checkout and orders remain unavailable.
 
 ## Run and build
 
@@ -9,7 +9,7 @@ From the repository root:
 | Command | Behavior |
 |---|---|
 | `make dev` | Go :8080 and Vite :5173; API, WS, runtime images proxy to Go |
-| `make dev-web` | Vite only; discovery needs a matching Go API, account previews remain local |
+| `make dev-web` | Vite only; discovery needs a matching Go API, account views need the matching Go account API |
 | `make test` | Existing Go tests, frontend unit tests, oxlint |
 | `make build` | Typecheck + Vite build **before** `CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server` |
 
@@ -24,8 +24,10 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/auctions/:slug` | Storefront | Matching published event with cover, story, planned times and ordered lots |
 | `/lots` | Storefront | Published lots with GET search/category/phase/sort controls and count |
 | `/lots/:slug` | Storefront | Matching published lot, ordered gallery, content, disclosures and disabled bid |
-| `/account` | Account | Public introduction with no identity/profile |
-| `/account/watchlist` | Account | Saving unavailable |
+| `/account` | Account | Session-validated self-profile or sign-in recovery |
+| `/account/login` | Account | Email/password sign-in with safe return navigation |
+| `/account/register` | Account | Bidder registration with safe return navigation |
+| `/account/watchlist` | Account | Private saved published lots and confirmed removal |
 | `/account/bids` | Account | Bid history unavailable |
 | `/account/orders` | Account | Orders unavailable |
 | `/admin` | Admin | Management overview |
@@ -42,7 +44,7 @@ The frontend 404 is a view: Go document fallback returns HTTP 200 with `Cache-Co
 
 ## Admin and account boundary
 
-Vite serves the admin document publicly; every catalog data request independently requires the Go API capability. Without it, management shows an explicit access/backend error. The Go origin protects `/admin` and its subtree with the existing admin capability gate. Read the entry link from the server log. A correct key sets the existing HttpOnly, SameSite=Lax, 12-hour capability cookie and redirects to literal `/admin`, removing the key from the URL. Nested navigation/refresh then uses the cookie. Missing capability gets the bilingual gate; a wrong nonempty key returns 401 without echoing it. The gate uses self-contained CSS and system fallbacks. No sign-in API, return-to mechanism, or new account authentication exists. Account pages are public feature previews, not simulated signed-in sessions.
+Vite serves the admin document publicly; every catalog data request independently requires the Go API capability. Without it, management shows an explicit access/backend error. The Go origin protects `/admin` and its subtree with the existing admin capability gate. Read the entry link from the server log. A correct key sets the existing HttpOnly, SameSite=Lax, 12-hour capability cookie and redirects to literal `/admin`, removing the key from the URL. Nested navigation/refresh then uses the cookie. Missing capability gets the bilingual gate; a wrong nonempty key returns 401 without echoing it. The gate uses self-contained CSS and system fallbacks. Commerce sign-in and safe return navigation use their independent account APIs and cookie. Account roles never substitute for the catalog capability; that capability never selects a private account.
 
 ## Presentation components
 
@@ -127,7 +129,7 @@ PUT is a replacement: include every editable field you intend to retain, includi
 
 `/admin/lots?new=1` and `/admin/auctions?new=1` create drafts; `?edit=<id>` loads a stored editor. Unknown selections show not-found recovery. `routes/admin/CatalogPage.tsx`, `LotEditor.tsx`, `EventEditor.tsx`, and `Controls.tsx` supply stored lists, title-only creation, content/gallery/specification/money/fulfillment editing, membership/order, server-derived schedule, public-field preview and explicit publish. Ordered rows have labeled keyboard Move up/Move down/Remove actions. EN/VI labels and errors do not translate or clear entered content. Published records are read-only. Pending actions are disabled; failed saves retain input, and conflicts/uncertain commits require reload rather than automatic overwrite. Reload explicitly replaces entered values with the committed record, with a warning to copy unsaved content first.
 
-The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account and order pages remain previews. The website mounts no legacy game view or WebSocket.
+The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account/profile/watchlist views use their independent commerce session, while bids and orders remain unavailable previews. The website mounts no legacy game view or WebSocket.
 
 ## Explicit demo dataset
 
@@ -143,7 +145,7 @@ For legacy data, follow [offline import, verify, backup/restore and rollback](..
 
 ## Published discovery
 
-`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account/order previews retain their own notices. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
+`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account and order views retain notices distinguishing working accounts/watchlists from unavailable transactions. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
 
 `api/public-catalog.ts` performs only anonymous GET requests with `credentials: 'omit'`, no admin headers and `cache: 'no-store'`. It validates envelopes, public record shape and server time. It never calls private APIs. The primary response's time sample plus monotonic elapsed time drives presentation, independently of the device wall clock. Visible pages tick once per second; resuming a hidden tab reloads public records and a failed refresh shows retry. Absolute planned dates identify the viewer timezone. Upcoming means before opening; within planned window includes opening and excludes close; elapsed includes close. Events use planned end; lots use individual closes. Missing/inconsistent timing is unavailable. These phases do not determine execution or results.
 
@@ -157,3 +159,25 @@ Lot query keys are `q/category/phase/sort`; events use `phase`. First duplicate 
 Home features at most three events ordered window/upcoming/elapsed/unavailable, ascending opening within window/upcoming and descending within elapsed, then slug. Up to six nearest-close lots come only from current planned windows, derived from the same event aggregate. All categories link to their slug filter. Event details preserve published member order. Gallery buttons preserve stored image order/alt text, keyboard focus and selection; missing media uses the local fallback. Condition, specifications, supplied story and enabled shipping/pickup instructions/fees precede disabled bidding. Zero amounts display explicitly as `$0.00 USD`.
 
 Direct load, refresh, new tabs and Back/Forward use ordinary document URLs in Vite and the embedded build. Language changes preserve loaded records and form selections. Required read failures show recovery rather than partial results. Unknown/draft details share one public not-found view. The five-route browser evidence and requirement mapping live in `openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/`. Roadmap Changes 4–8 and the ML extension remain future work.
+
+## Commerce account API
+
+`POST /api/auth/register` accepts exactly `{email,password,display_name}` and returns 201 `{data: profile}`. `POST /api/auth/login` accepts `{email,password}` and returns 200 with the same profile envelope. `POST /api/auth/logout` accepts `{}` and returns `{data:{signed_out:true}}` only after durable revocation. GET `/api/account` resolves the current session; PATCH accepts only `{display_name}`. A profile contains only `id`, `email`, `display_name`, server-owned `role` and `demo`. Email is an unverified, read-only login identifier. Public registration creates bidders.
+
+All writes require `Content-Type: application/json`, `X-AuctionLab-Account: 1`, one JSON object (8 KiB maximum), known fields, and a matching supplied Origin. No Origin is permitted for explicit non-browser clients under the same header/JSON policy. No CORS credential access is enabled. All account responses are no-store JSON. Errors use `{error:{code,fields?}}`: 400 malformed_json, 401 access_required/invalid_credentials, 403 request_rejected, 404 not_found, 409 duplicate_email, 415 json_required, 422 validation, 429 throttled (Retry-After), and 503 unavailable/commit_unknown. A failed/uncertain registration issues no cookie; login can recover a registration that possibly committed. Do not automatically resubmit account creation.
+
+The host-only `auction_account` cookie uses Path=/, HttpOnly, SameSite=Lax and a fixed 30-day lifetime. HTTPS sets Secure; only the direct loopback proxy may supply the effective scheme using X-Forwarded-Proto. Forwarded Host/IP never grant authority. Login rotates and revokes the supplied browser session; other browsers remain signed in. Logout clears the cookie only after confirmed revocation. Raw credentials are never JSON response fields or browser storage values. The account's admin role does not grant catalog access: the independent existing capability gate/cookie remains required, and a capability never selects an account.
+
+## Private watchlists
+
+GET `/api/account/watchlist` returns `{data:[publicLot,...],meta:{server_time}}`. It uses exactly the existing public lot projection, with no owner IDs, saved timestamps or draft fields. One Repeatable Read snapshot covers the session, memberships and catalog; order is newest saved first, then lot ID ascending using C collation. Unpublished content is omitted; elapsed published lots remain saved with planned schedule wording and no invented sale outcome.
+
+GET `/api/account/watchlist/{lotID}` returns `{data:{saved:boolean}}` for a published lot. PUT with `{}` returns saved true; repeat/concurrent saves retain the original time and one row. DELETE with `{}` returns saved false even for absent entries, without looking up draft content. All ownership comes from the validated session. Draft/missing save or state targets share a 404. Capability-only requests fail account authorization. On commit_unknown, reload membership before choosing another action; do not announce an unconfirmed save/remove. Public catalog responses remain independent of account membership.
+
+## Account views and saved lots
+
+`/account/login` and `/account/register` are native document destinations within the account shell. Labeled forms use username/new-password/current-password autocomplete, field-associated errors, disabled pending controls and a focused error summary. Confirmed login/registration navigates to validated `return_to`; unknown, external, encoded-path, control/backslash, admin/API/WS/assets or auth-loop destinations fall back to `/account`. Ordinary discovery queries are retained, fragments removed. Authentication never replays a watch action.
+
+An in-memory provider checks GET `/api/account` independently of public discovery and distinguishes checking, signed-out, signed-in and unavailable. It clears private state before restoration/focus revalidation and on pagehide/logout, aborting or ignoring obsolete responses. No game token or account credential enters browser storage. Private views wait for server validation. `/account` shows the safe profile, read-only email, editable display name, role/demo labels and explicit logout; failures retain inputs and offer recovery. `/account/bids` and `/account/orders` remain unavailable previews.
+
+Published lot detail has a separate authenticated save/remove action alongside the explained disabled bid panel and existing delivery/pickup disclosures. Anonymous visitors get a login link back to that lot and must explicitly choose save after login. Membership is loaded per lot/account, confirmed before display, and uncertain results require reloading saved state before another action. `/account/watchlist` loads real server-owned cards, deterministic order/count and confirmed removal. Checking, login-required, empty, unavailable and other errors remain distinct; failed reads never become empty fixtures. EN/VI messages announce pending/results, native links remain usable, and long titles/missing images use the existing responsive fallback. Public content stays usable when the account service fails.
