@@ -1,0 +1,60 @@
+- link "Đến nội dung chính":
+  - /url: "#main"
+- banner:
+  - link "AuctionLab":
+    - /url: /
+    - generic: A
+    - text: AuctionLab
+  - navigation "Điều hướng chính":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account
+  - group "Ngôn ngữ":
+    - button "English": EN
+    - button "Tiếng Việt" [pressed]: VI
+- strong: Tài khoản và hiện vật đã lưu
+- generic: Tài khoản, danh sách theo dõi và đặt giá theo lịch đã khả dụng. Thanh toán và đơn hàng chưa khả dụng.
+- main:
+  - navigation "Điều hướng tài khoản":
+    - link "Tổng quan":
+      - /url: /account
+    - link "Danh sách theo dõi":
+      - /url: /account/watchlist
+    - link "Lượt đặt giá":
+      - /url: /account/bids
+    - link "Đơn hàng":
+      - /url: /account/orders
+  - paragraph: Những câu chuyện được lưu giữ
+  - heading "Lượt đặt giá" [level=1]
+  - paragraph: Lưu hiện vật yêu thích và xem lượt tham gia đấu giá hợp lệ của bạn. Thanh toán và đơn hàng chưa khả dụng.
+  - navigation "Lượt đặt giá của tôi":
+    - button "Tất cả" [pressed]
+    - button "Bạn đang dẫn giá"
+    - button "Bạn đã bị vượt giá"
+    - button "Bạn đã thắng"
+    - button "Bạn không thắng"
+  - list:
+    - heading "Folding travel camera" [level=2]:
+      - link "Folding travel camera":
+        - /url: /lots/folding-travel-camera
+    - paragraph: Bạn đã thắng
+    - term: Giá gần nhất của bạn đã được nhận
+    - definition: $160.07 USD
+    - term: Giá hiện tại
+    - definition: $160.07 USD
+    - paragraph: Thanh toán và đơn hàng chưa khả dụng. Thắng đấu giá không tạo đơn hàng.
+  - link "Về trang cửa hàng":
+    - /url: /
+- contentinfo:
+  - paragraph: AuctionLab · Những câu chuyện được lưu giữ
+  - paragraph: Khám phá hiện vật, lưu yêu thích và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.
+  - navigation "Khám phá AuctionLab":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account

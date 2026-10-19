@@ -2,8 +2,8 @@ import { useLanguage } from './i18n'
 export const DISCOVERY_COPY = {
   published: ['Published collection', 'Bộ sưu tập đã công bố'],
   notice: [
-    'Explore published records, create an account and save lots. Bidding and purchases are not available yet.',
-    'Khám phá hiện vật đã công bố, tạo tài khoản và lưu hiện vật. Chức năng đặt giá và mua hàng chưa khả dụng.',
+    'Explore published records, save lots and bid on open auctions. Checkout and orders remain unavailable.',
+    'Khám phá hiện vật đã công bố, lưu hiện vật và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.',
   ],
   featured: ['Featured events', 'Phiên nổi bật'],
   nearest: ['Nearest planned closes', 'Hiện vật gần giờ đóng dự kiến'],
@@ -74,10 +74,10 @@ export const DISCOVERY_COPY = {
   pickup: ['Pickup', 'Nhận trực tiếp'],
   noShipping: ['Shipping unavailable', 'Không hỗ trợ giao hàng'],
   noPickup: ['Pickup unavailable', 'Không hỗ trợ nhận trực tiếp'],
-  bid: ['Place bid — unavailable', 'Đặt giá — chưa khả dụng'],
+  bid: ['Place bid', 'Đặt giá'],
   bidHelp: [
-    'Bidding is not available yet. Planned times do not determine an auction result.',
-    'Chức năng đặt giá chưa khả dụng. Lịch dự kiến không xác định kết quả đấu giá.',
+    'Bidding uses confirmed commerce auction state. Planned times alone do not determine an outcome.',
+    'Đặt giá dựa vào trạng thái đấu giá đã xác nhận. Lịch dự kiến không tự xác định kết quả.',
   ],
   gallery: ['Image gallery', 'Thư viện hình ảnh'],
   image: ['Select image', 'Chọn ảnh'],

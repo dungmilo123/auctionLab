@@ -1,0 +1,9 @@
+{
+  "owned_rehearsal_schema_dropped": true,
+  "orphan_schemas_from_interrupted_tests_dropped": 2,
+  "remaining_owned_test_schemas": 0,
+  "existing_postgresql_container_left_running": true,
+  "dedicated_test_database": "auctionlab_change5_test",
+  "private_configuration": "/home/milo/.local/state/auctionlab/change5-test.env",
+  "temporary_preview_processes_stopped": true
+}

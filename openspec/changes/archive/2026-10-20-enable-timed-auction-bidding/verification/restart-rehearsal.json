@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "recovered_sold_amount_minor": 21975,
+  "recovered_sold_bid_count": 1,
+  "no_bid_result": "unsold",
+  "original_close_preserved": true,
+  "accepted_replay_after_restart_and_close": true,
+  "late_bid_refused": true,
+  "private_won_restored": true,
+  "watchlist_restored": true,
+  "all_publications_unchanged": true,
+  "game_revision": 0,
+  "game_bid_count": 0,
+  "commerce_bid_count": 6,
+  "result_count_at_observation": 8,
+  "unique_result_per_lot": true
+}

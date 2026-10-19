@@ -1,0 +1,17 @@
+
+> web@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.0 /home/milo/workspace/project/auctionLab/web
+
+
+ Test Files  29 passed (29)
+      Tests  525 passed (525)
+   Start at  02:36:07
+   Duration  482ms (transform 78%, import 12%, tests 8%, worker 2%)
+
+  Transform  transforming modules took 4.04s · 78% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+

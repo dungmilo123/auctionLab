@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-19.
 
-Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Các Changes 5–8 và ML extension vẫn là định hướng.
+Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Change 5 `enable-timed-auction-bidding` đã triển khai và được archive ngày 2026-10-20 với 38/39 task; task 8.4 (zoom trình duyệt 200% và reduced motion thực tế) vẫn chưa xác minh. Các Changes 6–8 và ML extension vẫn là định hướng.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -123,6 +123,8 @@ Dữ liệu demo đề xuất: 15–20 lot trong ba phiên có chủ đề, ví 
 **Hoàn thành khi:** người dùng đăng nhập và xem lại watchlist qua các lần truy cập; tài khoản thường không thực hiện được thao tác admin.
 
 ### Change 5 — `enable-timed-auction-bidding`
+
+**Trạng thái:** đã triển khai và archive theo yêu cầu với 38/39 task. [Bản ghi archive](openspec/changes/archive/2026-10-20-enable-timed-auction-bidding/ARCHIVE.md) và [bằng chứng](openspec/changes/archive/2026-10-20-enable-timed-auction-bidding/verification/REPORT.md) giữ task 8.4 chưa hoàn tất: cần xác minh zoom trình duyệt 200% và reduced motion thực tế. Đặt giá/kết quả và trang lượt tham gia đã triển khai; chưa nghiệm thu đầy đủ. Checkout/orders vẫn là công việc tiếp theo.
 
 **Mục tiêu:** đưa đấu giá realtime vào website mới.
 

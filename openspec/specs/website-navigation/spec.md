@@ -16,8 +16,8 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 
 #### Scenario: Account destinations
 - **WHEN** a visitor opens `/account`, `/account/watchlist`, `/account/bids`, or `/account/orders`
-- **THEN** `/account` resolves a real session and safe profile or a signed-out introduction, and `/account/watchlist` resolves the private list or login-required state
-- **AND** bids and orders remain explicitly unavailable previews without invented activity or another account's data
+- **THEN** `/account` resolves a real session and safe profile or a signed-out introduction, and `/account/watchlist` and `/account/bids` resolve their session-owned saved list or accepted bid participation, or a login-required state
+- **AND** `/account/orders` remains an explicitly unavailable preview, while bids show only confirmed participation and never another account's data
 
 #### Scenario: Authentication destinations
 - **WHEN** a visitor opens `/account/login` or `/account/register`
@@ -33,6 +33,11 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 - **WHEN** a visitor opens `/lots/sample-camera/?view=preview#details`
 - **THEN** the lot detail route resolves the published `sample-camera` record or its record-not-found state
 - **AND** `/administrator`, `/account/unknown`, `/account/login/extra`, `/lots/sample-camera/extra`, and `/Lots` render the not-found view
+
+#### Scenario: Direct bid participation destination
+- **WHEN** a user opens or refreshes `/account/bids` in Vite or the embedded build, or returns through browser history
+- **THEN** the page validates the current session and loads only its accepted participation or an explicit login/error/empty state
+- **AND** obsolete private state is cleared after logout and native links to the published lots remain usable
 
 ### Requirement: Navigable layout shells
 The storefront SHALL have brand navigation, links to auctions, lots, and account, a main content landmark, and a footer. Account and admin shells SHALL add contextual navigation and a route back to the storefront. Every displayed navigation link SHALL resolve to an implemented foundation destination, identify the current destination accessibly, and remain usable on mobile.
@@ -88,12 +93,12 @@ The Go server SHALL retain the existing key and cookie gate on `/admin` and its 
 - **AND** the operator can subsequently navigate to the admin preview destinations
 
 ### Requirement: Honest preview boundaries
-Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts and watchlists SHALL show only server-confirmed identity and saved data. Bids, payments, and orders SHALL remain unavailable with omitted or disabled explained controls. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation SHALL remain capability-authorized.
+Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts, watchlists and bid participation SHALL show only server-confirmed identity and owned data. Lot-detail bidding SHALL require current commerce eligibility; payments and orders SHALL remain unavailable with omitted or disabled explained controls. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation SHALL remain capability-authorized.
 
 #### Scenario: Exploring the foundation
 - **WHEN** a visitor browses public discovery, account pages, or an order preview, or activates a preview-only control
-- **THEN** working account/watchlist actions report only their confirmed result and preview-only controls create no transaction or game connection
-- **AND** published records and labeled demos remain distinguishable from unavailable bid/order activity
+- **THEN** working account/watchlist/bid actions report only their confirmed result and preview-only controls create no transaction or game connection
+- **AND** published records and labeled demos remain distinguishable, and winning a bid does not imply payment or an order
 
 #### Scenario: Existing game identity in browser storage
 - **WHEN** a browser with a saved game token opens the new storefront or account shell
@@ -101,13 +106,13 @@ Public discovery SHALL accurately identify published content, demos, planned sch
 
 #### Scenario: Working catalog administration
 - **WHEN** an authorized operator saves a lot draft or publishes an auction event
-- **THEN** catalog management reports only the committed catalog operation and indicates that bidding and purchases are unavailable
-- **AND** the next successful public discovery read reflects committed publication without creating a game connection, account session, watchlist entry, or commerce transaction
+- **THEN** catalog management reports only the committed catalog operation and explains scheduled commerce bidding and unavailable checkout/orders
+- **AND** the next successful public discovery read reflects committed publication without creating a game connection, account session, watchlist entry or bid; separate auction execution adopts the published schedule
 
 #### Scenario: Public notices reflect stored data
 - **WHEN** a visitor browses a non-demo published event or lot
 - **THEN** shared notices and footer copy do not describe the record as an imagined object, generic preview, or necessarily an illustration
-- **AND** notices distinguish available accounts/watchlists from unavailable bidding and purchases and label demo records when applicable
+- **AND** notices distinguish available accounts/watchlists/scheduled bidding from unavailable checkout and orders and label demo records when applicable
 
 #### Scenario: Account service unavailable during discovery
 - **WHEN** account state cannot be loaded but the published catalog read succeeds

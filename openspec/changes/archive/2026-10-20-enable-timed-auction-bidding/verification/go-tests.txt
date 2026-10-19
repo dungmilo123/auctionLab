@@ -1,0 +1,17 @@
+ok  	auctionlab	0.004s
+ok  	auctionlab/cmd/server	1.196s
+ok  	auctionlab/internal/account	0.616s
+ok  	auctionlab/internal/api	3.701s
+ok  	auctionlab/internal/auction	0.003s
+ok  	auctionlab/internal/catalog	0.607s
+ok  	auctionlab/internal/game	12.525s
+ok  	auctionlab/internal/hub	19.616s
+ok  	auctionlab/internal/netinfo	0.002s
+?   	auctionlab/internal/sqliteimport	[no test files]
+ok  	auctionlab/internal/store	10.931s
+ok  	auctionlab/internal/testpg	0.028s
+ok  	auctionlab/internal/tunnel	1.894s
+?   	auctionlab/openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/verification/legacy-fixture	[no test files]
+?   	auctionlab/openspec/changes/enable-timed-auction-bidding/verification/prepare	[no test files]
+?   	auctionlab/scripts/dbfixture	[no test files]
+ok  	auctionlab/scripts/loadtest	0.005s

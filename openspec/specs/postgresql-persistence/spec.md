@@ -20,7 +20,7 @@ Normal server and catalog seed modes SHALL use PostgreSQL 18 through required `D
 - **AND** neither database credentials nor a fallback SQLite database is exposed or created
 
 ### Requirement: Versioned PostgreSQL schema
-PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. Fresh and upgraded schemas SHALL support retained game, catalog, accounts, sessions, and watchlists. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
+PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. Fresh and upgraded schemas SHALL support retained game, catalog, accounts, sessions, watchlists, commerce lot auctions, accepted bids and immutable results. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
 
 #### Scenario: Fresh and repeated migration
 - **WHEN** schema initialization runs against a fresh PostgreSQL application schema and runs again
@@ -36,6 +36,11 @@ PostgreSQL migrations SHALL have their own ordered version ledger and serialize 
 - **WHEN** the supported previous PostgreSQL schema is upgraded
 - **THEN** account/session/watchlist storage becomes available without rewriting existing catalog content, game identities/amounts/revisions, publication state, or admin capability
 - **AND** no accounts or watchlist entries are inferred from legacy players or created automatically
+
+#### Scenario: Upgrade schema 2 for bidding
+- **WHEN** a version-2 database upgrades to version 3 and migration runs again
+- **THEN** new commerce auction storage exists once, previous migrations remain unchanged, and accounts/sessions/watchlists/catalog/game/admin capability are preserved
+- **AND** migration alone creates no bids or results and readiness reports supported schema version 3
 
 ### Requirement: Explicit read-only SQLite import
 An operator-only import mode SHALL accept a consistent SQLite snapshot at source schema version 4 and copy all retained application tables into an initialized but otherwise unused PostgreSQL application schema. Source access SHALL be read-only, and import SHALL not run an engine, start HTTP/tunnel services, seed demo records, or execute auction settlement. Other source versions SHALL be rejected with preparation guidance.
@@ -82,7 +87,7 @@ Import SHALL commit its data and completion marker together, reject unrelated po
 - **AND** source/target data, sequence state, and migration metadata remain unchanged
 
 #### Scenario: Account data occupies the target
-- **WHEN** a first-time SQLite import targets a migrated schema containing commerce accounts, sessions, watchlist entries, or an account-seed marker
+- **WHEN** a first-time SQLite import targets a migrated schema containing commerce accounts, sessions, watchlist entries, an account-seed marker, commerce auctions, accepted commerce bids or auction results
 - **THEN** it refuses the occupied target before copying any source row
 - **AND** account data and the read-only SQLite source remain unchanged
 
@@ -139,7 +144,7 @@ The app SHALL retain a no-CGO binary containing the frontend, while requiring a 
 - **AND** post-cutover PostgreSQL data is preserved separately and any discarded writes are disclosed
 
 ### Requirement: Real PostgreSQL acceptance
-Database-backed repository, game, hub, server, migration, publication, account, and watchlist checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
+Database-backed repository, game, hub, server, migration, publication, account, watchlist, timed bidding, closure and auction recovery checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
 
 #### Scenario: Required database suite
 - **WHEN** full verification runs with an isolated PostgreSQL test service
@@ -163,3 +168,20 @@ Account/session/watchlist writes and account provisioning SHALL honor the existi
 - **WHEN** a save or remove response reports success
 - **THEN** a subsequent authenticated read observes the committed membership
 - **AND** game revisions, catalog publication, and other accounts' memberships remain unchanged
+### Requirement: Commerce auction commit and ownership safety
+Commerce bid acceptance, initialization and terminal results SHALL honor the schema writer lease, database timeouts and commit-before-success boundary. Lost ownership SHALL fail closed without reacquisition. Accepted bids/results SHALL survive restart; game resets SHALL NOT remove them. Auction changes SHALL NOT modify game revisions or immutable publication.
+
+#### Scenario: Failed bid or terminal commit
+- **WHEN** a bid or closure transaction fails before commit
+- **THEN** no partial accepted history, leader, count, revision or result is committed or announced
+- **AND** an uncertain commit is reported as unknown and is reconciled from durable records instead of claimed as success
+
+#### Scenario: Writer ownership lost
+- **WHEN** the leased writer connection fails during auction execution
+- **THEN** further bid and lifecycle mutations stop succeeding and readiness reports unavailable
+- **AND** the process does not reacquire ownership to continue from stale process state
+
+#### Scenario: Restart and legacy reset
+- **WHEN** the server restarts around a closing deadline or the retained game is reset
+- **THEN** accepted commerce bids and committed terminal results remain intact and overdue lots reconcile exactly once
+- **AND** catalog publication, commerce identities, watchlists and game monetary units remain independent

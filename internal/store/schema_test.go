@@ -17,7 +17,7 @@ func TestSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, table := range []string{"commerce_accounts", "commerce_sessions", "commerce_watchlist", "commerce_account_seed_runs", "players", "items", "bids", "sealed_bids", "auction_runtime", "game", "events", "server_config", "catalog_categories", "catalog_lots", "catalog_lot_images", "catalog_events", "catalog_event_lots", "catalog_seed_runs", "sqlite_import_runs", "schema_migrations"} {
+	for _, table := range []string{"commerce_lot_auctions", "commerce_bids", "commerce_auction_results", "commerce_accounts", "commerce_sessions", "commerce_watchlist", "commerce_account_seed_runs", "players", "items", "bids", "sealed_bids", "auction_runtime", "game", "events", "server_config", "catalog_categories", "catalog_lots", "catalog_lot_images", "catalog_events", "catalog_event_lots", "catalog_seed_runs", "sqlite_import_runs", "schema_migrations"} {
 		var ok bool
 		if err = s.DB.QueryRow("SELECT to_regclass($1) IS NOT NULL", s.SchemaName+"."+table).Scan(&ok); err != nil || !ok {
 			t.Fatal("missing table", table, err)

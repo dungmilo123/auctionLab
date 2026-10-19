@@ -1,0 +1,31 @@
+Timed auction
+
+Open for bids
+
+Opening price
+$169.00 USD
+Fixed increment
+$5.00 USD
+Current price
+$169.00 USD
+Next minimum
+$174.00 USD
+Accepted bids
+1
+Scheduled close
+Oct 20, 2026, 2:32:57 AM GMT+7
+
+You have not bid on this lot
+
+Amount (USD)
+
+Manual ascending bids use server time and exact USD cents. Watching or saving never bids.
+
+Place bid
+
+Accepted bid history
+#1 · Bidder 1
+$169.00 USD
+10/20/26, 2:28:03 AM
+
+Checkout, payment and orders are not available. Winning does not create an order.

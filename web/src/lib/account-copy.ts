@@ -1,14 +1,14 @@
 import { useLanguage, type Lang } from './i18n'
 export const ACCOUNT_COPY = {
   login: ['Sign in', 'Đăng nhập'], register: ['Create account', 'Tạo tài khoản'],
-  intro: ['Keep a private collection of the objects you like. Bidding and purchases are not available.', 'Lưu riêng những hiện vật bạn yêu thích. Đặt giá và mua hàng chưa khả dụng.'],
+  intro: ['Save favorites and inspect your accepted auction participation. Checkout and orders remain unavailable.', 'Lưu hiện vật yêu thích và xem lượt tham gia đấu giá hợp lệ của bạn. Thanh toán và đơn hàng chưa khả dụng.'],
   email: ['Email', 'Email'], name: ['Display name', 'Tên hiển thị'], password: ['Password', 'Mật khẩu'],
   identityHelp: ['Your email is an unverified login identifier and cannot be changed here.', 'Email là tên đăng nhập chưa được xác minh và không thể đổi tại đây.'],
   passwordHelp: ['Use 12–128 characters. Spaces and Unicode are preserved. No password recovery is available yet.', 'Dùng 12–128 ký tự. Khoảng trắng và Unicode được giữ nguyên. Chưa có chức năng khôi phục mật khẩu.'],
   nameHelp: ['Use 1–80 characters without control characters.', 'Dùng 1–80 ký tự, không có ký tự điều khiển.'],
   pending: ['Please wait…', 'Vui lòng chờ…'], checking: ['Checking your session…', 'Đang kiểm tra phiên đăng nhập…'],
   signedOut: ['Sign in to your account', 'Đăng nhập tài khoản của bạn'],
-  loginRequired: ['Sign in to view or change your private saved lots.', 'Đăng nhập để xem hoặc thay đổi hiện vật đã lưu riêng.'],
+  loginRequired: ['Sign in to view your private saved lots and accepted bid participation.', 'Đăng nhập để xem hiện vật đã lưu riêng và lượt tham gia đấu giá hợp lệ.'],
   unavailable: ['Account service unavailable', 'Dịch vụ tài khoản chưa kết nối được'],
   recovery: ['Your session could not be checked. Public browsing is still available. Try again.', 'Chưa kiểm tra được phiên đăng nhập. Bạn vẫn có thể xem danh mục công khai. Hãy thử lại.'],
   retry: ['Try again', 'Thử lại'], saveName: ['Save display name', 'Lưu tên hiển thị'],

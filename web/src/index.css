@@ -316,3 +316,17 @@ html.screen-scale .border-2 {
 .website .account-panel input[readonly] { background: var(--muted); padding: 12px; border: 1px solid var(--border); }
 .website .account-panel button { white-space: normal; overflow-wrap: anywhere; }
 .website .lot-grid > div { min-width: 0; }
+
+/* Commerce auction surfaces retain the vintage focus and narrow mobile flow. */
+.auction-form input { width: 100%; max-width: 24rem; min-width: 0; border: 1px solid var(--color-charcoal, #24211e); padding: .75rem; background: transparent; font: inherit; font-variant-numeric: tabular-nums; }
+.auction-history, .auction-participation { list-style: none; padding: 0; margin: 0; }
+.auction-history li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .75rem 0; border-bottom: 1px solid #a3835570; }
+.auction-history li time { flex-basis: 100%; font-size: .875rem; }
+.auction-history li strong { margin-inline-start: auto; }
+.auction-participation { display: grid; gap: 1rem; }
+.auction-filters { flex-wrap: wrap; }
+.auction-filters [aria-pressed=true] { background: #722f37; color: #f6f1e8; }
+.bid-panel { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 400px) { .auction-history li strong { margin-inline-start: 0; flex-basis: 100%; } .bid-panel .metadata > div { min-width: 0; } }
+
+.auction-form [aria-disabled=true] { opacity: .55; cursor: not-allowed; }

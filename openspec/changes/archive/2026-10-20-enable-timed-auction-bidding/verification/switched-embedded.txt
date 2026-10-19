@@ -1,0 +1,77 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "AuctionLab":
+    - /url: /
+    - generic: A
+    - text: AuctionLab
+  - navigation "Main navigation":
+    - link "Auctions":
+      - /url: /auctions
+    - link "Lots":
+      - /url: /lots
+    - link "Account":
+      - /url: /account
+  - group "Language":
+    - button "English" [pressed]: EN
+    - button "Tiếng Việt": VI
+- strong: Accounts & saved lots
+- generic: Accounts, watchlists and scheduled bidding are available. Checkout and orders are not available yet.
+- main:
+  - navigation "Account navigation":
+    - link "Overview":
+      - /url: /account
+    - link "Watchlist":
+      - /url: /account/watchlist
+    - link "My bids":
+      - /url: /account/bids
+    - link "Orders":
+      - /url: /account/orders
+  - paragraph: Collected stories
+  - heading "My bids" [level=1]
+  - paragraph: Save favorites and inspect your accepted auction participation. Checkout and orders remain unavailable.
+  - navigation "My bids":
+    - button "All" [pressed]
+    - button "You are leading"
+    - button "You have been outbid"
+    - button "You won"
+    - button "You did not win"
+  - list:
+    - heading "Chamber music record" [level=2]:
+      - link "Chamber music record":
+        - /url: /lots/chamber-music-record
+    - paragraph: You won
+    - term: Your latest accepted amount
+    - definition: $219.75 USD
+    - term: Current price
+    - definition: $219.75 USD
+    - paragraph: Checkout, payment and orders are not available. Winning does not create an order.
+    - heading "Field watch with canvas strap" [level=2]:
+      - link "Field watch with canvas strap":
+        - /url: /lots/field-watch-with-canvas-strap
+    - paragraph: You won
+    - term: Your latest accepted amount
+    - definition: $169.00 USD
+    - term: Current price
+    - definition: $169.00 USD
+    - paragraph: Checkout, payment and orders are not available. Winning does not create an order.
+    - heading "Folding travel camera" [level=2]:
+      - link "Folding travel camera":
+        - /url: /lots/folding-travel-camera
+    - paragraph: You did not win
+    - term: Your latest accepted amount
+    - definition: $150.03 USD
+    - term: Current price
+    - definition: $160.07 USD
+  - link "Return to storefront":
+    - /url: /
+- contentinfo:
+  - paragraph: AuctionLab · Collected stories
+  - paragraph: Discover objects, save favorites and bid on open lots. Checkout and orders remain unavailable.
+  - navigation "Explore AuctionLab":
+    - link "Auctions":
+      - /url: /auctions
+    - link "Lots":
+      - /url: /lots
+    - link "Account":
+      - /url: /account

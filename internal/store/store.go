@@ -224,7 +224,7 @@ func (e safeError) CommitUncertain() bool {
 	if errors.As(e.cause, &nested) && nested.CommitUncertain() {
 		return true
 	}
-	return (e.op == "catalog commit" || e.op == "account commit") && SQLState(e.cause) != "40001" && SQLState(e.cause) != "40P01"
+	return (e.op == "catalog commit" || e.op == "account commit" || e.op == "auction commit") && SQLState(e.cause) != "40001" && SQLState(e.cause) != "40P01"
 }
 
 func (e safeError) Unavailable() bool {

@@ -19,6 +19,7 @@ import (
 	"auctionlab"
 	"auctionlab/internal/account"
 	"auctionlab/internal/api"
+	"auctionlab/internal/auction"
 	"auctionlab/internal/catalog"
 	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
@@ -139,6 +140,18 @@ func run() error {
 		return json.NewEncoder(os.Stdout).Encode(report)
 	}
 	log.Print("postgresql: connected; schema ready; exclusive writer ownership held")
+	// Commerce execution starts only after every maintenance-mode early return.
+	auctions := auction.New(store.AuctionRepository{Store: st}, time.Now)
+	if err = auctions.Reconcile(context.Background()); err != nil {
+		return err
+	}
+	auctionCtx, cancelAuctions := context.WithCancel(context.Background())
+	auctionDone := make(chan struct{})
+	go func() {
+		defer close(auctionDone)
+		auctions.Run(auctionCtx, func(err error) { log.Printf("auction reconciliation: %v", err) })
+	}()
+	defer func() { cancelAuctions(); <-auctionDone }()
 
 	// Boot step 2b — D-74's admin capability. The key comes from ADMIN_KEY, the
 	// persisted server_config row, or one minted and written to that row before
@@ -274,7 +287,9 @@ func run() error {
 	// is chosen by specificity, not registration order (the comment above).
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
-	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}))
+	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions)
+	auctionStreams := api.RegisterAuction(mux, auctions)
+	defer auctionStreams.Close()
 	api.RegisterCatalog(mux, adminKey, catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa}))
 	mux.HandleFunc("GET /api/health", api.NewHealth(st))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
@@ -300,8 +315,12 @@ func run() error {
 	defer stop() // registered last, so a second signal during the stop gets default behaviour
 
 	srv := newServer(addr, mux)
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
+		auctionStreams.Close()
+		cancelAuctions()
 		// A hijacked /ws connection is not waited on (net/http untracks it on
 		// StateHijacked), so the audience's phones never hold the shutdown open.
 		_ = srv.Shutdown(context.Background())
@@ -312,6 +331,7 @@ func run() error {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
+	<-shutdownDone
 	return nil
 }
 

@@ -1,0 +1,50 @@
+- link "Đến nội dung chính":
+  - /url: "#main"
+- banner:
+  - link "AuctionLab":
+    - /url: /
+    - generic: A
+    - text: AuctionLab
+  - navigation "Điều hướng chính":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account
+  - group "Ngôn ngữ":
+    - button "English": EN
+    - button "Tiếng Việt" [pressed]: VI
+- strong: Tài khoản và hiện vật đã lưu
+- generic: Tài khoản, danh sách theo dõi và đặt giá theo lịch đã khả dụng. Thanh toán và đơn hàng chưa khả dụng.
+- main:
+  - navigation "Điều hướng tài khoản":
+    - link "Tổng quan":
+      - /url: /account
+    - link "Danh sách theo dõi":
+      - /url: /account/watchlist
+    - link "Lượt đặt giá":
+      - /url: /account/bids
+    - link "Đơn hàng":
+      - /url: /account/orders
+  - paragraph: Những câu chuyện được lưu giữ
+  - heading "Lượt đặt giá" [level=1]
+  - paragraph: Lưu hiện vật yêu thích và xem lượt tham gia đấu giá hợp lệ của bạn. Thanh toán và đơn hàng chưa khả dụng.
+  - heading "Đăng nhập tài khoản của bạn" [level=2]
+  - paragraph: Đăng nhập để xem hiện vật đã lưu riêng và lượt tham gia đấu giá hợp lệ.
+  - link "Đăng nhập":
+    - /url: /account/login?return_to=%2Faccount%2Fbids
+  - link "Tạo tài khoản":
+    - /url: /account/register?return_to=%2Faccount%2Fbids
+  - link "Về trang cửa hàng":
+    - /url: /
+- contentinfo:
+  - paragraph: AuctionLab · Những câu chuyện được lưu giữ
+  - paragraph: Khám phá hiện vật, lưu yêu thích và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.
+  - navigation "Khám phá AuctionLab":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account

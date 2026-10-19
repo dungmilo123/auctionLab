@@ -251,3 +251,43 @@ func TestImportAccountOccupied(t *testing.T) {
 		}
 	}
 }
+
+func TestImportAuctionOccupied(t *testing.T) {
+	ctx := context.Background()
+	path := sourceFixture(t)
+	before, e := os.ReadFile(path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	source, e := sqliteimport.Read(ctx, path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	s, e := Open(testpg.NewURL(t))
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer s.Close()
+	if e = s.Migrate(); e != nil {
+		t.Fatal(e)
+	}
+	_, e = s.DB.Exec(`INSERT INTO catalog_lots(id,slug,title,created_at,updated_at) VALUES('l','l','L',0,0);
+ INSERT INTO catalog_events(id,slug,title,created_at,updated_at) VALUES('e','e','E',0,0);
+ INSERT INTO commerce_lot_auctions(lot_id,event_id,opens_at,closes_at,starting_price_minor,bid_increment_minor) VALUES('l','e',0,10,0,1);
+ INSERT INTO commerce_auction_results VALUES('l','unsold',10,11,NULL,NULL,NULL)`)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.ImportSQLite(ctx, source); e == nil || !strings.Contains(e.Error(), "occupied") {
+		t.Fatal(e)
+	}
+	var clean bool
+	e = s.DB.QueryRow(`SELECT (SELECT count(*)=0 FROM players) AND (SELECT count(*)=0 FROM sqlite_import_runs) AND (SELECT count(*)=1 FROM commerce_auction_results)`).Scan(&clean)
+	if e != nil || !clean {
+		t.Fatal(clean, e)
+	}
+	after, e := os.ReadFile(path)
+	if e != nil || string(before) != string(after) {
+		t.Fatal("source modified", e)
+	}
+}

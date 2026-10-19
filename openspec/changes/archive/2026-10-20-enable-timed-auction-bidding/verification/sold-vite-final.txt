@@ -1,0 +1,42 @@
+Đấu giá theo thời gian
+
+Đã bán
+
+Giá khởi điểm
+$125.50 USD
+Bước giá cố định
+$5.00 USD
+Giá hiện tại
+$160.07 USD
+Mức giá tối thiểu tiếp theo
+$165.07 USD
+Lượt đặt giá hợp lệ
+4
+Thời điểm đóng dự kiến
+02:28:57 GMT+7 20 thg 10, 2026
+
+Đã bán · Giá thắng: Bidder 2 · $160.07 USD
+
+Bạn không thắng
+
+Số tiền (USD)
+
+Đặt giá tăng dần thủ công theo giờ máy chủ và cent USD chính xác. Theo dõi hoặc lưu không đặt giá.
+
+Đặt giá
+
+Lịch sử đặt giá hợp lệ
+#4 · Bidder 2
+$160.07 USD
+02:27:02 20/10/26
+#3 · Bidder 1
+$150.03 USD
+02:26:39 20/10/26
+#2 · Bidder 2
+$140.01 USD
+02:25:58 20/10/26
+#1 · Bidder 1
+$125.50 USD
+02:25:43 20/10/26
+
+Thanh toán và đơn hàng chưa khả dụng. Thắng đấu giá không tạo đơn hàng.

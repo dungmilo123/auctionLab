@@ -1,0 +1,50 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "AuctionLab":
+    - /url: /
+    - generic: A
+    - text: AuctionLab
+  - navigation "Main navigation":
+    - link "Auctions":
+      - /url: /auctions
+    - link "Lots":
+      - /url: /lots
+    - link "Account":
+      - /url: /account
+  - group "Language":
+    - button "English" [pressed]: EN
+    - button "Tiếng Việt": VI
+- strong: Accounts & saved lots
+- generic: Accounts, watchlists and scheduled bidding are available. Checkout and orders are not available yet.
+- main:
+  - navigation "Account navigation":
+    - link "Overview":
+      - /url: /account
+    - link "Watchlist":
+      - /url: /account/watchlist
+    - link "My bids":
+      - /url: /account/bids
+    - link "Orders":
+      - /url: /account/orders
+  - paragraph: Collected stories
+  - heading "My bids" [level=1]
+  - paragraph: Save favorites and inspect your accepted auction participation. Checkout and orders remain unavailable.
+  - heading "Sign in to your account" [level=2]
+  - paragraph: Sign in to view your private saved lots and accepted bid participation.
+  - link "Sign in":
+    - /url: /account/login?return_to=%2Faccount%2Fbids
+  - link "Create account":
+    - /url: /account/register?return_to=%2Faccount%2Fbids
+  - link "Return to storefront":
+    - /url: /
+- contentinfo:
+  - paragraph: AuctionLab · Collected stories
+  - paragraph: Discover objects, save favorites and bid on open lots. Checkout and orders remain unavailable.
+  - navigation "Explore AuctionLab":
+    - link "Auctions":
+      - /url: /auctions
+    - link "Lots":
+      - /url: /lots
+    - link "Account":
+      - /url: /account

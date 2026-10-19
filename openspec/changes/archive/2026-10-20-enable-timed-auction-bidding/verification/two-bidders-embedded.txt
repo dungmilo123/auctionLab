@@ -1,0 +1,103 @@
+- link "Đến nội dung chính":
+  - /url: "#main"
+- banner:
+  - link "AuctionLab":
+    - /url: /
+    - generic: A
+    - text: AuctionLab
+  - navigation "Điều hướng chính":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account
+  - group "Ngôn ngữ":
+    - button "English": EN
+    - button "Tiếng Việt" [pressed]: VI
+- strong: Bộ sưu tập đã công bố
+- generic: Khám phá hiện vật đã công bố, lưu hiện vật và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.
+- main:
+  - article:
+    - generic: Nội dung minh họa
+    - heading "Folding travel camera" [level=1]
+    - paragraph: Máy ảnh phim
+    - region "Thư viện hình ảnh":
+      - figure:
+        - img "Folding travel camera demo illustration"
+      - 'button "Chọn ảnh 1: Folding travel camera demo illustration" [pressed]':
+        - figure:
+          - img "Folding travel camera demo illustration"
+      - 'button "Chọn ảnh 2: Folding travel camera illustrated detail"':
+        - figure:
+          - img "Folding travel camera illustrated detail"
+    - heading "Mô tả" [level=2]
+    - paragraph: Illustrative vintage object for catalog preparation. This is not a real sale listing.
+    - generic: Trong khoảng thời gian dự kiến
+    - paragraph: "Giờ mở dự kiến: 02:25:07 GMT+7 20 thg 10, 2026"
+    - paragraph: "Giờ đóng dự kiến: 02:28:57 GMT+7 20 thg 10, 2026"
+    - paragraph: Thời gian theo múi giờ của bạn · Asia/Bangkok
+    - link "Xem phiên chứa hiện vật":
+      - /url: /auctions/analog-memories
+    - heading "Tình trạng" [level=2]
+    - paragraph: Demo illustration depicts general wear; physical condition and operation are unknown.
+    - heading "Thông số" [level=2]
+    - term: Representation
+    - definition: Project-authored SVG illustration
+    - term: Authentication
+    - definition: Not independently verified
+    - heading "Câu chuyện được cung cấp" [level=2]
+    - paragraph: "Project-authored demo story: an imagined object from a collector's shelf. No provenance has been independently verified."
+    - heading "Giao hàng và nhận trực tiếp" [level=2]
+    - paragraph: "Phí giao hàng: $12.50 USD"
+    - paragraph: "Demo delivery: protective packaging; fee disclosed in USD."
+    - heading "Nhận trực tiếp" [level=3]
+    - paragraph: Demo pickup by arrangement; no real collection address.
+    - region "Danh sách theo dõi của bạn":
+      - heading "Danh sách theo dõi của bạn" [level=2]
+      - paragraph: Hiện vật đã lưu theo lịch dự kiến; lưu không tạo lượt đặt giá, giữ chỗ hay mua hàng.
+      - button "Lưu vào danh sách theo dõi"
+      - status
+    - region "Đấu giá theo thời gian":
+      - heading "Đấu giá theo thời gian" [level=2]
+      - paragraph: Đang nhận giá
+      - status
+      - term: Giá khởi điểm
+      - definition: $125.50 USD
+      - term: Bước giá cố định
+      - definition: $5.00 USD
+      - term: Giá hiện tại
+      - definition: $140.01 USD
+      - term: Mức giá tối thiểu tiếp theo
+      - definition: $145.01 USD
+      - term: Lượt đặt giá hợp lệ
+      - definition: "2"
+      - term: Thời điểm đóng dự kiến
+      - definition:
+        - time: 02:28:57 GMT+7 20 thg 10, 2026
+      - status
+      - paragraph: Bạn đang dẫn giá
+      - generic: Số tiền (USD)
+      - textbox "Số tiền (USD)" [disabled]
+      - paragraph: Đặt giá tăng dần thủ công theo giờ máy chủ và cent USD chính xác. Theo dõi hoặc lưu không đặt giá.
+      - button "Đặt giá" [disabled]
+      - status: Máy chủ đã nhận giá đặt.
+      - heading "Lịch sử đặt giá hợp lệ" [level=3]
+      - list:
+        - generic: "#2 · Bidder 2"
+        - strong: $140.01 USD
+        - time: 02:25:58 20/10/26
+        - generic: "#1 · Bidder 1"
+        - strong: $125.50 USD
+        - time: 02:25:43 20/10/26
+      - paragraph: Thanh toán và đơn hàng chưa khả dụng. Thắng đấu giá không tạo đơn hàng.
+- contentinfo:
+  - paragraph: AuctionLab · Những câu chuyện được lưu giữ
+  - paragraph: Khám phá hiện vật, lưu yêu thích và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.
+  - navigation "Khám phá AuctionLab":
+    - link "Phiên đấu giá":
+      - /url: /auctions
+    - link "Hiện vật":
+      - /url: /lots
+    - link "Tài khoản":
+      - /url: /account

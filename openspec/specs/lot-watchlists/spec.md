@@ -20,7 +20,7 @@ Watchlist reads and writes SHALL require a valid commerce session and derive the
 - **AND** the website explains the login requirement without inventing locally saved entries
 
 ### Requirement: Published lot membership
-Only a lot in a published event SHALL be addable to a watchlist. Draft and nonexistent targets SHALL return indistinguishable HTTP 404 responses. A saved lot SHALL remain saved when its planned window elapses, without being labeled sold, won, or bid on.
+Only a lot in a published event SHALL be addable to a watchlist. Draft and nonexistent targets SHALL return indistinguishable HTTP 404 responses. A saved lot SHALL remain saved when its window elapses; saving or schedule phase alone SHALL NOT label it sold, won or bid on. Execution and personal participation SHALL come only from the corresponding auction service.
 
 #### Scenario: Save before or after the planned window
 - **WHEN** an authenticated user saves an upcoming, within-window, or elapsed published lot
@@ -59,12 +59,12 @@ Saving an already saved lot and removing an absent entry SHALL succeed without d
 - **AND** removal remains safe and does not affect other entries
 
 ### Requirement: Lot detail save interaction
-Published lot detail SHALL offer a keyboard-operable save/remove control separate from the disabled bid control. Signed-in users SHALL see confirmed membership and explicit pending/failure states. Anonymous users SHALL receive a login link returning to that lot; login SHALL NOT silently perform a save.
+Published lot detail SHALL offer a keyboard-operable save/remove control separate from the bid control. Signed-in users SHALL see confirmed membership and explicit pending/failure states. Anonymous users SHALL receive a login link returning to that lot; login SHALL NOT silently perform a save.
 
 #### Scenario: Anonymous visitor returns from login
 - **WHEN** a visitor follows the watchlist login link from a published lot and completes authentication
 - **THEN** the browser returns to the validated lot detail URL and the visitor can explicitly save it
-- **AND** the bid control remains disabled and explained
+- **AND** authentication does not replay a bid; the separate bid control follows current commerce auction eligibility
 
 #### Scenario: Failed or obsolete mutation
 - **WHEN** saving/removal fails, authentication expires, or a response belongs to an obsolete page or account

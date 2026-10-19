@@ -2,6 +2,7 @@ package api
 
 import (
 	"auctionlab/internal/account"
+	"auctionlab/internal/auction"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,12 +17,16 @@ import (
 const AccountCookieName = "auction_account"
 
 type AccountAPI struct {
-	Service *account.Service
-	Limiter *account.Limiter
+	Service  *account.Service
+	Limiter  *account.Limiter
+	Auctions *auction.Service
 }
 
-func RegisterAccount(mux *http.ServeMux, s *account.Service) {
-	a := &AccountAPI{s, account.NewLimiter()}
+func RegisterAccount(mux *http.ServeMux, s *account.Service, auctions ...*auction.Service) {
+	a := &AccountAPI{Service: s, Limiter: account.NewLimiter()}
+	if len(auctions) > 0 {
+		a.Auctions = auctions[0]
+	}
 	mux.Handle("/api/auth/", a)
 	mux.Handle("/api/account", a)
 	mux.Handle("/api/account/", a)
@@ -152,6 +157,8 @@ func (a *AccountAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch {
+	case r.URL.Path == "/api/account/bids" || strings.HasPrefix(r.URL.Path, "/api/account/bids/"):
+		a.auction(w, r, digest)
 	case r.Method == "POST" && (r.URL.Path == "/api/auth/register" || r.URL.Path == "/api/auth/login"):
 		done, ok := a.Limiter.Enter(r.RemoteAddr)
 		if !ok {

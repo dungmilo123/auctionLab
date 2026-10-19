@@ -7,8 +7,8 @@ export const CATALOG_COPY = {
     "vi": "Chuẩn bị danh mục"
   },
   "notice": {
-    "en": "Save drafts and publish complete events. Accounts and watchlists are available independently. Bidding and purchases are unavailable.",
-    "vi": "Lưu bản nháp và công bố phiên hoàn chỉnh. Tài khoản và danh sách theo dõi hoạt động riêng. Đặt giá và mua hàng chưa khả dụng."
+    "en": "Save drafts and publish complete events. Accounts, watchlists and scheduled bidding are available independently. Checkout and orders remain unavailable.",
+    "vi": "Lưu bản nháp và công bố phiên hoàn chỉnh. Tài khoản, danh sách theo dõi và đặt giá theo lịch hoạt động riêng. Thanh toán và đơn hàng chưa khả dụng."
   },
   "lots": {
     "en": "Lots",

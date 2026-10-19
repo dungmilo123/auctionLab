@@ -3,6 +3,7 @@ import { lotURL } from '@/lib/discovery-links'
 import { useCallback } from 'react'
 import { publicCatalog } from '@/api/public-catalog'
 import { useDiscoveryCopy } from '@/lib/discovery-copy'
+import AuctionPanel from './AuctionPanel'
 import { formatCatalogMoney } from '@/lib/catalog-money'
 import { usePublicPage } from './usePublicPage'
 import { withCategories } from './loads'
@@ -109,23 +110,7 @@ export default function LotDetailPage({ slug }: { slug: string }) {
         )}
       </section>
       <WatchControl id={lot.id} target={lotURL(lot.slug)} />
-      <section className="bid-panel stack">
-        <p className="numeric">
-          {d('opening')}: {formatCatalogMoney(lot.starting_price_minor)}
-        </p>
-        <p className="numeric">
-          {d('increment')}: {formatCatalogMoney(lot.bid_increment_minor)}
-        </p>
-        <p id="bid-explanation">{d('bidHelp')}</p>
-        <button
-          className="site-button site-button-primary"
-          type="button"
-          disabled
-          aria-describedby="bid-explanation"
-        >
-          {d('bid')}
-        </button>
-      </section>
+      <AuctionPanel key={lot.id} id={lot.id} target={lotURL(lot.slug)} />
     </article>
   )
 }

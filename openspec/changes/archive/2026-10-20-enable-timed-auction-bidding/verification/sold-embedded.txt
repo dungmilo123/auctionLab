@@ -1,0 +1,42 @@
+Timed auction
+
+Sold
+
+Opening price
+$125.50 USD
+Fixed increment
+$5.00 USD
+Current price
+$160.07 USD
+Next minimum
+$165.07 USD
+Accepted bids
+4
+Scheduled close
+Oct 20, 2026, 2:28:57 AM GMT+7
+
+Sold · Winning bid: Bidder 2 · $160.07 USD
+
+You won
+
+Amount (USD)
+
+Manual ascending bids use server time and exact USD cents. Watching or saving never bids.
+
+Place bid
+
+Accepted bid history
+#4 · Bidder 2
+$160.07 USD
+10/20/26, 2:27:02 AM
+#3 · Bidder 1
+$150.03 USD
+10/20/26, 2:26:39 AM
+#2 · Bidder 2
+$140.01 USD
+10/20/26, 2:25:58 AM
+#1 · Bidder 1
+$125.50 USD
+10/20/26, 2:25:43 AM
+
+Checkout, payment and orders are not available. Winning does not create an order.

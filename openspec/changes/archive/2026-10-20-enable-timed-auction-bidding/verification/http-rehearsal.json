@@ -1,0 +1,8 @@
+{
+  "discarded_accepted_response_replayed": true,
+  "durable_bid_count": 1,
+  "self_leading_refused": true,
+  "below_minimum_refused": true,
+  "private_isolation": true,
+  "watchlist_saved_independently": true
+}
