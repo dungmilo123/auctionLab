@@ -1,105 +1,209 @@
-// Package store owns the SQLite handle: the byte-exact pragma DSN and the
-// fail-hard boot assertion that keeps the database in WAL mode.
+// Package store owns PostgreSQL persistence. SQLite is only an offline import source.
 package store
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"database/sql/driver"
+	"errors"
+	"net"
+	"net/url"
+	"regexp"
+	"sync"
+	"time"
 
-	_ "modernc.org/sqlite" // registers the driver name "sqlite", never "sqlite3"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
-// PragmaState is the state Open observed on the live handle. The boot log and
-// /api/health report these facts instead of re-stating what the DSN intends:
-// the health `wal` field is the exact smoke check the D-19 contract points at,
-// so it must come from the assertion, not from a compile-time constant.
-type PragmaState struct {
-	JournalMode string // always "wal" for a handle Open returned
-	BusyTimeout int    // milliseconds
-	ForeignKeys bool
+var ErrWriterLost = errors.New("PostgreSQL writer ownership lost; restart required")
+
+const OperationTimeout = 5 * time.Second
+
+var schemaPattern = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+
+type Config struct {
+	URL, Schema string
+	ReadOnly    bool
 }
 
-// Store holds the process-wide SQLite handle. Phase 1 creates no schema.
-type Store struct {
-	DB      *sql.DB
-	pragmas PragmaState
+func ConfigFromEnv(getenv func(string) string) (Config, error) {
+	if getenv("DB_PATH") != "" {
+		return Config{}, errors.New("DB_PATH is obsolete; use DATABASE_URL and --import-sqlite for a stopped v4 snapshot")
+	}
+	c := Config{URL: getenv("DATABASE_URL"), Schema: getenv("DATABASE_SCHEMA")}
+	if c.Schema == "" {
+		c.Schema = "auctionlab"
+	}
+	if _, err := parseConfig(c); err != nil {
+		return Config{}, err
+	}
+	return c, nil
 }
-
-// Pragmas returns the state observed at Open time.
-func (s *Store) Pragmas() PragmaState { return s.pragmas }
-
-// DSN builds the connection string. Every pragma lives here and only here:
-// pragmas are per-connection, and `db.Exec("PRAGMA …")` after Open would
-// configure whichever pooled connection happened to be checked out.
-//
-// The `_pragma=` form is deliberate — the shorthand `?_journal_mode(WAL)` with
-// the wrong key fails *silently* (journal_mode stays "delete", no error), which
-// is why Open re-reads the mode and refuses to hand back a handle unless it is
-// "wal".
-func DSN(path string) string {
-	return "file:" + path +
-		"?_pragma=busy_timeout(5000)" +
-		"&_pragma=journal_mode(WAL)" +
-		"&_pragma=synchronous(NORMAL)" +
-		"&_pragma=foreign_keys(1)"
-}
-
-// Open opens the database and returns an error — never a handle — unless
-// SQLite reports journal_mode = wal.
-//
-// The journal_mode read is the first statement after sql.Open on purpose:
-// database/sql.Open is lazy and happily "succeeds" on an unwritable path, so
-// only a real statement surfaces the failure (boot fails hard instead of
-// listening and then erroring under load).
-func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", DSN(path))
+func parseConfig(c Config) (*pgx.ConnConfig, error) {
+	if c.URL == "" {
+		return nil, errors.New("DATABASE_URL is required (PostgreSQL 18)")
+	}
+	u, err := url.Parse(c.URL)
+	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") {
+		return nil, errors.New("invalid DATABASE_URL: expected a PostgreSQL URL")
+	}
+	if !schemaPattern.MatchString(c.Schema) || c.Schema == "public" || c.Schema == "pg_catalog" || len(c.Schema) > 3 && c.Schema[:3] == "pg_" {
+		return nil, errors.New("invalid DATABASE_SCHEMA: use a dedicated simple lowercase identifier")
+	}
+	cfg, err := pgx.ParseConfig(c.URL)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite open %q: %w", path, err)
+		return nil, errors.New("invalid DATABASE_URL: check PostgreSQL connection options")
 	}
-
-	// SQLite has one writer. The engine lock already serializes mutations, but
-	// boot load, health probes and any future read path can hold a second
-	// connection, and two concurrent writers turn into SQLITE_BUSY — which
-	// D-34 escalates to a process exit mid-auction (research Pitfall 10). One
-	// pooled connection removes the class entirely; the DSN's busy_timeout stays
-	// as the second line of defence.
-	db.SetMaxOpenConns(1)
-
-	var mode string
-	if err := db.QueryRow("PRAGMA journal_mode").Scan(&mode); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("sqlite journal_mode probe %q: %w", path, err)
-	}
-	if mode != "wal" {
-		_ = db.Close()
-		return nil, fmt.Errorf("sqlite journal_mode is %q, want \"wal\" for %q: pragmas must come from store.DSN", mode, path)
-	}
-
-	// Read the two other pragmas back from a live connection too, so the boot
-	// log reports observed values instead of parroting the DSN. Every pooled
-	// connection gets its pragmas from the DSN, so whichever connection answers
-	// here reports the same state the request path will see.
-	var busyTimeout, foreignKeys int
-	if err := db.QueryRow("PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("sqlite busy_timeout probe %q: %w", path, err)
-	}
-	if err := db.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("sqlite foreign_keys probe %q: %w", path, err)
-	}
-
-	return &Store{
-		DB: db,
-		pragmas: PragmaState{
-			JournalMode: mode,
-			BusyTimeout: busyTimeout,
-			ForeignKeys: foreignKeys == 1,
-		},
-	}, nil
+	cfg.ConnectTimeout = OperationTimeout
+	cfg.RuntimeParams["search_path"] = `"` + c.Schema + `",pg_catalog`
+	cfg.RuntimeParams["statement_timeout"] = "5000"
+	cfg.RuntimeParams["lock_timeout"] = "5000"
+	cfg.RuntimeParams["idle_in_transaction_session_timeout"] = "10000"
+	return cfg, nil
 }
 
-// Close releases the handle.
+// Open is a convenience for explicit URLs. Production uses OpenConfig with env validation.
+func Open(raw string) (*Store, error) {
+	c := Config{URL: raw, Schema: "auctionlab"}
+	if u, e := url.Parse(raw); e == nil {
+		if v := u.Query().Get("search_path"); v != "" {
+			c.Schema = v
+		}
+	}
+	return OpenConfig(c)
+}
+
+type Store struct {
+	DB         *sql.DB
+	SchemaName string
+	writer     *sql.Conn
+	writerMu   sync.Mutex
+	lost       bool
+	closeOnce  sync.Once
+}
+
+func OpenConfig(c Config) (*Store, error) {
+	cfg, err := parseConfig(c)
+	if err != nil {
+		return nil, err
+	}
+	db := stdlib.OpenDB(*cfg)
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(2)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), OperationTimeout)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, errors.New("PostgreSQL unavailable: check DATABASE_URL and service readiness")
+	}
+	var version int
+	if err = db.QueryRowContext(ctx, "SHOW server_version_num").Scan(&version); err != nil || version/10000 != 18 {
+		db.Close()
+		return nil, errors.New("PostgreSQL 18 is required")
+	}
+	s := &Store{DB: db, SchemaName: c.Schema}
+	if !c.ReadOnly {
+		s.writer, err = db.Conn(ctx)
+		if err == nil {
+			var ok bool
+			err = s.writer.QueryRowContext(ctx, `SELECT pg_try_advisory_lock(hashtextextended(current_database() || ':' || $1 || ':writer',0))`, c.Schema).Scan(&ok)
+			if err == nil && !ok {
+				err = errors.New("owned")
+			}
+		}
+		if err != nil {
+			s.Close()
+			return nil, errors.New("PostgreSQL writer ownership unavailable: stop the competing process before startup or maintenance")
+		}
+	}
+	return s, nil
+}
+
+// withWriter never replaces the leased connection, even after it breaks.
+func (s *Store) withWriter(fn func(context.Context, *sql.Conn) error) error {
+	s.writerMu.Lock()
+	defer s.writerMu.Unlock()
+	if s.writer == nil || s.lost {
+		return ErrWriterLost
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), OperationTimeout)
+	defer cancel()
+	err := fn(ctx, s.writer)
+	if err != nil && (errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) || ctx.Err() != nil || SQLState(err) == "57P01" || SQLState(err) == "08006") {
+		s.lost = true
+	}
+	return err
+}
 func (s *Store) Close() error {
-	return s.DB.Close()
+	var err error
+	s.closeOnce.Do(func() {
+		s.writerMu.Lock()
+		defer s.writerMu.Unlock()
+		s.lost = true
+		if s.writer != nil { // Physically close the session: returning a locked session to the pool is unsafe.
+			_ = s.writer.Raw(func(c any) error {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				return c.(*stdlib.Conn).Conn().Close(ctx)
+			})
+			_ = s.writer.Close()
+		}
+		err = s.DB.Close()
+	})
+	return err
+}
+func SQLState(err error) string {
+	var p *pgconn.PgError
+	if errors.As(err, &p) {
+		return p.Code
+	}
+	return ""
+}
+
+// SafeError preserves classification without printing credentials or row values.
+type safeError struct {
+	op    string
+	cause error
+}
+
+func (e safeError) Error() string { return "store: " + e.op + " failed" }
+func (e safeError) Unwrap() error { return e.cause }
+func sanitize(op string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return safeError{op, err}
+}
+func (s *Store) Ready(ctx context.Context) (int, error) {
+	if err := s.DB.PingContext(ctx); err != nil {
+		return 0, errors.New("database unavailable")
+	}
+	s.writerMu.Lock()
+	defer s.writerMu.Unlock()
+	if s.writer == nil || s.lost {
+		return 0, errors.New("writer unavailable")
+	}
+	if err := s.writer.PingContext(ctx); err != nil {
+		s.lost = true
+		return 0, errors.New("writer unavailable")
+	}
+	var version int
+	err := s.DB.QueryRowContext(ctx, `SELECT COALESCE(MAX(version),0) FROM "`+s.SchemaName+`".schema_migrations`).Scan(&version)
+	if err != nil || version != UserVersion {
+		return 0, errors.New("schema unavailable")
+	}
+	return version, nil
+}
+
+func (e safeError) CommitUncertain() bool {
+	return e.op == "catalog commit" && SQLState(e.cause) != "40001" && SQLState(e.cause) != "40P01"
+}
+
+func (e safeError) Unavailable() bool {
+	var network net.Error
+	var connect *pgconn.ConnectError
+	return errors.Is(e.cause, ErrWriterLost) || errors.Is(e.cause, driver.ErrBadConn) || errors.Is(e.cause, sql.ErrConnDone) || errors.As(e.cause, &network) || errors.As(e.cause, &connect)
 }

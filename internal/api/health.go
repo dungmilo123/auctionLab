@@ -1,33 +1,29 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
-type healthResponse struct {
-	Status string `json:"status"`
-	WAL    bool   `json:"wal"`
+type Readiness interface {
+	Ready(context.Context) (int, error)
 }
 
-// NewHealth builds the GET /api/health handler (D-19).
-//
-// `wal` reports the mode the boot assertion observed on the live handle — the
-// caller passes `store.Pragmas().JournalMode == "wal"`, not a literal. It is
-// never re-probed per request, so a health 200 always means "this process is
-// running on a WAL database".
-func NewHealth(wal bool) http.HandlerFunc {
-	body, err := json.Marshal(healthResponse{Status: "ok", WAL: wal})
-	if err != nil {
-		// json.Marshal cannot fail for this struct; keep the handler total anyway.
-		body = []byte(`{"status":"ok","wal":false}`)
-	}
-
+func NewHealth(db Readiness) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		version, err := db.Ready(ctx)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]any{"status": "unavailable", "database": "postgresql", "ready": false})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "database": "postgresql", "ready": true, "schema_version": version})
 	}
 }
 

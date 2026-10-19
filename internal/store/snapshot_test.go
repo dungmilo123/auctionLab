@@ -1,6 +1,7 @@
 package store
 
 import (
+	"auctionlab/internal/testpg"
 	"database/sql"
 	"errors"
 	"path/filepath"
@@ -18,14 +19,14 @@ func TestRestartRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	now := time.UnixMilli(1_700_000_000_000)
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, now); err != nil {
+	if err := st.Bootstrap(now); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -58,7 +59,7 @@ func TestRestartRoundTrip(t *testing.T) {
 		t.Fatalf("closing the first handle: %v", err)
 	}
 
-	reopened, err := Open(path)
+	reopened, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("reopening %q: %v", path, err)
 	}
@@ -91,15 +92,15 @@ func TestRestartRoundTrip(t *testing.T) {
 func TestCommitStressHasNoBusyErrors(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, time.UnixMilli(1_700_000_000_000)); err != nil {
+	if err := st.Bootstrap(time.UnixMilli(1_700_000_000_000)); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -159,14 +160,14 @@ func TestAuctionWriteSetRoundTrip(t *testing.T) {
 	startedAt := now.Add(5 * time.Second).UnixMilli()
 	deadlineAt := startedAt + 30_000
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, now); err != nil {
+	if err := st.Bootstrap(now); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -209,7 +210,7 @@ func TestAuctionWriteSetRoundTrip(t *testing.T) {
 		t.Fatalf("closing the first handle: %v", err)
 	}
 
-	reopened, err := Open(path)
+	reopened, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("reopening %q: %v", path, err)
 	}
@@ -288,15 +289,15 @@ func TestSealedBidsUpsertPreservesFirstSubmission(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	now := time.UnixMilli(1_700_000_000_000)
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, now); err != nil {
+	if err := st.Bootstrap(now); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -398,15 +399,15 @@ func TestRuntimeRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 	now := time.UnixMilli(1_700_000_000_000)
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, now); err != nil {
+	if err := st.Bootstrap(now); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -447,12 +448,12 @@ func TestRuntimeRoundTrip(t *testing.T) {
 // handing back a zero-valued game row that looks like LOBBY revision 0.
 func TestLoadGameWithoutBootstrapIsAnError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
 

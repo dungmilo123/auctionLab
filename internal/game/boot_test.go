@@ -269,7 +269,7 @@ func TestBootIgnoresABidFromAPriorRun(t *testing.T) {
 	// older than the run that is now live.
 	st := openTestStore(t, path)
 	if _, err := st.DB.Exec(
-		`INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES (?, ?, ?, 'bid', ?)`,
+		`INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES ($1, $2, $3, 'bid', $4)`,
 		itemID, binh.PlayerID, 999_000, startedAt-1_000,
 	); err != nil {
 		t.Fatalf("writing the prior run's bid row: %v", err)

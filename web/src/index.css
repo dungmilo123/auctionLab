@@ -265,3 +265,27 @@ html.screen-scale .border-2 {
     transform: none;
   }
 }
+
+/* Working catalog preparation retains the website's tokens and native navigation. */
+.catalog-form, .catalog-form fieldset, .catalog-record, .catalog-grid > *, .catalog-preview { min-width: 0; }
+.catalog-form fieldset { border: 1px solid var(--border); border-radius: 4px; padding: 20px; margin: 0; }
+.catalog-form legend { padding: 0 8px; font-family: var(--font-heading); font-size: 1.25rem; }
+.catalog-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 20px; }
+.catalog-actions, .catalog-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.catalog-actions > button, .catalog-actions > a { white-space: normal; height: auto; }
+.catalog-records, .catalog-ordered { padding: 0; margin: 0; display: grid; gap: 16px; list-style-position: inside; }
+.catalog-records { list-style: none; }
+.catalog-record { padding: 20px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; }
+.catalog-error { padding: 20px; border: 1px solid var(--destructive); background: var(--card); }
+.catalog-success { padding: 16px; border: 1px solid var(--accent); }
+.catalog-checkbox { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+.catalog-checkbox input { width: 20px; height: 20px; flex-shrink: 0; }
+.catalog-thumbnail { max-width: 200px; }
+.catalog-cover { max-width: 420px; }
+.catalog-preview { padding: 20px; border: 1px solid var(--border); }
+.catalog-sticky { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.catalog-form textarea { resize: vertical; }
+@media (min-width: 768px) { .catalog-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.catalog-preview-gallery { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(180px,100%),1fr)); gap: 12px; }
+.catalog-preview dl { margin: 0; }
+.catalog-preview dd { margin: 0 0 12px; }

@@ -1,0 +1,13 @@
+go build -o bin/auctionlab-loadtest ./cmd/server
+LOADTEST_PORT=8199 ./scripts/loadtest-acceptance.sh ./bin/auctionlab-loadtest
+loadtest-acceptance: server=./bin/auctionlab-loadtest race=0 port=8199 schema=test_load_204f964d0b1850cee2d90070cb3467ba
+loadtest-acceptance: harness=go run ./scripts/loadtest
+bot 0: ok — 2 frames, last state rev 2, saw every player
+bot 1: ok — 4 frames, last state rev 2, saw every player
+round: admin created item bb0e5cc20b4dd08a39c40e96616ea39b (D-66)
+round: item.start reached ITEM_INTRO on every socket
+round: item.start reached LIVE with the immediate price.tick on every socket
+round: the minimum bid was accepted on every socket at rev 8
+round: a below-minimum bid was refused privately and moved no revision
+round: the force-end reveal, leaderboard and SETTLED snapshot reached every role
+loadtest: ws://127.0.0.1:8199/ws — 2/2 bots joined and saw each other, the English round completed, in 33ms

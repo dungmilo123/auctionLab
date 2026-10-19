@@ -1,6 +1,7 @@
 package store
 
 import (
+	"auctionlab/internal/testpg"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,7 +94,7 @@ func seedPlayedRound(t *testing.T, st *Store) []PlayerRow {
 	// that path will leave it, so the reset has a real child row to remove.
 	const insertSealed = `
 INSERT INTO sealed_bids (item_id, player_id, amount, submitted_at, updated_at)
-VALUES (?, ?, ?, ?, ?)`
+VALUES ($1, $2, $3, $4, $5)`
 	if _, err := st.DB.Exec(insertSealed, "it-1", "p-an", 250_000, startedAt, startedAt); err != nil {
 		t.Fatalf("seeding a sealed bid: %v", err)
 	}
@@ -112,14 +113,14 @@ VALUES (?, ?, ?, ?, ?)`
 func TestResetWriteSet(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auction.db")
 
-	st, err := Open(path)
+	st, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("Open(%q): %v", path, err)
 	}
-	if err := Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("Schema: %v", err)
 	}
-	if err := Bootstrap(st.DB, resetNow); err != nil {
+	if err := st.Bootstrap(resetNow); err != nil {
 		t.Fatalf("Bootstrap: %v", err)
 	}
 
@@ -135,11 +136,8 @@ func TestResetWriteSet(t *testing.T) {
 		}
 	}
 
-	// The constraint the delete order exists for. Open reads it back at boot and
-	// refuses a non-WAL handle, so this is the same pragma the engine runs under.
-	if !st.Pragmas().ForeignKeys {
-		t.Fatal("the fixture handle does not enforce foreign keys; the ordering below would be untestable")
-	}
+	// PostgreSQL enforces the FK constraints on every connection; the negative
+	// delete control below proves the child-before-parent order is load-bearing.
 
 	// --- keep_players: the trail and the timing go, the identities stay -------
 	restored := []PlayerRow{
@@ -223,7 +221,7 @@ func TestResetWriteSet(t *testing.T) {
 	// foreign keys, so this is refused — which is exactly why Commit's order is
 	// clear → clear → delete and not the other way round.
 	if _, err := st.DB.Exec(
-		`INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO bids (item_id, player_id, amount, kind, created_at) VALUES ($1, $2, $3, $4, $5)`,
 		"it-1", "p-an", 120_000, "bid", resetNow.UnixMilli(),
 	); err != nil {
 		t.Fatalf("re-seeding a bid for the negative control: %v", err)
@@ -237,9 +235,6 @@ func TestResetWriteSet(t *testing.T) {
 	}
 	if got := tableRows(t, st, "players"); got != 2 {
 		t.Errorf("players rows after the refused delete = %d, want the unchanged 2", got)
-	}
-	if got := st.Pragmas().ForeignKeys; !got {
-		t.Error("foreign keys stopped being enforced mid-test")
 	}
 
 	// --- clear_players: the same reset, plus every identity --------------------
@@ -266,15 +261,12 @@ func TestResetWriteSet(t *testing.T) {
 	if err := st.Close(); err != nil {
 		t.Fatalf("closing the first handle: %v", err)
 	}
-	reopened, err := Open(path)
+	reopened, err := Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("reopening %q: %v", path, err)
 	}
 	defer func() { _ = reopened.Close() }()
 
-	if !reopened.Pragmas().ForeignKeys {
-		t.Error("the reopened handle does not enforce foreign keys")
-	}
 	for _, tc := range []struct {
 		table string
 		want  int

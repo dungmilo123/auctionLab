@@ -303,6 +303,7 @@ func TestJoinURLPersistence(t *testing.T) {
 
 	// A restart at a SHIFTED instant, with a candidate list that no longer
 	// contains the selection: the admin's own URL must survive both.
+	first.store.Close()
 	second := newConfigEnv(t, path, &testClock{t: testStart.Add(2 * time.Minute)}, []string{configCandidates[0]})
 	screen, ok := second.engine.Snapshot(RoleScreen, "").(ScreenView)
 	if !ok {
@@ -520,6 +521,7 @@ func TestTunnelURLIsNeverPersisted(t *testing.T) {
 
 	// A restart on the same file: the ephemeral URL is gone for good, the
 	// selection is still there, and the tunnel host never reached the database.
+	env.store.Close()
 	second := newConfigEnv(t, path, &testClock{t: testStart.Add(5 * time.Minute)}, []string{configCandidates[0]})
 	if screen := second.engine.Snapshot(RoleScreen, "").(ScreenView); screen.JoinURL != selected {
 		t.Errorf("screen join_url after a restart = %q, want the persisted %q — a runtime URL must not survive the process", screen.JoinURL, selected)

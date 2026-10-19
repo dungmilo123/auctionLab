@@ -1,0 +1,33 @@
+loadtest-acceptance: server=./bin/auctionlab-loadtest race=0 port=8199 schema=test_load_986edbd483ca0f87c440103e724746ed
+loadtest-acceptance: harness=go run ./scripts/loadtest
+fleet: the fleet's item is LIVE (min_increment 1000, so the burst can climb the ladder)
+fleet: 20 bots joined and saw every peer within 62 frames
+fleet: the burst is paced at 2ms/command across 40 commands per bot (inside D-138's 40-burst, 20/s bucket)
+fleet: bot 19 is not reading across 3 burst round(s): the fence and its repair are being exercised
+fleet: round 1/3 done: the room is at rev 43
+fleet: round 2/3 done: the room is at rev 61
+fleet: round 3/3 done: the room is at rev 61
+fleet: every bot's burst drained: each resync reply arrived after that bot's own commands
+fleet: all 20 bots converged on the room's final revision 62
+fleet: bot 19 stalled and was repaired: 1 gap(s), 1 recovery snapshot(s), at rev 62
+fleet: bot 00: 120 commands, peak 40 cmd/s, 240 frames (82171 bytes), last state rev 62
+fleet: bot 01: 120 commands, peak 40 cmd/s, 238 frames (80942 bytes), last state rev 62
+fleet: bot 02: 120 commands, peak 40 cmd/s, 238 frames (81485 bytes), last state rev 62
+fleet: bot 03: 120 commands, peak 40 cmd/s, 237 frames (79376 bytes), last state rev 62
+fleet: bot 04: 120 commands, peak 40 cmd/s, 226 frames (65766 bytes), last state rev 62
+fleet: bot 05: 120 commands, peak 40 cmd/s, 230 frames (71421 bytes), last state rev 62
+fleet: bot 06: 120 commands, peak 40 cmd/s, 229 frames (72696 bytes), last state rev 62
+fleet: bot 07: 120 commands, peak 40 cmd/s, 233 frames (74577 bytes), last state rev 62
+fleet: bot 08: 120 commands, peak 40 cmd/s, 234 frames (75970 bytes), last state rev 62
+fleet: bot 09: 120 commands, peak 40 cmd/s, 232 frames (76789 bytes), last state rev 62
+fleet: bot 10: 120 commands, peak 40 cmd/s, 234 frames (78090 bytes), last state rev 62
+fleet: bot 11: 120 commands, peak 40 cmd/s, 237 frames (80148 bytes), last state rev 62
+fleet: bot 12: 120 commands, peak 40 cmd/s, 220 frames (51651 bytes), last state rev 62
+fleet: bot 13: 120 commands, peak 40 cmd/s, 225 frames (59481 bytes), last state rev 62
+fleet: bot 14: 120 commands, peak 40 cmd/s, 223 frames (56980 bytes), last state rev 62
+fleet: bot 15: 120 commands, peak 40 cmd/s, 224 frames (61511 bytes), last state rev 62
+fleet: bot 16: 120 commands, peak 40 cmd/s, 226 frames (63864 bytes), last state rev 62
+fleet: bot 17: 120 commands, peak 40 cmd/s, 227 frames (67725 bytes), last state rev 62
+fleet: bot 18: 120 commands, peak 40 cmd/s, 229 frames (69703 bytes), last state rev 62
+fleet: bot 19 (stalled): 120 commands, peak 40 cmd/s, 141 frames (44368 bytes), last state rev 62
+loadtest: ws://127.0.0.1:8199/ws — 20 bots (rapid-fire burst=40 rounds=3 stalled=19), the fleet converged, in 5.21s

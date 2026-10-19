@@ -1,9 +1,10 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"time"
 )
 
 // This file is the Phase 3 item/runtime/bid repository: the row types and the
@@ -77,6 +78,8 @@ type SealedBidRow struct {
 // LoadItems returns every item row in presentation order (order_index, then id,
 // so the order is total and a restart reproduces the list exactly).
 func (s *Store) LoadItems() ([]ItemRow, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	const query = `
 SELECT id, order_index, name, COALESCE(description, ''), COALESCE(image_url, ''),
        auction_type, truth_value, hint_min, hint_max, start_price, min_increment, floor_price,
@@ -84,9 +87,9 @@ SELECT id, order_index, name, COALESCE(description, ''), COALESCE(image_url, '')
        anti_snipe_window_ms, max_extensions, status
 FROM items ORDER BY order_index, id`
 
-	rows, err := s.DB.Query(query)
+	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("store: loading items: %w", err)
+		return nil, sanitize("loading items", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -101,12 +104,12 @@ FROM items ORDER BY order_index, id`
 			&it.MinIncrement, &it.FloorPrice, &it.DecrementStep, &it.DecrementIntervalMS,
 			&it.DurationMS, &it.AntiSnipeMode, &it.AntiSnipeWindowMS, &it.MaxExtensions, &it.Status,
 		); err != nil {
-			return nil, fmt.Errorf("store: scanning an item row: %w", err)
+			return nil, sanitize("scanning an item row", err)
 		}
 		items = append(items, it)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("store: reading items: %w", err)
+		return nil, sanitize("reading items", err)
 	}
 	return items, nil
 }
@@ -115,19 +118,21 @@ FROM items ORDER BY order_index, id`
 // row" (an item that has never gone live — legitimate outside LIVE) from a
 // zero-valued row, which would look exactly like `started_at = 0`.
 func (s *Store) LoadRuntime(itemID string) (RuntimeRow, bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	const query = `
 SELECT item_id, started_at, deadline_at, settled_at, revision, extensions_used
-FROM auction_runtime WHERE item_id = ?`
+FROM auction_runtime WHERE item_id = $1`
 
 	var rt RuntimeRow
-	err := s.DB.QueryRow(query, itemID).Scan(
+	err := s.DB.QueryRowContext(ctx, query, itemID).Scan(
 		&rt.ItemID, &rt.StartedAt, &rt.DeadlineAt, &rt.SettledAt, &rt.Revision, &rt.ExtensionsUsed,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return RuntimeRow{}, false, nil
 	}
 	if err != nil {
-		return RuntimeRow{}, false, fmt.Errorf("store: loading the runtime row for item %q: %w", itemID, err)
+		return RuntimeRow{}, false, sanitize("runtime read", err)
 	}
 	return rt, true, nil
 }
@@ -136,12 +141,14 @@ FROM auction_runtime WHERE item_id = ?`
 // order, so a restart reproduces the trail exactly (research §4 uses this to
 // reconstruct the running item's top bid).
 func (s *Store) LoadBids() ([]BidRow, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	const query = `
 SELECT id, item_id, player_id, amount, kind, created_at FROM bids ORDER BY id`
 
-	rows, err := s.DB.Query(query)
+	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("store: loading bids: %w", err)
+		return nil, sanitize("loading bids", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -149,12 +156,12 @@ SELECT id, item_id, player_id, amount, kind, created_at FROM bids ORDER BY id`
 	for rows.Next() {
 		var b BidRow
 		if err := rows.Scan(&b.ID, &b.ItemID, &b.PlayerID, &b.Amount, &b.Kind, &b.CreatedAt); err != nil {
-			return nil, fmt.Errorf("store: scanning a bid row: %w", err)
+			return nil, sanitize("scanning a bid row", err)
 		}
 		bids = append(bids, b)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("store: reading bids: %w", err)
+		return nil, sanitize("reading bids", err)
 	}
 	return bids, nil
 }
@@ -173,13 +180,15 @@ func nullableInt64(v *int64) any {
 // reproduces the slice exactly and the tie-break reads the same sequence the
 // live process built (D-108/D-113).
 func (s *Store) LoadSealedBids() ([]SealedBidRow, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	const query = `
 SELECT item_id, player_id, amount, submitted_at, updated_at
 FROM sealed_bids ORDER BY item_id, submitted_at, player_id`
 
-	rows, err := s.DB.Query(query)
+	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("store: loading sealed bids: %w", err)
+		return nil, sanitize("loading sealed bids", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -187,12 +196,12 @@ FROM sealed_bids ORDER BY item_id, submitted_at, player_id`
 	for rows.Next() {
 		var b SealedBidRow
 		if err := rows.Scan(&b.ItemID, &b.PlayerID, &b.Amount, &b.SubmittedAt, &b.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("store: scanning a sealed bid row: %w", err)
+			return nil, sanitize("scanning a sealed bid row", err)
 		}
 		sealed = append(sealed, b)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("store: reading sealed bids: %w", err)
+		return nil, sanitize("reading sealed bids", err)
 	}
 	return sealed, nil
 }

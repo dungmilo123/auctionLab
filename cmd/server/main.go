@@ -1,5 +1,5 @@
-// Command server is the single AuctionLab binary: SQLite (WAL-asserted),
-// the embedded React SPA, /api/health and the temporary /ws echo.
+// Command server serves the embedded website, PostgreSQL-backed game/catalog,
+// readiness and the retained WebSocket protocol; maintenance modes exit offline.
 package main
 
 import (
@@ -18,11 +18,14 @@ import (
 
 	"auctionlab"
 	"auctionlab/internal/api"
+	"auctionlab/internal/catalog"
 	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
 	"auctionlab/internal/netinfo"
+	"auctionlab/internal/sqliteimport"
 	"auctionlab/internal/store"
 	"auctionlab/internal/tunnel"
+	"encoding/json"
 )
 
 func main() {
@@ -37,7 +40,32 @@ func run() error {
 	wantTunnel := flag.Bool("tunnel", false, "start a cloudflared quick tunnel and advertise its URL")
 	cloudflaredBin := flag.String("cloudflared-bin", "", "path to the cloudflared binary (default: TUNNEL_BIN, then PATH)")
 	publicURL := flag.String("public-url", "", "public URL to advertise in QR codes (default: PUBLIC_URL)")
+	importPath := flag.String("import-sqlite", "", "stopped standalone SQLite v4 snapshot")
+	verifyOnly := flag.Bool("verify-only", false, "read-only source/target comparison; requires --import-sqlite")
+	seedCatalog := flag.Bool("seed-catalog", false, "seed catalog drafts and exit")
+	seedAt := flag.String("seed-at", "", "explicit RFC3339 seed reference instant")
 	flag.Parse()
+	if *seedCatalog && (*importPath != "" || *verifyOnly) || !*seedCatalog && *seedAt != "" {
+		return errors.New("seed and import modes are mutually exclusive; --seed-at requires --seed-catalog")
+	}
+	var seedReference time.Time
+	if *seedCatalog {
+		var err error
+		seedReference, err = time.Parse(time.RFC3339, *seedAt)
+		if err != nil {
+			return errors.New("--seed-catalog requires --seed-at <RFC3339>")
+		}
+		if *wantTunnel {
+			return errors.New("maintenance mode cannot start a tunnel")
+		}
+	}
+
+	if *verifyOnly && *importPath == "" {
+		return errors.New("--verify-only requires --import-sqlite")
+	}
+	if *importPath != "" && *wantTunnel {
+		return errors.New("maintenance mode cannot start a tunnel")
+	}
 
 	// D-127: PUBLIC_URL is resolved for `game.Config` — it is a BOOT input and
 	// never durable state. An unusable value is a warning, never a failed boot:
@@ -50,28 +78,59 @@ func run() error {
 		log.Printf("tunnel: %s is set — it overrides the tunnel and the admin selection while this process runs, and is never persisted", publicSource)
 	}
 
-	dbPath := store.PathFromEnv()
-
-	// Boot step 1 — SQLite. A non-WAL journal mode aborts the boot.
-	st, err := store.Open(dbPath)
+	cfg, err := store.ConfigFromEnv(os.Getenv)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = st.Close() }()
-
-	// The boot log reports the state the assertion actually observed, not what
-	// the DSN intends — same source /api/health is built from below.
-	pragmas := st.Pragmas()
-	log.Printf("sqlite: opened %s (journal_mode=%s, busy_timeout=%dms, foreign_keys=%t)",
-		dbPath, pragmas.JournalMode, pragmas.BusyTimeout, pragmas.ForeignKeys)
-
-	// Boot step 2 — the complete PLAN.md §5 schema, then the engine that owns
-	// every mutation (D-36/D-39). A commit failure exits the process instead of
-	// continuing on state the database does not have: an auction must never
-	// silently diverge from what a crash would reload (D-34).
-	if err := store.Schema(st.DB); err != nil {
+	cfg.ReadOnly = *verifyOnly
+	var source *sqliteimport.Snapshot
+	if *importPath != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		source, err = sqliteimport.Read(ctx, *importPath)
+		if err != nil {
+			return err
+		}
+	}
+	st, err := store.OpenConfig(cfg)
+	if err != nil {
 		return err
 	}
+	defer st.Close()
+	if *verifyOnly {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		report, err := st.VerifySQLite(ctx, source)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(report)
+	}
+	if err = st.Migrate(); err != nil {
+		return err
+	}
+	if *seedCatalog {
+		spa, err := auctionlab.SPA()
+		if err != nil {
+			return err
+		}
+		svc := catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa})
+		status, err := svc.Seed(context.Background(), seedReference)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{"status": status})
+	}
+	if source != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		report, err := st.ImportSQLite(ctx, source)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(report)
+	}
+	log.Print("postgresql: connected; schema ready; exclusive writer ownership held")
 
 	// Boot step 2b — D-74's admin capability. The key comes from ADMIN_KEY, the
 	// persisted server_config row, or one minted and written to that row before
@@ -207,7 +266,8 @@ func run() error {
 	// is chosen by specificity, not registration order (the comment above).
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/health", api.NewHealth(pragmas.JournalMode == "wal"))
+	api.RegisterCatalog(mux, adminKey, catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa}))
+	mux.HandleFunc("GET /api/health", api.NewHealth(st))
 	mux.HandleFunc("/api/", api.NotFoundJSON)
 	mux.HandleFunc("/ws", ws.ServeWS)
 	mux.Handle("GET /admin", admin)

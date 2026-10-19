@@ -1,0 +1,6 @@
+{
+  "status": "passed",
+  "invalid_startup_or_mode_cases": 8,
+  "all_failed_before_listening": true,
+  "diagnostics_credential_safe": true
+}

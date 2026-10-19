@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auctionlab/internal/testpg"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -69,12 +70,12 @@ const adminJoinJSON = `{"type":"join","role":"admin","key":"` + testAdminKey + `
 func newServerEnv(t *testing.T) (*game.Engine, *hub.Hub) {
 	t.Helper()
 
-	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
+	st, err := store.Open(testpg.URL(t, filepath.Join(t.TempDir(), "auction.db")))
 	if err != nil {
 		t.Fatalf("opening the test database: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("applying the schema: %v", err)
 	}
 
@@ -97,12 +98,12 @@ func newServerEnv(t *testing.T) (*game.Engine, *hub.Hub) {
 func newLivenessEnv(t *testing.T) (*game.Engine, *hub.Hub) {
 	t.Helper()
 
-	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
+	st, err := store.Open(testpg.URL(t, filepath.Join(t.TempDir(), "auction.db")))
 	if err != nil {
 		t.Fatalf("opening the test database: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("applying the schema: %v", err)
 	}
 

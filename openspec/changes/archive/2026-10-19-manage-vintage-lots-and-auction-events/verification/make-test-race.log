@@ -1,0 +1,15 @@
+go test -race -timeout 120s ./...
+ok  	auctionlab	(cached)
+ok  	auctionlab/cmd/server	1.985s
+ok  	auctionlab/internal/api	(cached)
+ok  	auctionlab/internal/catalog	(cached)
+ok  	auctionlab/internal/game	(cached)
+ok  	auctionlab/internal/hub	(cached)
+ok  	auctionlab/internal/netinfo	(cached)
+?   	auctionlab/internal/sqliteimport	[no test files]
+ok  	auctionlab/internal/store	(cached)
+ok  	auctionlab/internal/testpg	(cached)
+ok  	auctionlab/internal/tunnel	(cached)
+?   	auctionlab/openspec/changes/manage-vintage-lots-and-auction-events/verification/legacy-fixture	[no test files]
+?   	auctionlab/scripts/dbfixture	[no test files]
+ok  	auctionlab/scripts/loadtest	(cached)

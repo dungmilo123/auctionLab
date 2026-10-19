@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "checks": [
+    "Verified preboot import resumed expired English run: LIVE revision 4 -> SETTLED revision 5; legacy game budget 1000000 -> 1250000 (truth value 350000 minus bid 100000), total value 350000; imported capability still authorizes",
+    "Competing maintenance writer refused; independent verify-only detects expected post-boot settlement drift instead of trusting marker",
+    "Built application restart and seed replay preserve published values/order/dates; ordinary startup does not seed or rebase",
+    "pg_dump/pg_restore into a disposable database/schema preserves identical public aggregate",
+    "PostgreSQL outage returns health/save 503; restart does not reacquire stale owner; explicit app restart restores readiness with unchanged publication and no fabricated save",
+    "Preserved prior binary boots/authorizes a working SQLite copy; fixed source checksum unchanged; PostgreSQL backup preserved; no reverse synchronization attempted"
+  ],
+  "source_snapshot_sha256": "11e2a12e4831a920bb807169d3d8795b9cbcb1b6c1d8508cf27065a473c60bb5",
+  "rollback_limit": "Post-cutover PostgreSQL catalog edits/publication are absent from the prior SQLite snapshot. Reverting to it discards those writes unless separately retained; backup preserved. No automatic reverse synchronization.",
+  "backup_location": "private temporary backup outside repository",
+  "restored_schema_disposable": true
+}

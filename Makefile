@@ -4,7 +4,7 @@ GO          ?= go
 BIN         := bin/auctionlab
 SERVER_PORT ?= 8080
 VITE_PORT   ?= 5173
-DB_PATH     ?= ./auction.db
+DATABASE_SCHEMA ?= auctionlab
 IMAGES_DIR  ?= ./image
 
 .PHONY: dev dev-go dev-web build run tunnel loadtest loadtest-20 loadtest-race loadtest-tunnel test test-go test-web test-race test-lint clean
@@ -14,12 +14,12 @@ IMAGES_DIR  ?= ./image
 # would miss. Teardown from a script must signal the group: kill -INT -<pgid>.
 dev: web/node_modules
 	@trap 'kill 0' INT TERM EXIT; \
-	IMAGES_DIR=$(IMAGES_DIR) DB_PATH=$(DB_PATH) $(GO) run ./cmd/server --port $(SERVER_PORT) & \
+	IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DATABASE_SCHEMA) $(GO) run ./cmd/server --port $(SERVER_PORT) & \
 	( cd web && npm run dev -- --port $(VITE_PORT) ) & \
 	wait
 
 dev-go:
-	IMAGES_DIR=$(IMAGES_DIR) DB_PATH=$(DB_PATH) $(GO) run ./cmd/server --port $(SERVER_PORT)
+	IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DATABASE_SCHEMA) $(GO) run ./cmd/server --port $(SERVER_PORT)
 
 dev-web: web/node_modules
 	cd web && npm run dev -- --port $(VITE_PORT)
@@ -36,16 +36,17 @@ build: web/node_modules
 	CGO_ENABLED=0 $(GO) build -o $(BIN) ./cmd/server
 
 run: build
-	IMAGES_DIR=$(IMAGES_DIR) DB_PATH=$(DB_PATH) ./$(BIN) --port $(SERVER_PORT)
+	IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DATABASE_SCHEMA) ./$(BIN) --port $(SERVER_PORT)
 
 tunnel: build
-	IMAGES_DIR=$(IMAGES_DIR) DB_PATH=$(DB_PATH) ./$(BIN) --port $(SERVER_PORT) --tunnel
+	IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DATABASE_SCHEMA) ./$(BIN) --port $(SERVER_PORT) --tunnel
 
 loadtest:
-	$(GO) run ./scripts/loadtest
+	$(GO) build -o bin/auctionlab-loadtest ./cmd/server
+	LOADTEST_PORT=$(LOADTEST_PORT) ./scripts/loadtest-acceptance.sh ./bin/auctionlab-loadtest
 
-# D-135/D-136's acceptance layer. `loadtest` above stays the two-bot smoke the
-# Phase 2 gate has always run; these targets run the fleet — 20 bots, a bounded
+# `loadtest` above keeps the two-bot smoke on an owned disposable schema.
+# These acceptance targets run the fleet — 20 bots, a bounded
 # burst, one deliberately stalled reader — against a REAL server on a temporary
 # database, plus the tunnel-death drill. LOADTEST_PORT keeps the run off the dev
 # server's 8080, and LOADTEST_RACE=1 makes the HARNESS race-instrumented too, so

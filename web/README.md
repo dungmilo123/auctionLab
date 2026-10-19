@@ -1,6 +1,6 @@
 # AuctionLab — Collected Stories
 
-A vintage auction **website foundation**, using React, Vite, and TypeScript. All displayed objects and statuses are illustrative previews. Catalog persistence, authentication, search/filtering, watchlists, live bids, checkout, and orders are not implemented. The shared preview notice appears on every page. Disabled controls have adjacent explanations and perform no requests.
+A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery, account and order pages remain illustrative previews; bidder authentication, search/filtering, watchlists, live bids, checkout and orders are not implemented. Catalog pages describe working preparation actions; other pages retain the preview notice.
 
 ## Run and build
 
@@ -9,11 +9,11 @@ From the repository root:
 | Command | Behavior |
 |---|---|
 | `make dev` | Go :8080 and Vite :5173; API, WS, runtime images proxy to Go |
-| `make dev-web` | Vite only; sufficient for public, account, and admin visual previews |
+| `make dev-web` | Vite only; public/account previews work, catalog management needs the authorized Go API |
 | `make test` | Existing Go tests, frontend unit tests, oxlint |
 | `make build` | Typecheck + Vite build **before** `CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server` |
 
-The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkeep` stays committed and is restored by the Vite closeBundle hook after every build. Fonts and illustrations are local; running offline needs only the application server, with no CDN/service dependency. A first dependency install/build may require network access.
+The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkeep` stays committed and is restored by the Vite closeBundle hook after every build. Fonts and illustrations are local; running offline needs the application server, a local PostgreSQL 18 service, and media, with no CDN dependency. A first dependency install/build may require network access.
 
 ## Routes and document navigation
 
@@ -29,20 +29,20 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/account/bids` | Account | Bid history unavailable |
 | `/account/orders` | Account | Orders unavailable |
 | `/admin` | Admin | Management overview |
-| `/admin/auctions` | Admin | Publishing unavailable |
-| `/admin/lots` | Admin | Creating/editing unavailable |
+| `/admin/auctions` | Admin | Stored event list, draft editor, schedule/order, preview and publish |
+| `/admin/lots` | Admin | Stored lot list and draft content editor |
 | `/admin/orders` | Admin | Processing unavailable |
 | All other paths, including `/screen` and descendants | Storefront | Explicit 404 with a home recovery link |
 
 `src/lib/route.ts` matches case-sensitive segments, ignoring query/fragment and allowing one trailing slash. Detail routes accept exactly one nonempty slug and always show a generic preview. Slugs are not inserted into HTML. No game alias is provided. The old player/admin/projector source and tests remain unmounted for future evaluation; the backend, database, protocol, and existing game data are preserved. Saved player tokens are not read or restored by the website.
 
-Navigation uses normal `<a href>` document links, with no click interception or History API router. Refresh, direct load, Back/Forward, and new-tab links retain normal browser semantics and the Go document gate. Full navigation resets transient sample input values. Exact active destinations use `aria-current="page"`; each layout has a skip link to `main#main` and a shared footer. Context navigation wraps on mobile and becomes a sidebar at 1024px.
+Navigation uses normal `<a href>` document links, with no click interception or History API router. Refresh, direct load, Back/Forward, and new-tab links retain normal browser semantics and the Go document gate. Full navigation reloads stored catalog records; unsaved local inputs are transient. Exact active destinations use `aria-current="page"`; each layout has a skip link to `main#main` and a shared footer. Context navigation wraps on mobile and becomes a sidebar at 1024px.
 
 The frontend 404 is a view: Go document fallback returns HTTP 200 with `Cache-Control: no-cache`. Missing `/assets/*` and `/site-assets/*` files return real HTTP 404 without SPA HTML in Vite and Go. Only hashed `/assets/*` files are immutable; hand-managed files belong in `public/site-assets/`. `/api`, `/ws`, and runtime `/images` remain owned by the backend.
 
 ## Admin and account boundary
 
-Vite serves a public, empty **visual admin preview**, with no private data or mutations. It does not implement or prove authorization. The Go origin protects `/admin` and its subtree with the existing admin capability gate. Read the entry link from the server log. A correct key sets the existing HttpOnly, SameSite=Lax, 12-hour capability cookie and redirects to literal `/admin`, removing the key from the URL. Nested navigation/refresh then uses the cookie. Missing capability gets the bilingual gate; a wrong nonempty key returns 401 without echoing it. The gate uses self-contained CSS and system fallbacks. No sign-in API, return-to mechanism, or new account authentication exists. Account pages are public feature previews, not simulated signed-in sessions.
+Vite serves the admin document publicly; every catalog data request independently requires the Go API capability. Without it, management shows an explicit access/backend error. The Go origin protects `/admin` and its subtree with the existing admin capability gate. Read the entry link from the server log. A correct key sets the existing HttpOnly, SameSite=Lax, 12-hour capability cookie and redirects to literal `/admin`, removing the key from the URL. Nested navigation/refresh then uses the cookie. Missing capability gets the bilingual gate; a wrong nonempty key returns 401 without echoing it. The gate uses self-contained CSS and system fallbacks. No sign-in API, return-to mechanism, or new account authentication exists. Account pages are public feature previews, not simulated signed-in sessions.
 
 ## Presentation components
 
@@ -50,7 +50,7 @@ Tokens live in `src/index.css`: ivory `#F6F1E8`, charcoal `#24211E`, burgundy `#
 
 - `components/ui/`: existing `Button` (default/outline/secondary/ghost/destructive/link; `asChild` for a real link), `Input`, `Label`, and `Card` family use the shared tokens. Use `type="button"` for UI actions. Never use an anchor as a disabled button.
 - `components/site/Presentation.tsx`: `LotCard({title, metadata, status, image?, href})` has one primary detail link; `StatusBadge({status})` accepts upcoming/live/ended/sold/unavailable and always includes text; `LotImage({src?, alt})` handles failures with a local fallback plus translated caption; `PreviewNotice`, `PageHeading({title, intro?})`, `UnavailableState({title, children})` are shared presentation components.
-- `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Sample fields have no submitting form, no credential inputs, and no business handler.
+- `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Public sample fields remain non-submitting. Catalog controls use the same design tokens and associations, without frontend credential inputs.
 - `fixtures/site.ts`: three illustrative objects, independent of game wire types and API clients. A long title exercises wrapping. Arbitrary detail slugs do not assert record existence.
 - `lib/site-copy.ts`: typed EN/VI website dictionary and `useSiteCopy()` integrate with the existing language provider and `auctionlab.lang` preference. Use `t('imageAlt', {object: title})` for text interpolation; React escapes output. Game copy and its fixed-count tests remain unchanged. App updates document title/language for each route and language.
 - `layouts/SiteLayout.tsx`: shared header/footer plus storefront, account, admin shells, all composed with native links.
@@ -60,3 +60,83 @@ Asset sources, exact package releases, font metadata/licenses, checksums, and il
 ## Verification
 
 Route and bilingual-copy tests cover matching, misses, completeness, and interpolation. Static HTTP tests cover deep links, fonts/images, reserved asset misses and cache policy; admin tests retain key/cookie/redirect and bilingual error semantics. Existing game tests remain in place. Change-local browser observations, screenshots, computed contrast, and acceptance mapping are under `openspec/changes/archive/2026-10-19-establish-vintage-design-and-site-foundation/verification/` (this completed archive and its main specs are explicitly tracked; the general OpenSpec ignore rule remains in place).
+
+
+## PostgreSQL runtime
+
+See [setup and operations](../docs/postgresql.md) for local PostgreSQL 18 provisioning, separate app/test roles, required `DATABASE_URL`, `DATABASE_SCHEMA`, explicit `TEST_DATABASE_URL`, readiness, and disposable test/load schemas. Runtime `DB_PATH` and SQLite fallback are removed. `PROJECT.md` and `PLAN.md` from the previous generated guidance are absent in this checkout; archived implementation evidence remains historical.
+
+## Stored catalog contract
+
+Catalog persistence is independent of retained game items, budgets, truth values and revisions. PostgreSQL migration 1 creates the eight legacy tables, `schema_migrations`, `sqlite_import_runs`, and six catalog tables:
+
+| Table | Contract |
+|---|---|
+| `catalog_categories` | Five stable choices: film-cameras, watches, vinyl-records, audio-equipment, decorative-objects; EN/VI names and sort order |
+| `catalog_lots` | Stable ID/unique slug; title/category, description, nullable brand/era/story, condition, ordered specifications JSONB, fulfillment JSONB, nullable money, USD, editorial state, private notes, version, timestamps, demo flag |
+| `catalog_lot_images` | `(lot_id, position)` primary key; local path and alt text, zero-based order |
+| `catalog_events` | Stable ID/unique slug, title/theme/description, cover/alt, nullable schedule, state, private notes, version, timestamps, demo flag |
+| `catalog_event_lots` | `(event_id, position)` key, unique lot membership; draft detach before reassignment |
+| `catalog_seed_runs` | Seed version/reference time, committed only with the complete dataset |
+
+Title-only create yields a durable draft and generated ASCII slug. Slugs remain stable on renaming, may be edited while draft, and accept lowercase ASCII letters/digits with hyphens (maximum 96 characters). Brand, era and story can remain absent; a supplied story is not independently verified provenance. Drafts permit missing publication fields but reject invalid supplied values. `version` guards all edits. An assigned lot edit advances its parent event version too. Stale saves return conflicts.
+
+Commerce uses integer USD cents, with explicit `starting_price_minor`, `bid_increment_minor`, and `fulfillment.shipping_fee_minor`, each capped at **1,000,000,000,000 cents**. Opening price and delivery fee permit zero; increments must be positive. Decimal input preserves cents exactly (`125.50` → `12550`); excess precision, negative/over-limit amounts and non-USD currency fail. Nullable means absent, distinct from zero. The independent helpers in `lib/catalog-money.ts` do not change legacy `formatUSD` or convert game money.
+
+`fulfillment` contains `shipping_enabled`, `pickup_enabled`, `shipping_fee_minor`, `shipping_instructions`, and `pickup_instructions`. Publication requires at least one enabled option; delivery requires disclosed fee/instructions, pickup requires instructions. `specifications` is an ordered array of `{name,value}`; `images` is an ordered array of `{path,alt}`.
+
+Media is public storage, even before publication: only canonical `/images/<relative-file>` (under `IMAGES_DIR`; default `images`, Makefile `./image`) and `/site-assets/catalog/<file>` (embedded) paths are accepted. JPEG/PNG/WebP/SVG are supported. No query/fragment, remote URL, encoded path bypass, traversal or symlink escape is accepted. Draft paths may name files to install later; publication requires readable image files and nonempty alt text, including the event cover. There is no upload or remote fetching. Removed/missing images retain the accessible local fallback. Seed artwork provenance is in `public/site-assets/catalog/README.md`.
+
+Schedule fields are nullable integer UTC Unix milliseconds: `opens_at`, `first_closes_at`, `close_interval_ms`. The browser explicitly shows its timezone and converts local controls without changing the underlying instant. For zero-based member position `k`, all lots open at the event opening and close at `first_closes_at + k * close_interval_ms`. The first close follows opening; the interval is positive; instants and derived closes must be within 0–8,640,000,000,000,000 ms. The server derives the displayed schedule after saving/reordering. Publication requires a future opening; overlapping events are allowed.
+
+An event owns publication of every member. Publication validates complete event content/cover/schedule, at least one lot, and each lot's category/description/condition/gallery/prices/fulfillment, then commits all states atomically. Every catalog mutation takes the schema-scoped transaction advisory lock before loading data; expected versions and constraints apply across pool connections. Publication failures expose nothing. Repeated publication returns the existing result before stale-version/date checks. Published content, slugs, money, timing and membership are immutable; there is no unpublish/delete/relisting action. Passing planned times does not start an auction, create bids/winners/orders, settle a lot or change editorial status. Commerce execution remains a later change.
+
+Public projections explicitly allow content, media, specifications/story, fulfillment, USD opening price/increment, event identity/order, planned times, editorial state and demo flag. They exclude private notes, versions, internal timestamps/seed markers, credentials and every legacy game/player secret. Public aggregates use one consistent Repeatable Read snapshot. Draft and missing slugs have identical 404 responses. Preview uses the same projection but requires authorization and returns `preview: true`.
+
+## Catalog APIs and working management
+
+Every response is `Cache-Control: no-store`. Success uses `{data: ...}` (201 create, 200 otherwise); errors use `{error: {code, fields?}}`. Field paths include `title`, `images.0.path`, and `lots.<id>.condition`. No raw database errors are returned.
+
+| Method | Path | Result |
+|---|---|---|
+| GET | `/api/catalog/categories` | Five public reference choices |
+| GET | `/api/catalog/events`, `/api/catalog/events/{slug}` | Published events/aggregate |
+| GET | `/api/catalog/lots`, `/api/catalog/lots/{slug}` | Published lots/details |
+| GET | `/api/admin/catalog/categories` | Authorized category choices |
+| GET, POST | `/api/admin/catalog/lots`, `/api/admin/catalog/events` | Stored list / title-only draft create |
+| GET, PUT | `/api/admin/catalog/lots/{id}`, `/api/admin/catalog/events/{id}` | Read / replace editable content with loaded `version` |
+| PUT | `/api/admin/catalog/events/{id}/lots` | `{version, lot_ids: [...]}` full ordered membership replacement |
+| GET | `/api/admin/catalog/events/{id}/preview` | Authorized saved public projection |
+| POST | `/api/admin/catalog/events/{id}/publish` | `{version}` explicit atomic publication |
+
+All private reads, previews, writes and private-namespace misses require the existing `auction_admin` HttpOnly cookie. Query keys and player tokens do not authorize APIs. Missing/wrong capabilities return JSON 401 without a redirect or gate HTML. Mutations require `Content-Type: application/json` and `X-AuctionLab-Admin: 1`; a supplied Origin must match the browser-facing Host/scheme. Only a loopback Vite/cloudflared proxy may supply the effective forwarded scheme. Forwarded Host is not trusted. JSON decoding is bounded at 512 KiB and rejects unknown fields and trailing values.
+
+Statuses: 400 malformed JSON; 401 `access_required`; 403 `request_rejected`; 404 `not_found`; 409 stale/duplicate/assigned/published/transaction conflict; 415 `json_required`; 422 `validation` with field reasons; 503 known unavailability or `commit_unknown`; 500 other sanitized storage failure. No automatic retry overwrites a newer record. On an uncertain commit, reload committed state before retrying.
+
+Example authorized request bodies (provide the cookie through your existing session; do not put a key in frontend code or examples):
+
+```json
+{"title":"Camera draft"}
+```
+
+```json
+{"title":"Camera draft","slug":"camera-draft","currency":"USD","version":1,"starting_price_minor":12550,"bid_increment_minor":500}
+```
+
+PUT is a replacement: include every editable field you intend to retain, including images/specifications/fulfillment. After editing an assigned lot, reload its event's new version. Preview is GET; publish uses `{"version": <latest-event-version>}`.
+
+`/admin/lots?new=1` and `/admin/auctions?new=1` create drafts; `?edit=<id>` loads a stored editor. Unknown selections show not-found recovery. `routes/admin/CatalogPage.tsx`, `LotEditor.tsx`, `EventEditor.tsx`, and `Controls.tsx` supply stored lists, title-only creation, content/gallery/specification/money/fulfillment editing, membership/order, server-derived schedule, public-field preview and explicit publish. Ordered rows have labeled keyboard Move up/Move down/Remove actions. EN/VI labels and errors do not translate or clear entered content. Published records are read-only. Pending actions are disabled; failed saves retain input, and conflicts/uncertain commits require reload rather than automatic overwrite. Reload explicitly replaces entered values with the committed record, with a warning to copy unsaved content first.
+
+The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery, account and order pages remain illustrative previews; the website mounts no legacy game view or WebSocket.
+
+## Explicit demo dataset
+
+```sh
+make build
+./bin/auctionlab --seed-catalog --seed-at 2030-01-01T00:00:00Z
+./bin/auctionlab --seed-catalog --seed-at 2030-01-01T00:00:00Z
+```
+
+These commands use private `DATABASE_URL`/`DATABASE_SCHEMA` environment configuration. Seed-only mode takes writer ownership, migrates, seeds and exits without engine/listener/tunnel. It is mutually exclusive with import/verify. Seed version 1 creates six lots each in **Analog Memories**, **Objects of Time**, and **The Listening Room**, covers all five categories, and bundles project-authored CC0 illustrations (not object photographs). All records are labeled demos and start as complete **drafts**. Dates are persisted once: reference +24/+48/+72 hours, first close one hour later, then 60-second staggering. Review and publish through the normal authorized UI/API. Rerun reports `already_applied`; edits, publication state and dates are preserved. Collision/failure rolls back the entire seed. Normal startup never seeds/rebases content. Expired unpublished demos need an explicit schedule edit or a fresh disposable PostgreSQL schema; published records stay frozen.
+
+For legacy data, follow [offline import, verify, backup/restore and rollback](../docs/sqlite-cutover.md) **before** ordinary startup or seed in the import target. There is no SQLite-v5 catalog or file-based PostgreSQL rollback.

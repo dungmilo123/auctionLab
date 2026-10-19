@@ -1,63 +1,42 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-// healthBody is the D-19 contract, byte for byte. It is written as a literal so
-// a renamed or added field fails the test rather than silently widening the
-// payload every smoke check and the verifier will curl.
-const healthBody = `{"status":"ok","wal":true}`
+type testReadiness bool
 
-// TestHealth pins the /api/health payload: exact bytes, exact key set, JSON
-// content type — and that `wal` reflects the boot assertion the handler was
-// constructed with (it is never re-probed per request).
+func (b testReadiness) Ready(context.Context) (int, error) {
+	if b {
+		return 1, nil
+	}
+	return 0, errors.New("credential sentinel")
+}
+
+const healthBody = `"database":"postgresql"`
+
 func TestHealth(t *testing.T) {
-	t.Run("true", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		NewHealth(true)(rec, httptest.NewRequest(http.MethodGet, "/api/health", nil))
-
-		if rec.Code != http.StatusOK {
-			t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	for _, ready := range []bool{true, false} {
+		r := httptest.NewRecorder()
+		NewHealth(testReadiness(ready))(r, httptest.NewRequest("GET", "/api/health", nil))
+		want := 200
+		if !ready {
+			want = 503
 		}
-		if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/json") {
-			t.Errorf("Content-Type = %q, want it to contain application/json", ct)
+		if r.Code != want || strings.Contains(r.Body.String(), "wal") || strings.Contains(r.Body.String(), "sentinel") {
+			t.Fatal(r.Code, r.Body.String())
 		}
-		if body := rec.Body.String(); body != healthBody {
-			t.Errorf("body = %q, want %q", body, healthBody)
+		var body map[string]any
+		if err := json.Unmarshal(r.Body.Bytes(), &body); err != nil || body["ready"] != ready {
+			t.Fatal(body, err)
 		}
-
-		var decoded map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &decoded); err != nil {
-			t.Fatalf("body is not valid JSON: %v", err)
-		}
-		if len(decoded) != 2 {
-			t.Fatalf("body carries %d fields (%v), want exactly status and wal", len(decoded), decoded)
-		}
-		if decoded["status"] != "ok" {
-			t.Errorf("status = %v, want \"ok\"", decoded["status"])
-		}
-		wal, ok := decoded["wal"].(bool)
-		if !ok {
-			t.Fatalf("wal = %v (%T), want a JSON boolean", decoded["wal"], decoded["wal"])
-		}
-		if !wal {
-			t.Error("wal = false, want true for a handler built from a successful boot assertion")
-		}
-	})
-
-	t.Run("false is passed through", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		NewHealth(false)(rec, httptest.NewRequest(http.MethodGet, "/api/health", nil))
-
-		if body := rec.Body.String(); body != `{"status":"ok","wal":false}` {
-			t.Errorf("body = %q, want the boot assertion value passed through", body)
-		}
-	})
+	}
 }
 
 // spaMarker identifies the fallback document, so any response that reaches it
@@ -74,7 +53,7 @@ const spaMarker = `<!doctype html><html lang="vi">auctionlab-health-test-spa-doc
 // test can catch.
 func wiredMux() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/health", NewHealth(true))
+	mux.HandleFunc("GET /api/health", NewHealth(testReadiness(true)))
 	mux.HandleFunc("/api/", NotFoundJSON)
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUpgradeRequired)

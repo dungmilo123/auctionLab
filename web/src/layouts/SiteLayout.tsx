@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { PreviewNotice } from '@/components/site/Presentation'
 import { useSiteCopy, type SiteKey } from '@/lib/site-copy'
+import { useCatalogCopy } from '@/lib/catalog-copy'
 import type { Route } from '@/lib/route'
 
 type Destination = readonly [href: string, label: SiteKey]
@@ -20,6 +21,7 @@ function Navigation({ items, path, label, className = 'site-nav' }: {
 
 function SiteLayout({ route, children }: { route: Route; children: ReactNode }) {
   const { lang, setLang, t } = useSiteCopy()
+  const { c } = useCatalogCopy()
   return <div className="website">
     <a href="#main" className="skip-link">{t('skip')}</a>
     <header className="site-header">
@@ -35,7 +37,7 @@ function SiteLayout({ route, children }: { route: Route; children: ReactNode }) 
         </div>
       </div>
     </header>
-    <PreviewNotice />
+    {route.page === 'adminLots' || route.page === 'adminAuctions' ? <div className="site-container preview-notice"><strong>{c('management')}</strong><span>{c('notice')}</span></div> : <PreviewNotice />}
     <main id="main" tabIndex={-1} className="site-container site-main">
       {route.layout === 'storefront' ? children : <div className="context-layout">
         <Navigation items={route.layout === 'account' ? account : admin} path={route.path}

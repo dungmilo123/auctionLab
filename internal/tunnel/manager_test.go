@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"auctionlab/internal/testpg"
 	"context"
 	"database/sql"
 	"errors"
@@ -990,11 +991,11 @@ type hubFixture struct {
 func newHubFixture(t *testing.T) *hubFixture {
 	t.Helper()
 
-	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
+	st, err := store.Open(testpg.URL(t, filepath.Join(t.TempDir(), "auction.db")))
 	if err != nil {
 		t.Fatalf("opening the test database: %v", err)
 	}
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("applying the schema: %v", err)
 	}
 

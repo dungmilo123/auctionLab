@@ -300,7 +300,7 @@ func New(cfg Config) (*Engine, error) {
 		e.SetPublisher(cfg.Publisher)
 	}
 
-	if err := store.Bootstrap(cfg.Store.DB, now()); err != nil {
+	if err := cfg.Store.Bootstrap(now()); err != nil {
 		return nil, err
 	}
 	gameRow, err := cfg.Store.LoadGame()

@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "checks": [
+    "Missing/wrong cookie, query-key-only and foreign Origin rejected",
+    "Created/edited two complete lots and an event with exact cents and ordered media",
+    "Saved/reordered membership, checked preview dates, corrected lot-specific publication failure, atomically published and rejected later edits",
+    "Anonymous JSON excludes drafts/private metadata/game secrets; repeat publication returns identical aggregate"
+  ],
+  "published_event_id": "65fe2385153472b9ba40a8860a0cd4a1",
+  "published_slug": "acceptance-collection-65fe2385",
+  "ordered_lot_ids": [
+    "c5d68f834ecb86cf868dd3cd9fa651c3",
+    "e318cc4c4e2608dd16a08277c1019c16"
+  ],
+  "opens_at": 1893542400000,
+  "planned_end": 1893546060000,
+  "public_digest": "d73dd7aab41d1d9e37e95c75d46ebc51e71f36053cf1b3d29f4c0a2ee691e77b"
+}

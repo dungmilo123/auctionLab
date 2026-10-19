@@ -6,9 +6,9 @@
 #   usage: scripts/loadtest-acceptance.sh <server-binary> [harness args...]
 #
 # What it guarantees, in order:
-#   1. The database is a fresh mktemp directory (DB_PATH) and the admin
+#   1. The database uses a fresh owned PostgreSQL test schema and the admin
 #      capability is a pinned constant (ADMIN_KEY), so the run never touches the
-#      developer's auction.db and never needs the presenter's key (D-74).
+#      developer's application schema and never needs the presenter's key (D-74).
 #   2. The server is one child of this script on LOADTEST_PORT (default 8199,
 #      deliberately not the dev server's 8080), started with no --tunnel: the
 #      acceptance target is the room's ordering, not the venue's tunnel.
@@ -46,7 +46,8 @@ command -v curl >/dev/null 2>&1 || die "curl is required to wait for /api/health
 admin_key=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/auctionlab-loadtest.XXXXXX") || die "mktemp failed"
-db="$tmp/auction.db"
+[ -n "${TEST_DATABASE_URL:-}" ] || die "TEST_DATABASE_URL required (dedicated PostgreSQL 18 test database)"
+schema=$(go run ./scripts/dbfixture) || die "could not create isolated PostgreSQL schema"
 server_log="$tmp/server.log"
 server_pid=""
 
@@ -63,6 +64,7 @@ cleanup() {
 		kill -9 "$server_pid" 2>/dev/null
 		wait "$server_pid" 2>/dev/null
 	fi
+	go run ./scripts/dbfixture --drop "$schema" || status=1
 	rm -rf "$tmp"
 	exit "$status"
 }
@@ -79,10 +81,10 @@ if [ "$race" = 1 ]; then
 	fi
 fi
 
-printf 'loadtest-acceptance: server=%s race=%s port=%s db=%s\n' "$bin" "$race" "$port" "$db"
+printf 'loadtest-acceptance: server=%s race=%s port=%s schema=%s\n' "$bin" "$race" "$port" "$schema"
 
 # The child owns the port; nothing else in this script may need it.
-DB_PATH="$db" ADMIN_KEY="$admin_key" "$bin" --port "$port" >"$server_log" 2>&1 &
+DB_PATH= DATABASE_URL="$TEST_DATABASE_URL" DATABASE_SCHEMA="$schema" ADMIN_KEY="$admin_key" "$bin" --port "$port" >"$server_log" 2>&1 &
 server_pid=$!
 
 # Bounded health wait: 200 × 50 ms = 10 s. The server prints its boot lines to

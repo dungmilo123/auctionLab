@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "final_binary_public_aggregate_equals_pre_restart": true,
+  "binary_sha256": "7064475856aae3070e07d6b26d65b0235436b2adc265b18c05c60f64e8279d9c",
+  "CGO_ENABLED": "0",
+  "bundled_catalog_svg_count": 39,
+  "placeholder_preserved": true,
+  "replay_does_not_claim_new_verification": true
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "capability": "auction-event-publishing",
+    "added": 7
+  },
+  {
+    "capability": "catalog-administration",
+    "added": 7
+  },
+  {
+    "capability": "postgresql-persistence",
+    "added": 10
+  },
+  {
+    "capability": "vintage-catalog",
+    "added": 7
+  },
+  {
+    "capability": "website-navigation",
+    "modified": 3,
+    "preserved": 5
+  }
+]

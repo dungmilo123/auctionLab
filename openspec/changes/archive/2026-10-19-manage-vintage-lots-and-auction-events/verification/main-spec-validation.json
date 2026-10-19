@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "id": "auction-event-publishing",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 7
+    },
+    {
+      "id": "catalog-administration",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 3
+    },
+    {
+      "id": "postgresql-persistence",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "vintage-catalog",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "vintage-design-system",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "website-navigation",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    "byType": {
+      "spec": {
+        "items": 6,
+        "passed": 6,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/home/milo/workspace/project/auctionLab",
+    "source": "nearest"
+  }
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auctionlab/internal/testpg"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -66,12 +67,12 @@ type drillEnv struct {
 func newDrillEnv(t *testing.T, candidates ...string) *drillEnv {
 	t.Helper()
 
-	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
+	st, err := store.Open(testpg.URL(t, filepath.Join(t.TempDir(), "auction.db")))
 	if err != nil {
 		t.Fatalf("opening the drill database: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("applying the schema: %v", err)
 	}
 
@@ -595,7 +596,8 @@ func TestAcceptanceHarnessShape(t *testing.T) {
 		t.Fatalf("reading %s: %v", scriptPath, err)
 	}
 	for _, want := range []struct{ what, substr string }{
-		{"a temporary database path", "DB_PATH"},
+		{"explicit PostgreSQL test configuration", "TEST_DATABASE_URL"},
+		{"owned disposable schema creation and cleanup", "./scripts/dbfixture"},
 		{"a temporary directory", "mktemp"},
 		{"a pinned admin capability", "ADMIN_KEY"},
 		{"child cleanup on every exit path", "trap"},
@@ -615,7 +617,7 @@ func TestAcceptanceHarnessShape(t *testing.T) {
 
 	for _, want := range []struct{ what, substr string }{
 		{"the phony declaration", "loadtest-20 loadtest-race loadtest-tunnel"},
-		{"the two-bot smoke target, unchanged", "loadtest:\n\t$(GO) run ./scripts/loadtest"},
+		{"the two-bot smoke target on an owned disposable schema", "loadtest:\n\t$(GO) build -o bin/auctionlab-loadtest ./cmd/server\n\tLOADTEST_PORT=$(LOADTEST_PORT) ./scripts/loadtest-acceptance.sh ./bin/auctionlab-loadtest"},
 		{"the race test target, unchanged", "test-race:\n\t$(GO) test -race -timeout 120s ./..."},
 		{"a race-built server binary", "-o bin/auctionlab-race"},
 		{"the race flag on the server build", "build -race -o bin/auctionlab-race"},

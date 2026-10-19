@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-19.
 
-Trạng thái: định hướng đã thống nhất trong trao đổi; chưa tạo proposal hoặc triển khai các change bên dưới. Tên change là tên dự kiến để sử dụng khi bắt đầu từng bước.
+Trạng thái: Change 1 đã hoàn thành; Change 2 `manage-vintage-lots-and-auction-events` đã triển khai và kiểm chứng cục bộ với PostgreSQL 18 cho toàn bộ runtime; đã archive tại `openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/`. Các change sau vẫn là định hướng, chưa phải chức năng đã triển khai.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -227,7 +227,7 @@ Chỉ thực hiện khi còn thời gian hoặc có yêu cầu môn học:
 
 ## 5. Ranh giới kỹ thuật và chất lượng
 
-- Giữ hướng single Go binary, React SPA và SQLite làm điểm xuất phát; proposal từng change xác định thay đổi cụ thể nếu cần.
+- Giữ single Go binary và React SPA; Change 2 thay runtime SQLite bằng PostgreSQL 18 (dịch vụ riêng). SQLite v4 chỉ còn là nguồn import offline có kiểm chứng.
 - Domain mới gồm account, auction event, lot, bid, order và payment simulation. Không mặc định coi game/player/item cũ là mô hình commerce hoàn chỉnh.
 - Server là nguồn quyết định giá, thời gian đóng, kết quả thắng và tổng đơn.
 - Chốt đơn vị tiền tệ và cách lưu số tiền trong proposal trước khi triển khai bid/checkout. Không tái diễn giải ngầm số nguyên game cũ thành tiền commerce.

@@ -1,0 +1,19 @@
+{
+  "browser": "153.0.8010.12",
+  "checks": [
+    "Invalid money retained; valid cents/title persisted; EN/VI switching preserved input",
+    "Stale save retains input and blocks overwrite until explicit committed-state reload",
+    "Aborted mutation cannot show false success and requires reload",
+    "Authorization loss retains unsaved inputs and shows Go gate recovery",
+    "Keyboard Tab/Enter reordered and persisted event lots; server schedule retained",
+    "Both editor pages: EN/VI × 320/375/768/1280; no page horizontal overflow; labeled fields",
+    "Both editors: 200% computed-font enlargement at 375px; no page horizontal overflow (text resize simulation, not browser chrome zoom)",
+    "Missing local image uses accessible fallback; disconnected save retains input without false success",
+    "Title-only lot/event creation follows stored editor URL and survives direct refresh",
+    "Public/account/order previews and retired screen 404s preserved; unknown editor does not fabricate a record; zero game WebSocket connections",
+    "Same-hostname Vite access: anonymous direct editor has no draft; Go gate cookie enables real editor",
+    "Unavailable development API shows recovery with no mutable sample fallback"
+  ],
+  "screenshots": "16 language/width images, two text-resize images, one missing-image image",
+  "pageErrors": []
+}

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"auctionlab/internal/testpg"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -37,12 +38,12 @@ type testEnv struct {
 func openTestStore(t *testing.T, path string) *store.Store {
 	t.Helper()
 
-	st, err := store.Open(path)
+	st, err := store.Open(testpg.URL(t, path))
 	if err != nil {
 		t.Fatalf("store.Open(%q): %v", path, err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("store.Schema(%q): %v", path, err)
 	}
 	return st
@@ -292,7 +293,7 @@ func TestBootRefusesStateTheMachineCannotUse(t *testing.T) {
 	t.Run("a phase outside the section 6 machine", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "auction.db")
 		st := openTestStore(t, path)
-		if err := store.Bootstrap(st.DB, testStart); err != nil {
+		if err := st.Bootstrap(testStart); err != nil {
 			t.Fatalf("Bootstrap: %v", err)
 		}
 		// The store does not validate the phase — that is the machine's job —
@@ -317,10 +318,10 @@ func TestBootRefusesStateTheMachineCannotUse(t *testing.T) {
 	t.Run("a config_json without a usable budget", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "auction.db")
 		st := openTestStore(t, path)
-		if err := store.Bootstrap(st.DB, testStart); err != nil {
+		if err := st.Bootstrap(testStart); err != nil {
 			t.Fatalf("Bootstrap: %v", err)
 		}
-		if _, err := st.DB.Exec(`UPDATE game SET config_json = ? WHERE id = 1`, `{"starting_budget":0,"currency":"USD"}`); err != nil {
+		if _, err := st.DB.Exec(`UPDATE game SET config_json = $1 WHERE id = 1`, `{"starting_budget":0,"currency":"USD"}`); err != nil {
 			t.Fatalf("corrupting the config: %v", err)
 		}
 		if err := st.Close(); err != nil {

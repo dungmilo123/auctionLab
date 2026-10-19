@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"auctionlab/internal/testpg"
 	"path/filepath"
 	"testing"
 	"time"
@@ -46,15 +47,15 @@ const (
 func newLiveSealedHub(t *testing.T, clock *testClock, startedAt, budget int64) (*Hub, *game.Engine, *store.Store) {
 	t.Helper()
 
-	st, err := store.Open(filepath.Join(t.TempDir(), "auction.db"))
+	st, err := store.Open(testpg.URL(t, filepath.Join(t.TempDir(), "auction.db")))
 	if err != nil {
 		t.Fatalf("opening the seeded database: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := store.Schema(st.DB); err != nil {
+	if err := st.Migrate(); err != nil {
 		t.Fatalf("applying the schema: %v", err)
 	}
-	if err := store.Bootstrap(st.DB, clock.now()); err != nil {
+	if err := st.Bootstrap(clock.now()); err != nil {
 		t.Fatalf("bootstrapping the seeded game row: %v", err)
 	}
 

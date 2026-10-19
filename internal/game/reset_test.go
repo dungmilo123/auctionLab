@@ -69,7 +69,7 @@ func insertSealedBid(t *testing.T, env *testEnv, itemID, playerID string, amount
 
 	const insert = `
 INSERT INTO sealed_bids (item_id, player_id, amount, submitted_at, updated_at)
-VALUES (?, ?, ?, ?, ?)`
+VALUES ($1, $2, $3, $4, $5)`
 	now := env.clock.now().UnixMilli()
 	if _, err := env.store.DB.Exec(insert, itemID, playerID, amount, now, now); err != nil {
 		t.Fatalf("seeding a sealed bid: %v", err)
@@ -368,9 +368,6 @@ func TestResetKeepPlayers(t *testing.T) {
 			t.Errorf("%s rows after the restart = %d, want %d", tc.table, got, tc.want)
 		}
 	}
-	if !restarted.store.Pragmas().ForeignKeys {
-		t.Error("the restarted handle does not enforce foreign keys")
-	}
 }
 
 // TestResetClearPlayers is D-78's clear_players contract: the same reset plus
@@ -450,9 +447,6 @@ func TestResetClearPlayers(t *testing.T) {
 	// The item configuration survives, exactly as keep_players leaves it.
 	if got := env.itemStatus(first); got != "pending" {
 		t.Errorf("the settled item's status after the reset = %q, want pending", got)
-	}
-	if !env.store.Pragmas().ForeignKeys {
-		t.Error("the fixture handle stopped enforcing foreign keys")
 	}
 
 	// --- a second clear_players in LOBBY is still a real mutation ------------

@@ -1,10 +1,12 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // This file is D-74's persistence half: the additive `server_config` KV table's
@@ -20,7 +22,7 @@ import (
 const adminKeyEnv = "ADMIN_KEY"
 
 // adminKeyRow is the `server_config` row the generated key is persisted into,
-// so the `/admin?k=…` link printed at boot survives a restart or a crash
+// so the `/admin$1k=…` link printed at boot survives a restart or a crash
 // instead of forcing the presenter to copy a new one mid-show.
 const adminKeyRow = "admin_key"
 
@@ -28,15 +30,17 @@ const adminKeyRow = "admin_key"
 // exists — a missing row is not an empty value, exactly as LoadRuntime's bool
 // distinguishes "never written" from a zero row.
 func (s *Store) GetServerConfig(key string) (string, bool, error) {
-	const query = `SELECT value FROM server_config WHERE key = ?`
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	const query = `SELECT value FROM server_config WHERE key = $1`
 
 	var value string
-	err := s.DB.QueryRow(query, key).Scan(&value)
+	err := s.DB.QueryRowContext(ctx, query, key).Scan(&value)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("store: loading server_config %q: %w", key, err)
+		return "", false, sanitize("server_config read", err)
 	}
 	return value, true, nil
 }
@@ -44,18 +48,17 @@ func (s *Store) GetServerConfig(key string) (string, bool, error) {
 // SetServerConfig writes one `server_config` row, upserting on the primary key
 // so re-persisting the same key is a no-op rather than a conflict.
 //
-// It is one statement and no transaction of its own: D-74 persists the key
-// outside any game mutation, and the single pooled connection (store.Open) is
-// what serializes it against the engine's commits.
+// The dedicated leased writer connection serializes this boot write with game
+// commits; losing that connection never reacquires ownership for stale memory.
 func (s *Store) SetServerConfig(key, value string) error {
 	const upsert = `
-INSERT INTO server_config (key, value) VALUES (?, ?)
+INSERT INTO server_config (key, value) VALUES ($1, $2)
 ON CONFLICT(key) DO UPDATE SET value = excluded.value`
 
-	if _, err := s.DB.Exec(upsert, key, value); err != nil {
-		return fmt.Errorf("store: persisting server_config %q: %w", key, err)
-	}
-	return nil
+	return sanitize("server_config write", s.withWriter(func(ctx context.Context, c *sql.Conn) error {
+		_, err := c.ExecContext(ctx, upsert, key, value)
+		return err
+	}))
 }
 
 // adminKeyMaxLen bounds the capability's length. A browser silently drops a
@@ -70,7 +73,7 @@ const adminKeyMaxLen = 4096
 // net/http DROPS the bytes `"`, `;`, `\`, every control byte and every byte
 // outside ASCII (logging `invalid byte … in Cookie.Value; dropping invalid
 // bytes`), so Equal(cookie.Value, key) can never pass for a key carrying one:
-// `GET /admin?k=<key>` sets a mutated cookie, the 303 lands back on the gate
+// `GET /admin$1k=<key>` sets a mutated cookie, the 303 lands back on the gate
 // page, and the wrong-key 401 never fires because the ?k= itself was right — a
 // lockout with no diagnostic. It also QUOTES a value containing a space or a
 // comma; browsers unquote on storage, and whether the value survives that trip

@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "postgresql_major": 18,
+  "nonsuperuser_app_role_seed": true,
+  "separate_test_role_parallel_fixtures": true,
+  "credentials_recorded": false
+}
