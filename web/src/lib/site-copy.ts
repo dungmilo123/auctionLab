@@ -1,0 +1,92 @@
+import { useLanguage, type Lang } from './i18n'
+
+// Website copy is independent of the retained game dictionary and wire types.
+export const SITE_COPY = {
+  concept: { en: 'Collected stories', vi: 'Những câu chuyện được lưu giữ' },
+  tagline: { en: 'Objects with a past. Stories with a future.', vi: 'Hiện vật của quá khứ. Câu chuyện cho tương lai.' },
+  intro: { en: 'A considered home for curious objects, timeless design, and the stories we choose to keep.', vi: 'Một không gian dành cho những hiện vật độc đáo, thiết kế vượt thời gian và câu chuyện ta muốn lưu giữ.' },
+  home: { en: 'Home', vi: 'Trang chủ' },
+  auctions: { en: 'Auctions', vi: 'Phiên đấu giá' },
+  lots: { en: 'Lots', vi: 'Hiện vật' },
+  account: { en: 'Account', vi: 'Tài khoản' },
+  admin: { en: 'Administration', vi: 'Quản trị' },
+  overview: { en: 'Overview', vi: 'Tổng quan' },
+  watchlist: { en: 'Watchlist', vi: 'Danh sách theo dõi' },
+  bids: { en: 'My bids', vi: 'Lượt đặt giá' },
+  orders: { en: 'Orders', vi: 'Đơn hàng' },
+  skip: { en: 'Skip to content', vi: 'Đến nội dung chính' },
+  primaryNav: { en: 'Main navigation', vi: 'Điều hướng chính' },
+  accountNav: { en: 'Account navigation', vi: 'Điều hướng tài khoản' },
+  adminNav: { en: 'Administration navigation', vi: 'Điều hướng quản trị' },
+  footerNav: { en: 'Explore AuctionLab', vi: 'Khám phá AuctionLab' },
+  language: { en: 'Language', vi: 'Ngôn ngữ' },
+  preview: { en: 'Website preview', vi: 'Bản xem trước website' },
+  previewNote: { en: 'Bidding and purchases are not available yet.', vi: 'Chức năng đặt giá và mua hàng chưa khả dụng.' },
+  illustration: { en: 'Illustrative preview', vi: 'Minh họa xem trước' },
+  collection: { en: 'The study collection', vi: 'Bộ sưu tập minh họa' },
+  collectionNote: { en: 'A few imagined finds, selected to show what is to come.', vi: 'Một vài hiện vật giả định, gợi mở trải nghiệm sắp tới.' },
+  browseLots: { en: 'Explore the collection', vi: 'Khám phá bộ sưu tập' },
+  browseAuctions: { en: 'View auction previews', vi: 'Xem trước phiên đấu giá' },
+  viewAll: { en: 'View all lots', vi: 'Xem tất cả hiện vật' },
+  homeLink: { en: 'Return to storefront', vi: 'Về trang cửa hàng' },
+  footerNote: { en: 'A preview of a quieter way to discover objects worth keeping. All objects shown are illustrations.', vi: 'Khám phá những hiện vật đáng lưu giữ. Tất cả hiện vật hiển thị đều là hình minh họa xem trước.' },
+  upcoming: { en: 'Upcoming', vi: 'Sắp diễn ra' },
+  live: { en: 'Live', vi: 'Đang diễn ra' },
+  ended: { en: 'Ended', vi: 'Đã kết thúc' },
+  sold: { en: 'Sold', vi: 'Đã bán' },
+  unavailable: { en: 'Unavailable', vi: 'Chưa khả dụng' },
+  statusExamples: { en: 'Illustrative status labels', vi: 'Nhãn trạng thái minh họa' },
+  imageUnavailable: { en: 'Image unavailable. Illustration placeholder shown.', vi: 'Hình ảnh chưa khả dụng. Đang hiển thị khung minh họa.' },
+  imageAlt: { en: 'Drawing of {object}', vi: 'Hình minh họa {object}' },
+  camera: { en: 'The slow Sunday camera', vi: 'Máy ảnh cho ngày Chủ nhật thong thả' },
+  clock: { en: 'A little time, well kept', vi: 'Chiếc đồng hồ lưu giữ thời gian' },
+  vinyl: { en: 'An evening in vinyl — a record sleeve with a lifetime of listening stories', vi: 'Buổi tối cùng đĩa than — bìa đĩa lưu giữ những câu chuyện qua bao lần lắng nghe' },
+  cameraMeta: { en: 'Analog study · Camera illustration', vi: 'Nghiên cứu hoài cổ · Minh họa máy ảnh' },
+  clockMeta: { en: 'Mantel study · Clock illustration', vi: 'Nghiên cứu trang trí · Minh họa đồng hồ' },
+  vinylMeta: { en: 'Listening study · Record illustration', vi: 'Nghiên cứu âm thanh · Minh họa đĩa than' },
+  auctionTitle: { en: 'Objects for an unhurried afternoon', vi: 'Hiện vật cho một buổi chiều thong thả' },
+  auctionIntro: { en: 'Discover how a collection might come together. This is an illustrative auction preview, with no published event or schedule.', vi: 'Hình dung cách một bộ sưu tập được kết nối. Đây là phiên đấu giá minh họa, chưa có sự kiện hay lịch trình được công bố.' },
+  auctionDetail: { en: 'Auction preview', vi: 'Xem trước phiên đấu giá' },
+  openAuction: { en: 'Explore this auction preview', vi: 'Khám phá phiên minh họa' },
+  lotsIntro: { en: 'Small details. Lasting impressions. These illustrations are a preview, not a catalog of available items.', vi: 'Chi tiết nhỏ. Dấu ấn dài lâu. Những hình minh họa này chưa phải danh mục hiện vật đang bán.' },
+  lotDetail: { en: 'Lot preview', vi: 'Xem trước hiện vật' },
+  detailIntro: { en: 'An imagined object, presented to explore its details. This generic preview does not identify a stored lot or verify provenance.', vi: 'Một hiện vật giả định để khám phá cách trình bày chi tiết. Bản minh họa chung này không xác nhận hiện vật đã được lưu hay nguồn gốc của nó.' },
+  price: { en: 'Price', vi: 'Giá' },
+  schedule: { en: 'Schedule', vi: 'Lịch trình' },
+  bid: { en: 'Place a bid', vi: 'Đặt giá' },
+  disabledNote: { en: 'Preview only. Bidding, saving, and purchases are not available.', vi: 'Chỉ để xem trước. Đặt giá, lưu và mua hàng chưa khả dụng.' },
+  fieldTitle: { en: 'A look at the collection controls', vi: 'Xem trước công cụ bộ sưu tập' },
+  searchLabel: { en: 'Search example', vi: 'Ví dụ tìm kiếm' },
+  searchValue: { en: 'Vintage camera', vi: 'Máy ảnh cổ điển' },
+  fieldHelp: { en: 'Sample text only. Search and filters are not available yet.', vi: 'Chỉ là văn bản mẫu. Tìm kiếm và bộ lọc chưa khả dụng.' },
+  invalidLabel: { en: 'Validation example', vi: 'Ví dụ kiểm tra dữ liệu' },
+  invalidHelp: { en: 'A non-submitting field to demonstrate an error state.', vi: 'Trường minh họa trạng thái lỗi, không gửi dữ liệu.' },
+  invalidError: { en: 'Example error: choose a collection when filters become available.', vi: 'Lỗi minh họa: chọn bộ sưu tập khi bộ lọc khả dụng.' },
+  search: { en: 'Search collection', vi: 'Tìm trong bộ sưu tập' },
+  accountIntro: { en: 'A place for the pieces that catch your eye. Account features are coming; this public preview contains no profile or personal information.', vi: 'Không gian dành cho những hiện vật bạn yêu thích. Chức năng tài khoản sẽ có sau; bản xem trước công khai này không chứa hồ sơ hay thông tin cá nhân.' },
+  watchlistNote: { en: 'Saved objects will have a home here. Saving and account access are not available yet.', vi: 'Hiện vật yêu thích sẽ xuất hiện ở đây. Lưu hiện vật và truy cập tài khoản chưa khả dụng.' },
+  bidsNote: { en: 'Bid history will appear here when accounts and bidding are available.', vi: 'Lịch sử đặt giá sẽ xuất hiện khi tài khoản và chức năng đấu giá khả dụng.' },
+  ordersNote: { en: 'Orders and purchase details are not available in this preview.', vi: 'Đơn hàng và chi tiết mua hàng chưa khả dụng trong bản xem trước.' },
+  adminIntro: { en: 'The workspace for future collections. Management actions are not available in this preview.', vi: 'Không gian cho những bộ sưu tập tương lai. Thao tác quản lý chưa khả dụng trong bản xem trước.' },
+  adminAuctions: { en: 'Manage auctions', vi: 'Quản lý phiên đấu giá' },
+  adminLots: { en: 'Manage lots', vi: 'Quản lý hiện vật' },
+  adminOrders: { en: 'Manage orders', vi: 'Quản lý đơn hàng' },
+  adminAuctionsNote: { en: 'Auction publishing and scheduling are not available yet.', vi: 'Công bố và lên lịch phiên đấu giá chưa khả dụng.' },
+  adminLotsNote: { en: 'Lot creation and editing are not available yet.', vi: 'Tạo và chỉnh sửa hiện vật chưa khả dụng.' },
+  adminOrdersNote: { en: 'Order processing and updates are not available yet.', vi: 'Xử lý và cập nhật đơn hàng chưa khả dụng.' },
+  notFound: { en: '404 — A story not found', vi: '404 — Chưa tìm thấy câu chuyện' },
+  notFoundNote: { en: 'This page is not part of our collection. Find your way back to the storefront.', vi: 'Trang này không thuộc bộ sưu tập của chúng tôi. Hãy trở về trang cửa hàng để khám phá.' },
+  homeTitle: { en: 'Collected stories', vi: 'Những câu chuyện được lưu giữ' },
+} as const satisfies Record<string, { en: string; vi: string }>
+
+export type SiteKey = keyof typeof SITE_COPY
+export type SiteText = (key: SiteKey, values?: Record<string, string>) => string
+
+export function siteText(lang: Lang, key: SiteKey, values: Record<string, string> = {}): string {
+  return SITE_COPY[key][lang].replace(/\{(\w+)\}/g, (token, name: string) => values[name] ?? token)
+}
+
+export function useSiteCopy(): { lang: Lang; setLang: (lang: Lang) => void; t: SiteText } {
+  const { lang, setLang } = useLanguage()
+  return { lang, setLang, t: (key, values) => siteText(lang, key, values) }
+}

@@ -2,197 +2,199 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Local, Latin + Vietnamese subsets. No third-party requests at runtime. */
+@font-face {
+  font-family: 'Noto Sans'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./assets/fonts/noto-sans-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Noto Sans'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./assets/fonts/noto-sans-vietnamese-400-normal.woff2') format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+@font-face {
+  font-family: 'Noto Sans'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./assets/fonts/noto-sans-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Noto Sans'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./assets/fonts/noto-sans-vietnamese-600-normal.woff2') format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+@font-face {
+  font-family: 'Noto Serif'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./assets/fonts/noto-serif-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Noto Serif'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./assets/fonts/noto-serif-vietnamese-400-normal.woff2') format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+@font-face {
+  font-family: 'Noto Serif'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./assets/fonts/noto-serif-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Noto Serif'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./assets/fonts/noto-serif-vietnamese-600-normal.woff2') format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
 
-/* ---------------------------------------------------------------------------
-   Theme layer — maps the design tokens below onto Tailwind utilities.
-
-   Fonts are the two SYSTEM stacks from 01-UI-SPEC.md §Typography. No webfont
-   is loaded: the venue may be fully offline, so a network font would silently
-   degrade mid-presentation.
-   ------------------------------------------------------------------------- */
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    monospace;
-  --font-heading: var(--font-sans);
-
-  /* 32px Display step — 01-UI-SPEC.md §Typography. Tailwind has no stock
-     step at 32px, and shipping `text-3xl` (30px) would break the declared
-     size scale. */
+  --font-sans: 'Noto Sans', system-ui, sans-serif;
+  --font-heading: 'Noto Serif', Georgia, serif;
+  --font-mono: ui-monospace, monospace;
   --text-display: 2rem;
-
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
   --color-background: var(--background);
-
-  /* Every radius derives from --radius, which is 0rem — no rounded corners
-     anywhere in this phase. */
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--primary-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
-
-/* ---------------------------------------------------------------------------
-   Light mode — ACTIVE. 01-UI-SPEC.md §Color. Hex is authoritative: rendered
-   colours, not the CLI's oklch approximations.
-
-   Naming note: the design contract's "Accent (10%)" is shadcn's `--primary`
-   (fills) with `--primary-foreground` as near-black text on it. shadcn's own
-   `--accent` is a subtle hover surface and is explicitly NOT the brand accent.
-   ------------------------------------------------------------------------- */
 :root {
-  --radius: 0rem;
-
-  --background: #FFFBF0;
-  --foreground: #111111;
-  --card: #F2E9D5;
-  --card-foreground: #111111;
-  --popover: #FFFBF0;
-  --popover-foreground: #111111;
-  --primary: #FF6B00;
-  --primary-foreground: #111111;
-  --secondary: #F2E9D5;
-  --secondary-foreground: #111111;
-  --muted: #F2E9D5;
-  --muted-foreground: #5C5344;
-  --accent: #FFE8D1;
-  --accent-foreground: #111111;
-  --destructive: #E5484D;
-  --destructive-foreground: #111111;
-  --border: #111111;
-  --input: #FFFFFF;
-  --ring: #111111;
-
-  /* Neobrutalist primitives — flat fill, 2px near-black outline, hard offset
-     shadow with zero blur. */
-  --border-width: 2px;
-  --shadow-offset: 4px;
-  --shadow-hard: 4px 4px 0 0 var(--border);
-
-  /* Unused in Phase 1 (no charts, no sidebar) — left as the CLI emitted. */
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #F6F1E8; --foreground: #24211E;
+  --card: #FFFFFF; --primary: #722F37; --primary-foreground: #F6F1E8;
+  --primary-hover: #5B252C; --secondary: #F6F1E8; --muted: #F6F1E8;
+  --muted-foreground: #625A52; --accent: #FFFFFF;
+  --olive: #62664D; --brass: #A38355; --destructive: #8D2E35;
+  --warning: #715116; --border: #8A7C6C; --divider: #D8CDBD;
+  --input: #FFFFFF; --ring: #722F37; --radius: 4px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+  --shadow-hard: none;
 }
-
-/* ---------------------------------------------------------------------------
-   Dark mode — DECLARED AND KEPT IN SYNC, NEVER ACTIVATED.
-
-   No toggle ships in this MVP; nothing in the app ever sets `.dark`. The
-   block exists so the theme is complete and can be verified once by adding
-   `.dark` in devtools.
-   ------------------------------------------------------------------------- */
-.dark {
-  --background: #141414;
-  --foreground: #FAF3E6;
-  --card: #1F1F1F;
-  --card-foreground: #FAF3E6;
-  --popover: #1F1F1F;
-  --popover-foreground: #FAF3E6;
-  --primary: #FF8A3D;
-  --primary-foreground: #111111;
-  --secondary: #1F1F1F;
-  --secondary-foreground: #FAF3E6;
-  --muted: #262626;
-  --muted-foreground: #B5AC9C;
-  --accent: #3A2A1C;
-  --accent-foreground: #FAF3E6;
-  --destructive: #FF5A5F;
-  --destructive-foreground: #111111;
-  --border: #FAF3E6;
-  --input: #141414;
-  --ring: #FAF3E6;
-}
-
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-
-  /* 01-UI-SPEC.md §Interaction rules: every focusable element shows a visible
-     2px near-black ring offset by 2px on :focus-visible. Never `outline: none`
-     — the near-black ring (not the accent) is what clears WCAG 3:1 against the
-     cream background. Declared once here so no primitive can opt out. */
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
+  * { box-sizing: border-box; border-color: var(--border); }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); line-height: 1.5; }
+  h1,h2,h3 { font-family: var(--font-heading); font-weight: 400; line-height: 1.15; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; box-shadow: 0 0 0 2px var(--background); }
 }
-
-/* ---------------------------------------------------------------------------
-   The projector base (D-90) — the ONE addition Phase 4 makes to this
-   stylesheet: two rules, one intent. No token is declared, no colour changes
-   and nothing outside the screen route is touched.
-
-   The first rule is the route base. Every declared role is rem-based
-   (0.875rem / 1rem / 1.25rem / 2rem), so the four type sizes and the seven
-   spacing steps render at their declared RATIOS on a projector instead of at
-   the 16px document base — a fifth size would still be wrong on the next
-   projector, which is why this is one clamp and not a new type family
-   (04-UI-SPEC §Typography).
-
-   The second is the route's outline step: a 2px hairline is a 2.7mm line on a
-   2.6m image and disappears from the back row, so the route renders every
-   border at the declared xs step (4px). It is written UNLAYERED on purpose —
-   Tailwind v4 emits `border-2` inside `@layer utilities`, so one unlayered
-   rule outranks it for every bordered box on the route at once, with no
-   call-site change and no per-element class (04-UI-SPEC §Spacing).
-
-   Both rules are scoped to the class `ScreenView` puts on the document root
-   for the route's lifetime — and `lib/screen.ts` exports that class name, so
-   `screen.test.ts` fails if the two ever drift apart.
-   ------------------------------------------------------------------------- */
+/* Shared primitives: all enabled-state pairs are checked in visual-checks.md. */
+.site-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; padding: 10px 20px; border: 1px solid transparent; border-radius: 4px; font: inherit; font-weight: 600; line-height: 1.5; text-align: center; white-space: normal; text-decoration: none; cursor: pointer; transition: background-color 150ms, color 150ms, border-color 150ms; }
+.site-button-primary { background: var(--primary); color: var(--primary-foreground); }
+.site-button-primary:hover { background: var(--primary-hover); }
+.site-button-outline { background: var(--background); border-color: var(--border); color: var(--foreground); }
+.site-button-outline:hover, .site-button-secondary:hover, .site-button-ghost:hover { background: var(--card); }
+.site-button-secondary, .site-button-ghost { background: var(--background); color: var(--foreground); }
+.site-button-destructive { background: var(--destructive); color: var(--primary-foreground); }
+.site-button-destructive:hover { background: var(--primary-hover); }
+.site-button-link { background: transparent; color: var(--primary); text-decoration: underline; text-underline-offset: 4px; }
+.site-button-link:hover { color: var(--primary-hover); }
+.site-button:disabled { background: var(--muted); border-color: var(--border); color: var(--muted-foreground); cursor: not-allowed; }
+.site-input { display: block; width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; background: var(--input); color: var(--foreground); font: inherit; }
+.site-input:hover { border-color: var(--foreground); }
+.site-input::placeholder { color: var(--muted-foreground); }
+.site-input[aria-invalid=true] { border-color: var(--destructive); }
+.site-input:disabled { background: var(--muted); color: var(--muted-foreground); cursor: not-allowed; }
+.site-label { display: block; font-weight: 600; margin-bottom: 8px; }
+.site-card { border: 1px solid var(--divider); background: var(--card); }
+.site-card-header,.site-card-content,.site-card-footer { padding: 24px; }
+.site-card-title { font-family: var(--font-heading); font-size: 1.25rem; }
+.site-card-description { color: var(--muted-foreground); }
+.site-card-footer { border-top: 1px solid var(--divider); }
+/* The website root keeps editorial layout rules away from dormant game views. */
+.website { min-height: 100dvh; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.website h1,.website h2,.website h3,.website p { margin: 0; }
+.website h1 { font-size: clamp(2.25rem, 5vw, 3.5rem); letter-spacing: -0.035em; }
+.website h2 { font-size: 1.75rem; letter-spacing: -0.025em; }
+.website h3 { font-size: 1.25rem; }
+.website a { color: var(--primary); text-underline-offset: 4px; }
+.website a:hover { color: var(--primary-hover); }
+.website a.site-button-primary { color: var(--primary-foreground); }
+.site-container { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 16px; }
+.site-header { border-bottom: 1px solid var(--divider); }
+.header-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding-block: 20px; }
+.website .brand { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: var(--foreground); text-decoration: none; font-family: var(--font-heading); font-size: 1.75rem; letter-spacing: -0.04em; }
+.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--brass); border-radius: 50%; color: var(--primary); font-size: 1.25rem; }
+.site-nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.site-nav a, .site-footer a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+.site-nav a { color: var(--foreground); text-decoration: none; }
+.site-nav a[aria-current=page] { color: var(--primary); text-decoration: underline; text-decoration-thickness: 2px; }
+.language-control { display: flex; gap: 4px; }
+.language-control button { padding: 8px; }
+.language-control [aria-pressed=true] { border-color: var(--primary); color: var(--primary); background: var(--card); }
+.skip-link { position: fixed; left: 16px; top: -100%; z-index: 10; min-height: 44px; padding: 12px; background: var(--card); }
+.skip-link:focus { top: 8px; }
+.preview-notice { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--divider); padding-block: 12px; color: var(--muted-foreground); font-size: 0.875rem; }
+.preview-notice strong { color: var(--primary); font-weight: 600; }
+.site-main { flex: 1; padding-block: 48px 64px; }
+.site-main:focus { outline: none; box-shadow: none; }
+.site-footer { border-top: 1px solid var(--divider); padding-block: 32px; color: var(--muted-foreground); font-size: 0.875rem; }
+.footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; }
+.footer-inner p { max-width: 34rem; }
+.stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.stack-small { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.eyebrow { color: var(--primary); font-size: 0.875rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.muted { color: var(--muted-foreground); }
+.lede { font-size: 1.125rem; max-width: 38rem; color: var(--muted-foreground); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.hero { display: grid; gap: 32px; align-items: center; padding-bottom: 48px; border-bottom: 1px solid var(--divider); }
+.hero h1 { max-width: 15ch; }
+.hero-art { position: relative; background: var(--card); padding: 24px; border: 1px solid var(--divider); }
+.hero-art img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: contain; }
+.hero-art figcaption { font-size: 0.875rem; color: var(--muted-foreground); padding-top: 16px; border-top: 1px solid var(--divider); }
+.section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 16px; margin-top: 48px; margin-bottom: 24px; }
+.section-heading a { display: inline-flex; align-items: center; min-height: 44px; }
+.lot-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 32px; }
+.lot-card { min-width: 0; border-top: 1px solid var(--divider); }
+.lot-image { margin: 0; background: var(--card); border: 1px solid var(--divider); }
+.lot-image img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: contain; }
+.lot-image figcaption { padding: 8px 12px; color: var(--muted-foreground); font-size: 0.875rem; }
+.lot-body { padding-block: 20px; }
+.lot-card h3 a { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); }
+.status { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; color: var(--olive); }
+.status::before { content: ''; width: 6px; height: 6px; border: 1px solid currentColor; border-radius: 50%; flex-shrink: 0; }
+.status-live { color: var(--primary); }
+.status-ended,.status-unavailable { color: var(--muted-foreground); }
+.status-upcoming { color: var(--warning); }
+.status-list { display: flex; flex-wrap: wrap; gap: 16px; }
+.numeric { font-variant-numeric: tabular-nums; }
+.field-help { font-size: 0.875rem; color: var(--muted-foreground); margin-top: 8px !important; }
+.field-error { font-size: 0.875rem; color: var(--destructive); margin-top: 8px !important; }
+.field-grid { display: grid; gap: 24px; }
+.empty-state { border: 1px solid var(--divider); padding: 24px; background: var(--card); }
+.empty-icon { color: var(--primary); font-family: var(--font-heading); font-size: 2.25rem; }
+.context-layout { display: grid; gap: 32px; }
+.context-nav { display: flex; flex-wrap: wrap; align-content: start; gap: 8px 16px; padding-bottom: 24px; border-bottom: 1px solid var(--divider); }
+.context-nav a { display: flex; align-items: center; min-height: 44px; min-width: 44px; color: var(--foreground); }
+.context-nav a[aria-current=page] { color: var(--primary); font-weight: 600; }
+.detail-grid { display: grid; gap: 32px; }
+.metadata { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; margin: 0; padding-block: 24px; border-block: 1px solid var(--divider); }
+.metadata dt { color: var(--muted-foreground); font-size: 0.875rem; }
+.metadata dd { margin: 8px 0 0; }
+.not-found { padding-block: 32px; max-width: 42rem; }
+@media (min-width: 640px) {
+  .site-container { padding-inline: 24px; }
+  .lot-grid,.field-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .hero { grid-template-columns: 1.1fr 1fr; }
+}
+@media (min-width: 1024px) {
+  .site-container { padding-inline: 32px; }
+  .lot-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .context-layout { grid-template-columns: 220px minmax(0,1fr); gap: 48px; }
+  .context-nav { flex-direction: column; border-bottom: 0; border-right: 1px solid var(--divider); padding-right: 24px; }
+  .detail-grid { grid-template-columns: 1.1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .website *, .website *::before, .website *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+/* Retained, unmounted projector helpers: still covered by legacy tests. */
 html.screen-scale {
   font-size: clamp(20px, 4.2vmin, 48px);
 }

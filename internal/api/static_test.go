@@ -35,6 +35,8 @@ func staticFixture() fstest.MapFS {
 		"index.html":               &fstest.MapFile{Data: []byte(indexMarker)},
 		"assets/app.js":            &fstest.MapFile{Data: []byte(assetMarker)},
 		"assets/vendor/nested.css": &fstest.MapFile{Data: []byte(nestedMarker)},
+		"assets/noto-test.woff2":   &fstest.MapFile{Data: []byte("wOF2-font-fixture")},
+		"site-assets/image.svg":    &fstest.MapFile{Data: []byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)},
 		"robots.txt":               &fstest.MapFile{Data: []byte(plainMarker)},
 	}
 }
@@ -113,6 +115,19 @@ func TestStaticServingContract(t *testing.T) {
 			wantCache: "",
 		},
 	}
+
+	for _, route := range []string{"/auctions/analog-memories", "/lots/sample-camera", "/account/watchlist", "/account/bids/", "/admin/lots", "/unknown-page"} {
+		cases = append(cases, staticCase{name: "website document " + route, path: route,
+			wantStatus: http.StatusOK, wantBody: indexMarker, wantType: "text/html", wantCache: wantIndexCache, wantNosniff: true})
+	}
+	for _, missing := range []string{"/assets/missing.woff2", "/assets/missing.svg", "/site-assets/missing.svg", "/site-assets/missing.woff2", "/site-assets/"} {
+		cases = append(cases, staticCase{name: "reserved asset miss " + missing, path: missing,
+			wantStatus: http.StatusNotFound, wantBody: "404 page not found", wantNotBody: indexMarker, wantType: "text/plain"})
+	}
+	cases = append(cases,
+		staticCase{name: "hashed font immutable", path: "/assets/noto-test.woff2", wantStatus: http.StatusOK, wantBody: "wOF2-font-fixture", wantType: "font/woff2", wantCache: wantAssetCache},
+		staticCase{name: "public illustration not immutable", path: "/site-assets/image.svg", wantStatus: http.StatusOK, wantBody: "<svg", wantType: "image/svg+xml"},
+	)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,4 +1,6 @@
 import { writeFileSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
+import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -19,9 +21,33 @@ function restoreDistPlaceholder(): Plugin {
   }
 }
 
+// Vite's HTML fallback also answers missing SVG/WOFF2 requests when the
+// browser accepts HTML. Reserve these namespaces before that fallback.
+function reservedSiteAssets(): Plugin {
+  return {
+    name: 'auctionlab:reserved-site-assets',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        let pathname: string
+        try { pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname) }
+        catch { next(); return }
+        if (!pathname.startsWith('/assets/') && !pathname.startsWith('/site-assets/')) { next(); return }
+        const publicRoot = resolve(server.config.publicDir)
+        const candidate = resolve(publicRoot, `.${pathname}`)
+        if (candidate.startsWith(publicRoot + sep)) {
+          try { if ((await stat(candidate)).isFile()) { next(); return } } catch { /* A miss remains a miss. */ }
+        }
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.end('404 Not Found')
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [restoreDistPlaceholder(), react(), tailwindcss()],
+  plugins: [restoreDistPlaceholder(), reservedSiteAssets(), react(), tailwindcss()],
   resolve: {
     // shadcn's `@/…` import alias, mirroring the `paths` entry in
     // tsconfig.app.json. ESM-native resolution (no __dirname) because

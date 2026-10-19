@@ -139,39 +139,29 @@ const gateDocumentHead = `<!doctype html>
 <title>` + gateTitleEN + ` · ` + gateTitleVI + `</title>
 <style>
 * { box-sizing: border-box; }
-/* §Typography's two declared line heights, applied to this document too: the
-   gate page is a row in the UI-SPEC's type table, and "Body 1.5 / heading 1.2
-   apply to every text node in it" (UI-review finding 5). Body-level 1.5 is
-   inherited by everything except the submit button, whose UA line-height would
-   otherwise win — so the button states it again at its own Label role. */
 body {
-  margin: 0; background: #FFFBF0; color: #111111; line-height: 1.5;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0; background: #F6F1E8; color: #24211E; line-height: 1.5;
+  font-family: system-ui, sans-serif; overflow-wrap: anywhere;
 }
-main { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
-form {
-  display: flex; flex-direction: column; gap: 16px;
-  background: #F2E9D5; border: 2px solid #111111; border-radius: 0;
-  box-shadow: 4px 4px 0 0 #111111; padding: 24px;
-}
-h1 { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.2; }
-p { margin: 0; font-size: 14px; }
-.vi { color: #5C5344; }
-label { font-size: 14px; font-weight: 700; }
-input {
-  min-height: 44px; width: 100%; border: 2px solid #111111; background: #FFFFFF;
-  font-size: 16px; padding: 8px; border-radius: 0; font-family: inherit;
-}
-input[aria-invalid="true"] { border-color: #E5484D; }
-.error { border: 2px solid #E5484D; padding: 8px; font-size: 16px; color: #111111; }
-button {
-  min-height: 44px; padding: 0 16px; border: 2px solid #111111; background: #FF6B00;
-  color: #111111; font-weight: 700; font-size: 14px; line-height: 1.5; border-radius: 0;
-  box-shadow: 4px 4px 0 0 #111111; font-family: inherit; cursor: pointer;
-  transition: transform 80ms ease, box-shadow 80ms ease;
-}
-button:active { transform: translate(2px, 2px); box-shadow: none; }
-:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
+main { max-width: 720px; margin: 0 auto; padding: 48px 16px; }
+form { display: flex; flex-direction: column; gap: 16px; background: #FFFFFF;
+  border: 1px solid #D8CDBD; padding: 24px; }
+h1 { margin: 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 400; line-height: 1.15; }
+p { margin: 0; font-size: 0.875rem; }
+.vi { color: #625A52; }
+label { font-weight: 600; }
+input { min-height: 44px; width: 100%; min-width: 0; border: 1px solid #8A7C6C; background: #FFFFFF;
+  color: #24211E; font: inherit; padding: 10px 12px; border-radius: 4px; }
+input[aria-invalid="true"] { border-color: #8D2E35; }
+.error { border: 1px solid #8D2E35; padding: 12px; color: #8D2E35; }
+.error .vi { color: #8D2E35; }
+button { min-width: 44px; min-height: 44px; padding: 10px 16px; border: 1px solid transparent;
+  background: #722F37; color: #F6F1E8; font: inherit; font-weight: 600; border-radius: 4px;
+  cursor: pointer; transition: background-color 150ms; }
+button .vi { color: inherit; }
+button:hover { background: #5B252C; }
+:focus-visible { outline: 2px solid #722F37; outline-offset: 2px; box-shadow: 0 0 0 2px #F6F1E8; }
+@media (min-width: 640px) { main { padding-inline: 24px; } }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
 </style>
 </head>

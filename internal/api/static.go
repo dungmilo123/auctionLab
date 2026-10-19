@@ -59,7 +59,7 @@ func NewStatic(fsys fs.FS) (*Static, error) {
 }
 
 // ServeHTTP serves the SPA document for every path that is not a real file in
-// the embedded build — the deep-link fallback that keeps /admin, /screen and
+// the embedded build — the deep-link fallback that keeps /lots, /account and
 // any nested route answering 200 text/html on a refresh, a bookmark or a QR
 // link instead of dead-ending on a 404.
 //
@@ -81,16 +81,16 @@ func (s *Static) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	info, err := fs.Stat(s.fsys, name)
 	if err != nil || info.IsDir() {
-		// A missing name inside the hashed-asset namespace is a 404, never the
+		// A missing name inside either reserved asset namespace is a 404, never the
 		// SPA document: a <script>/<link> that receives an HTML body fails with
 		// `Unexpected token '<'` instead of a clean 404, and this is the path
 		// most likely to break after a rebuild. `vite dev` already 404s the
 		// same URL, so the 404 keeps dev and prod honest with each other.
-		if strings.HasPrefix(name, assetPrefix) {
+		if strings.HasPrefix(name, assetPrefix) || strings.HasPrefix(name, "site-assets/") || strings.HasPrefix(r.URL.Path, "/site-assets/") {
 			http.NotFound(w, r)
 			return
 		}
-		// Not a real file: /admin, /screen/anything/deep, a directory the build
+		// Not a real file: a nested website URL or a directory the build
 		// happens to contain. All of them are the SPA's business, not the file
 		// server's — and a directory is served as the document, never listed.
 		s.serveIndex(w)

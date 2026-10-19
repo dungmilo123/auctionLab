@@ -378,6 +378,7 @@ function PlayerView() {
           <div className="border-2 px-3 py-2">
             <p className="text-sm leading-[1.5] font-bold">{t('lobby.budgetLabel')}</p>
             <p className="text-xl leading-[1.2] font-bold">{formatUSD(view.me.budget)}</p>
+            <p className="text-sm text-muted-foreground">{t('lobby.budgetCaption')}</p>
           </div>
         )}
 

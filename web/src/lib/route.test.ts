@@ -1,29 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { routeFor, type Route } from './route'
+import { routeFor, SITE_ROUTES } from './route'
 
-// The full case table from the phase plan: three top-level routes, their deep
-// links, the near-miss prefixes that must NOT match, and query/fragment
-// stripping.
-const cases: Array<[pathname: string, expected: Route]> = [
-  ['/', 'player'],
-  ['/admin', 'admin'],
-  ['/admin/', 'admin'],
-  ['/admin/deep/link', 'admin'],
-  ['/screen', 'screen'],
-  ['/screen/', 'screen'],
-  ['/screen/any/deep', 'screen'],
-  ['/administrator', 'player'],
-  ['/screensaver', 'player'],
-  ['/foo', 'player'],
-]
-
-describe('routeFor', () => {
-  it.each(cases)('maps %s to %s', (pathname, expected) => {
-    expect(routeFor(pathname)).toBe(expected)
+describe('website route resolution', () => {
+  it.each(SITE_ROUTES)('resolves %s explicitly', (path, page, layout) => {
+    expect(routeFor(path)).toEqual({ path, page, layout })
+    if (path !== '/') expect(routeFor(`${path}/`)).toEqual({ path, page, layout })
+    expect(routeFor(`${path}?view=preview#details`)).toEqual({ path, page, layout })
   })
-
-  it('ignores a query string and a fragment when selecting', () => {
-    expect(routeFor('/admin?k=secret')).toBe('admin')
-    expect(routeFor('/screen#podium')).toBe('screen')
+  it.each([['/auctions/anything', 'auctionDetail'], ['/lots/sample-camera', 'lotDetail']] as const)(
+    'accepts one generic slug at %s', (path, page) => {
+      expect(routeFor(`${path}/?view=preview#details`)).toEqual({ path, page, layout: 'storefront', slug: path.split('/')[2] })
+    },
+  )
+  it.each([
+    '', '//', '/lots//', '/lots//camera', '/lots/sample-camera/extra', '/lots/camera//',
+    '/auctions/x/y', '/auctions//', '/Lots', '/Account', '/ADMIN',
+    '/administrator', '/accounts', '/lotsmore', '/screensaver',
+    '/account/unknown', '/account/orders/1', '/admin/unknown', '/admin/lots/1',
+    '/screen', '/screen/', '/screen/anything/deep', '/game', '/legacy', '/login', '/checkout',
+    '/foo',
+  ])('returns a storefront 404 for %s', (path) => {
+    expect(routeFor(path)).toMatchObject({ page: 'notFound', layout: 'storefront' })
   })
 })

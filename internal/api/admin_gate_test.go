@@ -106,6 +106,15 @@ func assertGateDocument(t *testing.T, rec *httptest.ResponseRecorder) {
 		t.Error("the document carries no inline <style> block")
 	}
 
+	for _, token := range []string{"#F6F1E8", "#24211E", "#722F37", "#8D2E35", "min-height: 44px", ":focus-visible", "prefers-reduced-motion"} {
+		if !strings.Contains(body, token) {
+			t.Errorf("gate missing vintage/accessibility token %q", token)
+		}
+	}
+	if strings.Contains(body, "box-shadow: 4px") || strings.Contains(body, "#FF6B00") {
+		t.Error("gate retains the old game presentation")
+	}
+
 	// Zero external requests, zero JavaScript (UI-SPEC hard constraints): the
 	// page must be perfect with the venue's internet off.
 	for _, banned := range []string{"<script", "src=", "href=", "http://", "https://"} {

@@ -1,0 +1,5514 @@
+{
+  "runAt": "2026-10-19T07:39:04.208Z",
+  "browser": "156.0.8078.4",
+  "routes": [
+    {
+      "origin": "Go",
+      "path": "/",
+      "heading": "Objects with a past. Stories with a future.",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/auctions",
+      "heading": "Auctions",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/auctions/analog-memories",
+      "heading": "Auction preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/auctions/arbitrary",
+      "heading": "Auction preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/lots",
+      "heading": "Lots",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/lots/sample-camera",
+      "heading": "Lot preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/lots/arbitrary",
+      "heading": "Lot preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/account",
+      "heading": "Account",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/account/watchlist",
+      "heading": "Watchlist",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/account/bids",
+      "heading": "My bids",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/account/orders",
+      "heading": "Orders",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/admin",
+      "heading": "Administration",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/admin/auctions",
+      "heading": "Manage auctions",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/admin/lots",
+      "heading": "Manage lots",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/admin/orders",
+      "heading": "Manage orders",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/unknown-page",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/admin/unknown-page",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/screen",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Go",
+      "path": "/screen/anything/deep",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass",
+      "cache": "no-cache"
+    },
+    {
+      "origin": "Vite",
+      "path": "/",
+      "heading": "Objects with a past. Stories with a future.",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/auctions",
+      "heading": "Auctions",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/auctions/analog-memories",
+      "heading": "Auction preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/auctions/arbitrary",
+      "heading": "Auction preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/lots",
+      "heading": "Lots",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/lots/sample-camera",
+      "heading": "Lot preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/lots/arbitrary",
+      "heading": "Lot preview",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/account",
+      "heading": "Account",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/account/watchlist",
+      "heading": "Watchlist",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/account/bids",
+      "heading": "My bids",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/account/orders",
+      "heading": "Orders",
+      "layout": "account",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/admin",
+      "heading": "Administration",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/admin/auctions",
+      "heading": "Manage auctions",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/admin/lots",
+      "heading": "Manage lots",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/admin/orders",
+      "heading": "Manage orders",
+      "layout": "admin",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/unknown-page",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/admin/unknown-page",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/screen",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    },
+    {
+      "origin": "Vite",
+      "path": "/screen/anything/deep",
+      "heading": "404 — A story not found",
+      "layout": "storefront",
+      "direct": "pass",
+      "refresh": "pass"
+    }
+  ],
+  "matrix": [
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "en",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/unknown-page",
+      "lang": "vi",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 320,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 320,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 320,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 375,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 375,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 375,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 768,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 768,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 768,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 1280,
+      "textZoom": 100,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    },
+    {
+      "path": "/admin (gate)",
+      "lang": "bilingual",
+      "width": 1280,
+      "textZoom": 200,
+      "reducedMotion": true,
+      "scrollWidth": 1280,
+      "smallTargets": [],
+      "h1Count": 1,
+      "clipped": []
+    }
+  ],
+  "observations": [
+    "Go gate: no-key 200 and wrong-key 401 on /admin and /admin/lots; no SPA leakage/key echo; correct key 303 to literal /admin, HttpOnly SameSite=Lax cookie, key removed; keyboard and nested refresh pass.",
+    "Go direct load/refresh: 19 route cases; exact layouts/headings, native links, active states, Back/Forward/new-tab, skip-link focus and label/help/error wiring pass.",
+    "Responsive matrix: 80 website cases + 8 bilingual gate cases; 320/375/768/1280px, 100/200% text size, both website languages, reduced motion. No horizontal overflow or sub-44px targets.",
+    "Rendered contrast: all measured text pairs >=4.5:1; input/invalid/outlined boundaries >=3:1; primary default/hover and focus match the checked palette. Disabled copy is readable; no text opacity.",
+    "Cold browser with external origins blocked: all 8 local font subsets/weights load with Vietnamese text; local illustrations render; preference survives a real link. Forced font/image/fallback failures retain readable text/captions, card dimensions, and detail links. Saved game tokens cause no restore, game WebSocket, or business request.",
+    "Embedded HTTP: documents no-cache; all built fonts/CSS/JS immutable; fallback SVG local and non-immutable; both namespaces return 404 without HTML or immutable caching; unknown API stays JSON 404.",
+    "Vite: every route direct-loads/refreshes; Back/Forward/new-tab pass; admin is a public empty visual preview; real local fonts/fallback load and missing fonts/images in both reserved namespaces return 404 even with Accept:text/html."
+  ],
+  "contrast": [
+    {
+      "selector": "h1",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 14.234630902034436,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Serif\", Georgia, serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".muted",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.01420575096407,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".preview-notice",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.01420575096407,
+      "border": "rgb(138, 124, 108) rgb(138, 124, 108) rgb(216, 205, 189)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".status-upcoming",
+      "foreground": "rgb(113, 81, 22)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.457234439525671,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".status-live",
+      "foreground": "rgb(114, 47, 55)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 8.573146781783752,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".status-ended",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.01420575096407,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".status-sold",
+      "foreground": "rgb(98, 102, 77)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 5.292224424990952,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".status-unavailable",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.01420575096407,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".field-error",
+      "foreground": "rgb(141, 46, 53)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 8.15613050924074,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 4.053852695077164,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": "#search-example",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 4.053852695077164,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": "#invalid-example",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034,
+      "border": "rgb(141, 46, 53)",
+      "borderRatio": 8.15613050924074,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": "button:disabled",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 6.01420575096407,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".language-control [aria-pressed=true]",
+      "foreground": "rgb(114, 47, 55)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 9.645173932653824,
+      "border": "rgb(114, 47, 55)",
+      "borderRatio": 9.645173932653824,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    },
+    {
+      "selector": ".site-button-outline",
+      "foreground": "rgb(114, 47, 55)",
+      "background": "rgb(246, 241, 232)",
+      "ratio": 8.573146781783752,
+      "border": "rgb(138, 124, 108)",
+      "borderRatio": 3.6032812294825773,
+      "font": "\"Noto Sans\", system-ui, sans-serif",
+      "opacity": "1"
+    }
+  ],
+  "requests": [
+    {
+      "path": "/admin",
+      "method": "GET"
+    },
+    {
+      "path": "/admin",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/admin",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/analog-memories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/analog-memories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/arbitrary",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/arbitrary",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/sample-camera",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/sample-camera",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/arbitrary",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/arbitrary",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/bids",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/bids",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/orders",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/orders",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/orders",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/orders",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/screen",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/screen",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/screen/anything/deep",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/screen/anything/deep",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/sample-camera",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/account/watchlist",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/admin/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/unknown-page",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-CteTjpuP.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BTFX9OVf.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    }
+  ],
+  "errors": [],
+  "gateContrast": [
+    {
+      "selector": "h1",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034
+    },
+    {
+      "selector": "p",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034
+    },
+    {
+      "selector": ".vi",
+      "foreground": "rgb(98, 90, 82)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 6.766250714156799
+    },
+    {
+      "selector": ".error",
+      "foreground": "rgb(141, 46, 53)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 8.15613050924074
+    },
+    {
+      "selector": ".error .vi",
+      "foreground": "rgb(141, 46, 53)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 8.15613050924074
+    },
+    {
+      "selector": "label",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034
+    },
+    {
+      "selector": "input",
+      "foreground": "rgb(36, 33, 30)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 16.014597021595034
+    },
+    {
+      "selector": "button",
+      "foreground": "rgb(246, 241, 232)",
+      "background": "rgb(114, 47, 55)",
+      "ratio": 8.573146781783752
+    },
+    {
+      "selector": "button .vi",
+      "foreground": "rgb(246, 241, 232)",
+      "background": "rgb(114, 47, 55)",
+      "ratio": 8.573146781783752
+    }
+  ],
+  "keyboardChecks": 150,
+  "renderedFonts": {
+    "heading": [
+      {
+        "familyName": "Noto Serif",
+        "postScriptName": "NotoSerif-Regular",
+        "isCustomFont": true,
+        "glyphCount": 8
+      }
+    ],
+    "body": [
+      {
+        "familyName": "Noto Sans",
+        "postScriptName": "NotoSans-Regular",
+        "isCustomFont": true,
+        "glyphCount": 91
+      }
+    ]
+  },
+  "fallbackFonts": {
+    "heading": [
+      {
+        "familyName": "Noto Serif",
+        "postScriptName": "NotoSerif-Regular",
+        "isCustomFont": false,
+        "glyphCount": 8
+      }
+    ],
+    "body": [
+      {
+        "familyName": "Noto Sans",
+        "postScriptName": "NotoSans-Regular",
+        "isCustomFont": false,
+        "glyphCount": 89
+      }
+    ]
+  }
+}
