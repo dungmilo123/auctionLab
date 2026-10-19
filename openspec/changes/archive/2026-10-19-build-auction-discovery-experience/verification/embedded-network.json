@@ -1,0 +1,1665 @@
+{
+  "requests": [
+    {
+      "path": "/",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-1.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-2.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-1.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-2.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-3.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/collector-study",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events/collector-study",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/images/discovery-second.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/images/discovery-second.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/image-unavailable.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/images/discovery-second.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-1.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-2.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-3.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-1.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-2.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/event-3.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/unpublished-private-study",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/unpublished-private-study",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/unknown-slug",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/unknown-slug",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/auctions/missing-event",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/events/missing-event",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-02.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-03.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-04.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-05.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-06.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-07.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-08.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-09.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-10.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-11.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-12.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-13.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-14.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-15.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-16.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-17.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-18.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-qf8jVPCe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-DaEzVXeG.css",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/images/discovery-second.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/lots/collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+      "method": "GET"
+    },
+    {
+      "path": "/api/catalog/categories",
+      "method": "GET"
+    },
+    {
+      "path": "/site-assets/catalog/lot-01.svg",
+      "method": "GET"
+    },
+    {
+      "path": "/images/discovery-second.svg",
+      "method": "GET"
+    }
+  ],
+  "websockets": []
+}

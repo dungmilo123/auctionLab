@@ -1,0 +1,52 @@
+[
+  {
+    "origin": "http://127.0.0.1:5173",
+    "check": "zero-free",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:5173",
+    "check": "pickup-only",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:5173",
+    "check": "ordered complete event analog-memories",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:5173",
+    "check": "ordered complete event objects-of-time",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:5173",
+    "check": "ordered complete event the-listening-room",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "check": "zero-free",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "check": "pickup-only",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "check": "ordered complete event analog-memories",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "check": "ordered complete event objects-of-time",
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "check": "ordered complete event the-listening-room",
+    "status": "passed"
+  }
+]

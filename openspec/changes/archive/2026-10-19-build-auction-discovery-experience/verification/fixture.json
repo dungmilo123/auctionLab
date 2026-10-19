@@ -1,0 +1,12 @@
+{
+  "schema": "test_load_a36a0e7d60c40a5c8d6b9ebdc7dd6608",
+  "custom": "collector-camera-a-long-title-with-carefully-preserved-details-for-an-unhurried",
+  "event": "collector-study",
+  "draft": "unpublished-private-study",
+  "draftEvent": "unpublished-private-event",
+  "events": [
+    "analog-memories",
+    "objects-of-time",
+    "the-listening-room"
+  ]
+}

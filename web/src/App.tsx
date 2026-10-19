@@ -26,7 +26,7 @@ export default function App() {
     <Layout route={route}>
       {route.layout === 'account' ? <AccountPage page={route.page} />
         : route.layout === 'admin' ? <AdminPage page={route.page} />
-          : <StorefrontPage page={route.page} />}
+          : <StorefrontPage route={route} />}
     </Layout>
   </LanguageProvider>
 }

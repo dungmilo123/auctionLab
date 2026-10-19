@@ -1,0 +1,66 @@
+[
+  {
+    "check": "vite home/event/lot journey and authored content",
+    "status": "passed"
+  },
+  {
+    "check": "vite gallery keyboard, selected state, missing image fallback",
+    "status": "passed"
+  },
+  {
+    "check": "vite bilingual 320/375 mobile and 200 percent text enlargement",
+    "status": "passed"
+  },
+  {
+    "check": "vite native GET combined filters, sorting, refresh and history",
+    "status": "passed"
+  },
+  {
+    "check": "vite event GET phase controls and identical draft/missing detail recovery",
+    "status": "passed"
+  },
+  {
+    "check": "vite loading, empty, unavailable, malformed success and retry",
+    "status": "passed"
+  },
+  {
+    "check": "vite server clock boundaries, visibility resume failure and recovery",
+    "status": "passed"
+  },
+  {
+    "check": "vite public-only reads with existing game token and disabled commerce",
+    "status": "passed"
+  },
+  {
+    "check": "embedded home/event/lot journey and authored content",
+    "status": "passed"
+  },
+  {
+    "check": "embedded gallery keyboard, selected state, missing image fallback",
+    "status": "passed"
+  },
+  {
+    "check": "embedded bilingual 320/375 mobile and 200 percent text enlargement",
+    "status": "passed"
+  },
+  {
+    "check": "embedded native GET combined filters, sorting, refresh and history",
+    "status": "passed"
+  },
+  {
+    "check": "embedded event GET phase controls and identical draft/missing detail recovery",
+    "status": "passed"
+  },
+  {
+    "check": "embedded loading, empty, unavailable, malformed success and retry",
+    "status": "passed"
+  },
+  {
+    "check": "embedded server clock boundaries, visibility resume failure and recovery",
+    "status": "passed"
+  },
+  {
+    "check": "embedded public-only reads with existing game token and disabled commerce",
+    "status": "passed"
+  }
+]

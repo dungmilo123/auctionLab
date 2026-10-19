@@ -88,14 +88,16 @@ Dữ liệu demo đề xuất: 15–20 lot trong ba phiên có chủ đề, ví 
 
 ### Change 3 — `build-auction-discovery-experience`
 
+**Trạng thái:** đã triển khai và nghiệm thu ngày 2026-10-19. [Bằng chứng](openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/REPORT.md) ghi nhận kiểm thử PostgreSQL, Vite và bản nhúng. Giai đoạn chỉ phản ánh lịch dự kiến; đặt giá, tài khoản/watchlist, checkout/orders, analytics/recommendations (Changes 4–8) và ML extension vẫn là công việc tương lai.
+
 **Mục tiêu:** hoàn thiện trải nghiệm khám phá công khai.
 
-| Route dự kiến | Nội dung |
+| Route | Nội dung |
 |---|---|
 | `/` | Thương hiệu, phiên nổi bật, lot sắp kết thúc, category |
-| `/auctions` | Phiên đang diễn ra, sắp mở và đã kết thúc |
+| `/auctions` | Phiên trong khoảng dự kiến, sắp mở và đã qua lịch dự kiến |
 | `/auctions/:slug` | Câu chuyện phiên, lịch và danh sách lot |
-| `/lots` | Tìm kiếm, lọc category/trạng thái và sắp xếp |
+| `/lots` | Tìm kiếm, lọc category/giai đoạn dự kiến và sắp xếp |
 | `/lots/:slug` | Gallery, thông tin lot, giá, thời gian và khu vực bid |
 
 - Dùng dữ liệu đã xuất bản từ Change 2.

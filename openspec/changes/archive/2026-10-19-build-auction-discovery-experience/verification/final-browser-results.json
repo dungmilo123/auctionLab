@@ -1,0 +1,22 @@
+[
+  {
+    "origin": "http://127.0.0.1:5173",
+    "checks": [
+      "identical missing/draft event recovery",
+      "incorrect wall clock ignored",
+      "non-demo authored condition",
+      "home illustration loaded"
+    ],
+    "status": "passed"
+  },
+  {
+    "origin": "http://127.0.0.1:8080",
+    "checks": [
+      "identical missing/draft event recovery",
+      "incorrect wall clock ignored",
+      "non-demo authored condition",
+      "home illustration loaded"
+    ],
+    "status": "passed"
+  }
+]

@@ -1,6 +1,6 @@
 # AuctionLab — Collected Stories
 
-A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery, account and order pages remain illustrative previews; bidder authentication, search/filtering, watchlists, live bids, checkout and orders are not implemented. Catalog pages describe working preparation actions; other pages retain the preview notice.
+A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Account and order pages remain previews; authentication, watchlists, executable auctions, live bids, checkout and orders are unavailable.
 
 ## Run and build
 
@@ -9,7 +9,7 @@ From the repository root:
 | Command | Behavior |
 |---|---|
 | `make dev` | Go :8080 and Vite :5173; API, WS, runtime images proxy to Go |
-| `make dev-web` | Vite only; public/account previews work, catalog management needs the authorized Go API |
+| `make dev-web` | Vite only; discovery needs a matching Go API, account previews remain local |
 | `make test` | Existing Go tests, frontend unit tests, oxlint |
 | `make build` | Typecheck + Vite build **before** `CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server` |
 
@@ -19,11 +19,11 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 
 | Path | Layout | Contents |
 |---|---|---|
-| `/` | Storefront | Introduction and illustrative collection |
-| `/auctions` | Storefront | Auction-index preview |
-| `/auctions/:slug` | Storefront | Generic auction detail, no stored record lookup |
-| `/lots` | Storefront | Illustrative cards and non-submitting field examples |
-| `/lots/:slug` | Storefront | Generic lot detail, unavailable price/schedule and disabled bid |
+| `/` | Storefront | Brand introduction, featured published events, nearest planned closes and category links |
+| `/auctions` | Storefront | Published events with GET planned-phase filter |
+| `/auctions/:slug` | Storefront | Matching published event with cover, story, planned times and ordered lots |
+| `/lots` | Storefront | Published lots with GET search/category/phase/sort controls and count |
+| `/lots/:slug` | Storefront | Matching published lot, ordered gallery, content, disclosures and disabled bid |
 | `/account` | Account | Public introduction with no identity/profile |
 | `/account/watchlist` | Account | Saving unavailable |
 | `/account/bids` | Account | Bid history unavailable |
@@ -34,7 +34,7 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/admin/orders` | Admin | Processing unavailable |
 | All other paths, including `/screen` and descendants | Storefront | Explicit 404 with a home recovery link |
 
-`src/lib/route.ts` matches case-sensitive segments, ignoring query/fragment and allowing one trailing slash. Detail routes accept exactly one nonempty slug and always show a generic preview. Slugs are not inserted into HTML. No game alias is provided. The old player/admin/projector source and tests remain unmounted for future evaluation; the backend, database, protocol, and existing game data are preserved. Saved player tokens are not read or restored by the website.
+`src/lib/route.ts` matches case-sensitive segments, ignoring query/fragment and allowing one trailing slash. Detail routes accept exactly one nonempty slug and resolve the published record or a common draft/missing not-found view. Slugs are not inserted into HTML. No game alias is provided. The old player/admin/projector source and tests remain unmounted for future evaluation; the backend, database, protocol, and existing game data are preserved. Saved player tokens are not read or restored by the website.
 
 Navigation uses normal `<a href>` document links, with no click interception or History API router. Refresh, direct load, Back/Forward, and new-tab links retain normal browser semantics and the Go document gate. Full navigation reloads stored catalog records; unsaved local inputs are transient. Exact active destinations use `aria-current="page"`; each layout has a skip link to `main#main` and a shared footer. Context navigation wraps on mobile and becomes a sidebar at 1024px.
 
@@ -50,9 +50,9 @@ Tokens live in `src/index.css`: ivory `#F6F1E8`, charcoal `#24211E`, burgundy `#
 
 - `components/ui/`: existing `Button` (default/outline/secondary/ghost/destructive/link; `asChild` for a real link), `Input`, `Label`, and `Card` family use the shared tokens. Use `type="button"` for UI actions. Never use an anchor as a disabled button.
 - `components/site/Presentation.tsx`: `LotCard({title, metadata, status, image?, href})` has one primary detail link; `StatusBadge({status})` accepts upcoming/live/ended/sold/unavailable and always includes text; `LotImage({src?, alt})` handles failures with a local fallback plus translated caption; `PreviewNotice`, `PageHeading({title, intro?})`, `UnavailableState({title, children})` are shared presentation components.
-- `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Public sample fields remain non-submitting. Catalog controls use the same design tokens and associations, without frontend credential inputs.
-- `fixtures/site.ts`: three illustrative objects, independent of game wire types and API clients. A long title exercises wrapping. Arbitrary detail slugs do not assert record existence.
-- `lib/site-copy.ts`: typed EN/VI website dictionary and `useSiteCopy()` integrate with the existing language provider and `auctionlab.lang` preference. Use `t('imageAlt', {object: title})` for text interpolation; React escapes output. Game copy and its fixed-count tests remain unchanged. App updates document title/language for each route and language.
+- `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Discovery forms submit native GET requests. Catalog controls use the same design tokens and associations, without frontend credential inputs.
+- `fixtures/site.ts`: three illustrative objects, independent of game wire types and API clients. A long title exercises wrapping. These retained fixtures are not mounted by public discovery.
+- `lib/site-copy.ts`: typed EN/VI website dictionary and `useSiteCopy()` integrate with the existing language provider and `auctionlab.lang` preference. Retained previews can use `t('imageAlt', {object: title})`; published galleries/cards use authored alternative text. React escapes output. Game copy and its fixed-count tests remain unchanged. App updates document title/language for each route and language.
 - `layouts/SiteLayout.tsx`: shared header/footer plus storefront, account, admin shells, all composed with native links.
 
 Asset sources, exact package releases, font metadata/licenses, checksums, and illustration provenance are in `src/assets/README.md`. Fonts/illustrations imported from `src/assets` are fingerprinted (small SVGs may be embedded as local data URLs); the shared fallback is `/site-assets/image-unavailable.svg`. No remote images or styles.
@@ -95,7 +95,7 @@ Public projections explicitly allow content, media, specifications/story, fulfil
 
 ## Catalog APIs and working management
 
-Every response is `Cache-Control: no-store`. Success uses `{data: ...}` (201 create, 200 otherwise); errors use `{error: {code, fields?}}`. Field paths include `title`, `images.0.path`, and `lots.<id>.condition`. No raw database errors are returned.
+Every response is `Cache-Control: no-store`. Private success uses `{data: ...}` (201 create, 200 otherwise); public success uses `{data: ..., meta: {server_time: 1000}}` (200), where `server_time` is UTC Unix milliseconds sampled once from the catalog clock. Existing `data`-only consumers remain compatible. Private envelopes and authorization are unchanged; errors use `{error: {code, fields?}}`. Field paths include `title`, `images.0.path`, and `lots.<id>.condition`. No raw database errors are returned.
 
 | Method | Path | Result |
 |---|---|---|
@@ -127,7 +127,7 @@ PUT is a replacement: include every editable field you intend to retain, includi
 
 `/admin/lots?new=1` and `/admin/auctions?new=1` create drafts; `?edit=<id>` loads a stored editor. Unknown selections show not-found recovery. `routes/admin/CatalogPage.tsx`, `LotEditor.tsx`, `EventEditor.tsx`, and `Controls.tsx` supply stored lists, title-only creation, content/gallery/specification/money/fulfillment editing, membership/order, server-derived schedule, public-field preview and explicit publish. Ordered rows have labeled keyboard Move up/Move down/Remove actions. EN/VI labels and errors do not translate or clear entered content. Published records are read-only. Pending actions are disabled; failed saves retain input, and conflicts/uncertain commits require reload rather than automatic overwrite. Reload explicitly replaces entered values with the committed record, with a warning to copy unsaved content first.
 
-The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery, account and order pages remain illustrative previews; the website mounts no legacy game view or WebSocket.
+The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account and order pages remain previews. The website mounts no legacy game view or WebSocket.
 
 ## Explicit demo dataset
 
@@ -140,3 +140,20 @@ make build
 These commands use private `DATABASE_URL`/`DATABASE_SCHEMA` environment configuration. Seed-only mode takes writer ownership, migrates, seeds and exits without engine/listener/tunnel. It is mutually exclusive with import/verify. Seed version 1 creates six lots each in **Analog Memories**, **Objects of Time**, and **The Listening Room**, covers all five categories, and bundles project-authored CC0 illustrations (not object photographs). All records are labeled demos and start as complete **drafts**. Dates are persisted once: reference +24/+48/+72 hours, first close one hour later, then 60-second staggering. Review and publish through the normal authorized UI/API. Rerun reports `already_applied`; edits, publication state and dates are preserved. Collision/failure rolls back the entire seed. Normal startup never seeds/rebases content. Expired unpublished demos need an explicit schedule edit or a fresh disposable PostgreSQL schema; published records stay frozen.
 
 For legacy data, follow [offline import, verify, backup/restore and rollback](../docs/sqlite-cutover.md) **before** ordinary startup or seed in the import target. There is no SQLite-v5 catalog or file-based PostgreSQL rollback.
+
+## Published discovery
+
+`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account/order previews retain their own notices. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
+
+`api/public-catalog.ts` performs only anonymous GET requests with `credentials: 'omit'`, no admin headers and `cache: 'no-store'`. It validates envelopes, public record shape and server time. It never calls private APIs. The primary response's time sample plus monotonic elapsed time drives presentation, independently of the device wall clock. Visible pages tick once per second; resuming a hidden tab reloads public records and a failed refresh shows retry. Absolute planned dates identify the viewer timezone. Upcoming means before opening; within planned window includes opening and excludes close; elapsed includes close. Events use planned end; lots use individual closes. Missing/inconsistent timing is unavailable. These phases do not determine execution or results.
+
+Native GET examples:
+
+- `/lots?q=camera&category=film-cameras&phase=upcoming&sort=price-asc`
+- `/auctions?phase=window`
+
+Lot query keys are `q/category/phase/sort`; events use `phase`. First duplicate values win, unknown keys are ignored. Unknown category slugs mean all categories. Phases: `all` (default), `upcoming`, `window`, `elapsed`. Sorts: `closing-soon` (default), `price-asc`, `price-desc`, `title`. Search trims and compares case-insensitive substrings independently across title, description, brand and era; absent text is empty. It is neither fuzzy nor accent-insensitive. Filters combine with AND. Every sort ties by ascending stored slug; missing values come last, zero cents is valid. Closing-soon puts future closes ascending before elapsed closes descending; prices use integer cents; titles use lowercase deterministic text order independent of interface language.
+
+Home features at most three events ordered window/upcoming/elapsed/unavailable, ascending opening within window/upcoming and descending within elapsed, then slug. Up to six nearest-close lots come only from current planned windows, derived from the same event aggregate. All categories link to their slug filter. Event details preserve published member order. Gallery buttons preserve stored image order/alt text, keyboard focus and selection; missing media uses the local fallback. Condition, specifications, supplied story and enabled shipping/pickup instructions/fees precede disabled bidding. Zero amounts display explicitly as `$0.00 USD`.
+
+Direct load, refresh, new tabs and Back/Forward use ordinary document URLs in Vite and the embedded build. Language changes preserve loaded records and form selections. Required read failures show recovery rather than partial results. Unknown/draft details share one public not-found view. The five-route browser evidence and requirement mapping live in `openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/`. Roadmap Changes 4–8 and the ML extension remain future work.

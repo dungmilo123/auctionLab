@@ -40,7 +40,7 @@ The pool permits eight connections, two idle, with a five-minute idle lifetime. 
 
 `GET /api/health` probes current pool/schema/writer readiness with a one-second deadline. It returns 200 with `status: "ok"`, `database: "postgresql"`, `ready: true`, `schema_version: 1`; failure returns 503, `status: "unavailable"`, `ready: false`. There is no `wal` field. Configuration and API errors do not echo connection strings, passwords, or row values.
 
-`make build` always builds the frontend first. The committed `web/dist/.gitkeep` allows Go builds on a clean checkout. Node is not required to run the resulting app. `make dev-web` alone can show public previews but cannot save catalog content.
+`make build` always builds the frontend first. The committed `web/dist/.gitkeep` allows Go builds on a clean checkout. Node is not required to run the resulting app. `make dev-web` alone shows account previews; public discovery needs the matching Go API, and catalog management needs authorized API access.
 
 The shared `internal/testpg` fixture requires `TEST_DATABASE_URL`, generates a unique `test_*` schema, pins the schema on every connection, and drops only that owned schema after closing stores. Missing PostgreSQL fails required tests; no SQLite fallback or silent skip exists. The load harness similarly creates a random `test_load_*` schema through `scripts/dbfixture`, owns its server child, and drops that schema on exit. It ignores operational `DATABASE_SCHEMA`/`DATABASE_URL` in favor of explicit test configuration.
 

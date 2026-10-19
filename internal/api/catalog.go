@@ -153,6 +153,15 @@ func respondCatalog(w http.ResponseWriter, data any, err error, status int) {
 	}
 	catalogError(w, 500, "storage_error", nil)
 }
+
+// respondPublicCatalog keeps volatile presentation time outside immutable records.
+func respondPublicCatalog(w http.ResponseWriter, service *catalog.Service, data any, err error) {
+	if err != nil {
+		respondCatalog(w, data, err, 200)
+		return
+	}
+	catalogJSON(w, 200, map[string]any{"data": data, "meta": map[string]int64{"server_time": service.Now().UnixMilli()}})
+}
 func RegisterCatalog(mux *http.ServeMux, key string, service *catalog.Service) {
 	private := http.NewServeMux()
 	private.HandleFunc("GET /api/admin/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
@@ -246,22 +255,22 @@ func RegisterCatalog(mux *http.ServeMux, key string, service *catalog.Service) {
 	mux.Handle("/api/admin/catalog/", guarded)
 	mux.HandleFunc("GET /api/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
 		data, err := service.Snapshot(r.Context())
-		respondCatalog(w, data.Categories, err, 200)
+		respondPublicCatalog(w, service, data.Categories, err)
 	})
 	mux.HandleFunc("GET /api/catalog/events", func(w http.ResponseWriter, r *http.Request) {
 		data, err := service.PublicEvents(r.Context())
-		respondCatalog(w, data, err, 200)
+		respondPublicCatalog(w, service, data, err)
 	})
 	mux.HandleFunc("GET /api/catalog/events/{slug}", func(w http.ResponseWriter, r *http.Request) {
 		data, err := service.PublicEvent(r.Context(), r.PathValue("slug"))
-		respondCatalog(w, data, err, 200)
+		respondPublicCatalog(w, service, data, err)
 	})
 	mux.HandleFunc("GET /api/catalog/lots", func(w http.ResponseWriter, r *http.Request) {
 		data, err := service.PublicLots(r.Context())
-		respondCatalog(w, data, err, 200)
+		respondPublicCatalog(w, service, data, err)
 	})
 	mux.HandleFunc("GET /api/catalog/lots/{slug}", func(w http.ResponseWriter, r *http.Request) {
 		data, err := service.PublicLot(r.Context(), r.PathValue("slug"))
-		respondCatalog(w, data, err, 200)
+		respondPublicCatalog(w, service, data, err)
 	})
 }

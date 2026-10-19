@@ -1,0 +1,16 @@
+{
+  "postgresql": "18.6",
+  "schema": "test_load_a36a0e7d60c40a5c8d6b9ebdc7dd6608",
+  "empty_before_publication": true,
+  "explicit_seed_review_publish": true,
+  "published_events": 4,
+  "published_lots": 19,
+  "unpublished_lot": "unpublished-private-study",
+  "unpublished_event": "unpublished-private-event",
+  "restart_public_data_identical": true,
+  "game_revision": 0,
+  "game_phase": "LOBBY",
+  "players": 0,
+  "bids": 0,
+  "operational_schema_access": false
+}
