@@ -25,7 +25,7 @@ func ValidDemoSchema(name string) bool {
 	return schemaPattern.MatchString(name) && strings.HasPrefix(name, "auctionlab_demo_") && len(name) > len("auctionlab_demo_")
 }
 
-var demoClearTables = []string{"commerce_order_fulfillment_events", "commerce_order_fulfillment", "commerce_demo_payments", "commerce_orders", "commerce_auction_results", "commerce_bids", "commerce_lot_auctions", "commerce_watchlist", "commerce_sessions", "commerce_accounts", "commerce_account_seed_runs", "catalog_lot_images", "catalog_event_lots", "catalog_lots", "catalog_events", "catalog_seed_runs", "auction_runtime", "sealed_bids", "bids", "events", "game", "players", "items", "sqlite_import_runs"}
+var demoClearTables = []string{"commerce_interactions", "commerce_interaction_coverage", "commerce_order_fulfillment_events", "commerce_order_fulfillment", "commerce_demo_payments", "commerce_orders", "commerce_auction_results", "commerce_bids", "commerce_lot_auctions", "commerce_watchlist", "commerce_sessions", "commerce_accounts", "commerce_account_seed_runs", "catalog_lot_images", "catalog_event_lots", "catalog_lots", "catalog_events", "catalog_seed_runs", "auction_runtime", "sealed_bids", "bids", "events", "game", "players", "items", "sqlite_import_runs"}
 var demoPreservedTables = []string{"schema_migrations", "server_config", "catalog_categories", "demo_environments"}
 
 func readDemo(ctx context.Context, q interface {
@@ -181,6 +181,9 @@ func (s *Store) SeedDemo(ctx context.Context, reset bool, confirmation string, r
 		}
 		svc := catalog.New(nil, time.Now, media)
 		if _, e := svc.SeedTx(&catalogTx{ctx, tx}, reference); e != nil {
+			return e
+		}
+		if e := initializeCoverage(ctx, tx, out.PreparedAt); e != nil {
 			return e
 		}
 		_, e := tx.ExecContext(ctx, `INSERT INTO demo_environments VALUES(1,$1,1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET generation=EXCLUDED.generation,seed_reference=EXCLUDED.seed_reference,prepared_at=EXCLUDED.prepared_at`, out.Schema, out.Generation, out.SeedReference, out.PreparedAt)

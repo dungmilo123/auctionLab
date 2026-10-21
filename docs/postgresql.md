@@ -38,7 +38,7 @@ Replace the angle-bracket placeholders privately. `DATABASE_URL` is required; `D
 
 The pool permits eight connections, two idle, with a five-minute idle lifetime. A dedicated connection holds game ownership and executes game mutations. Connection/transaction deadlines default to five seconds. Catalog transactions take their own schema advisory lock. Public aggregates use read-only Repeatable Read snapshots. PostgreSQL durable defaults remain enabled.
 
-`GET /api/health` probes current pool/schema/writer readiness with a one-second deadline. It returns 200 with `status: "ok"`, `database: "postgresql"`, `ready: true`, `schema_version: 5`; failure returns 503, `status: "unavailable"`, `ready: false`. There is no `wal` field. Configuration and API errors do not echo connection strings, passwords, or row values.
+`GET /api/health` probes current pool/schema/writer readiness with a one-second deadline. It returns 200 with `status: "ok"`, `database: "postgresql"`, `ready: true`, `schema_version: 6`; failure returns 503, `status: "unavailable"`, `ready: false`. There is no `wal` field. Configuration and API errors do not echo connection strings, passwords, or row values.
 
 `make build` always builds the frontend first. The committed `web/dist/.gitkeep` allows Go builds on a clean checkout. Node is not required to run the resulting app. `make dev-web` alone needs the matching Go account API; public discovery needs the matching Go API, and catalog management needs authorized API access.
 
@@ -46,7 +46,7 @@ The shared `internal/testpg` fixture requires `TEST_DATABASE_URL`, generates a u
 
 PostgreSQL migration versions are independent of SQLite source version 4. The ledger and DDL commit together; newer ledgers are refused. Migration does not reinterpret old game balances or JSON.
 
-Migration 2 (`002_accounts_and_watchlists.sql`) adds `commerce_accounts`, digest-only `commerce_sessions`, owner/lot-keyed `commerce_watchlist`, and `commerce_account_seed_runs`. Migration 1 stays immutable. Existing game identities, amounts, revisions, catalog publication, and the admin capability stay unchanged; no accounts are inferred from players. Health reports the supported ledger version (currently 5). Migration and ledger changes are atomic, including upgrades from populated version 1. Test targets above require an explicit disposable PostgreSQL database.
+Migration 2 (`002_accounts_and_watchlists.sql`) adds `commerce_accounts`, digest-only `commerce_sessions`, owner/lot-keyed `commerce_watchlist`, and `commerce_account_seed_runs`. Migration 1 stays immutable. Existing game identities, amounts, revisions, catalog publication, and the admin capability stay unchanged; no accounts are inferred from players. Health reports the supported ledger version (currently 6). Migration and ledger changes are atomic, including upgrades from populated version 1. Test targets above require an explicit disposable PostgreSQL database.
 
 Before upgrading, stop the sole writer and back up the application schema with your PostgreSQL backup tooling. Restart a schema-5-compatible build to migrate. For rollback, keep the service stopped and use a compatible build or explicitly restore the pre-upgrade backup; restoring that snapshot loses all later changes, including bids/results and account/watchlist changes. Schema-2 binaries refuse schema 3; never lower the ledger to run an older binary. There is no automatic table deletion or down-migration. A first offline SQLite import refuses any target containing commerce rows, including account seed markers, auction/bid/result rows and orders/simulated receipts; it never converts legacy players into accounts.
 
@@ -120,3 +120,52 @@ Reset requires the exact prefix, matching stored marker, exact confirmation and 
 Erased tables: commerce_order_fulfillment_events, commerce_order_fulfillment, commerce_demo_payments, commerce_orders, commerce_auction_results, commerce_bids, commerce_lot_auctions, commerce_watchlist, commerce_sessions, commerce_accounts, commerce_account_seed_runs, catalog_lot_images, catalog_event_lots, catalog_lots, catalog_events, catalog_seed_runs, auction_runtime, sealed_bids, bids, events, game, players, items, and empty sqlite_import_runs. Preserve schema_migrations, server_config (capability), catalog_categories and demo_environments (fresh generation). Other schemas and local media are never deleted. Cross-schema references or unknown tables/views/routines/triggers cause refusal/rollback. An actual SQLite import completion marker is always refused.
 
 Demo modes are mutually exclusive with import/verify/account-seed/catalog-seed/tunnel options and return before HTTP/game/auction/tunnel startup. Normal startup and retained game reset never clear commerce or rebase published schedules. Use ordinary standalone seed modes when their narrower repeat-safe scope is intended.
+
+## Interaction and analytics upgrade to schema 6
+
+Stop the sole writer and make a recoverable schema-5 backup before upgrading:
+
+```sh
+pg_dump --format=custom --schema="$DATABASE_SCHEMA" --file=auctionlab-before-schema6.dump "$DATABASE_URL"
+```
+
+Run the matching schema-6 build. Migration 6 atomically creates private
+`commerce_interactions` and singleton `commerce_interaction_coverage`, constraints
+and indexes; migrations 1–5 remain unchanged. It backfills accepted bids/confirmed
+receipts at their original times and snapshots only current watchlist membership.
+Backfilled/snapshot provenance is separate from observed activity. It invents no
+views or removed-save history. A populated commerce upgrade starts coverage at
+upgrade time. A completely unused migrated target has no coverage, so first
+read-only SQLite-source import still works before normal startup. Both new tables
+count as import occupancy. Normal startup initializes coverage under writer
+ownership before HTTP readiness, idempotently; restart preserves the baseline.
+Check health for `schema_version: 6`, with no credentials in its response.
+
+Rollback requires stopping the schema-6 writer and restoring the backup with its
+matching binary, accepting the explicit loss of post-backup data. Preserve needed
+post-upgrade records separately first. Schema-5 builds must refuse schema 6. Never
+lower the ledger, edit migrations 1–5 or delete tables for an old binary. There is
+no destructive down migration or automatic fallback.
+
+`/admin/analytics?event=all&dataset=all` and its aggregate API require the catalog
+capability independently of commerce roles. Read
+[`internal/analytics/README.md`](../internal/analytics/README.md) for exact
+formulas, actor-versus-lot demo definitions, lifetime attribution and non-additive
+bidder counts. Winning value includes unpaid wins; every paid value is simulated,
+and includes selected delivery fees. Observations and reconstructed coverage are
+separate from durable lifetime commerce facts. No raw identity, purchase detail,
+contact, token or tracking metadata is returned. Counts/cents are decimal strings;
+BigInt formatting preserves totals beyond JavaScript's safe integer range.
+
+For a marked disposable rehearsal, publish prepared future drafts, render a lot
+(detail view), save it, place deliberate increasing bids from two independent
+accounts, close/win, confirm simulated payment, and compare dashboard event rows
+and summary to independent SQL. Preserve exact paid winning/fee components. Stop
+the writer, inspect `--demo-status`, run the documented explicit `--reset-demo`
+with matching target/confirmation, inspect the new generation, then publish and
+replay. Reset atomically erases the target's interactions and coverage with the
+existing sessions/accounts/watchlists/catalog/commerce/game rehearsal state,
+and starts fresh coverage. Draft reseeds have zero published metrics/activity.
+Migrations, marker, capability/configuration and categories stay; other schemas
+and external media stay. Failure rolls back history/coverage/generation together;
+an unknown outcome requires durable status inspection, never assumed success.

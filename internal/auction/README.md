@@ -20,3 +20,8 @@ All responses use `Cache-Control: no-store`, `{data,meta:{server_time}}` for suc
 Status: 201 new acceptance; 200 read/replay; 400 malformed/unknown fields or invalid request ID; 401 invalid session; 403 rejected origin/header; 404 indistinguishable missing/draft; 409 minimum/window/leader/request conflict; 415 wrong content type (existing account boundary); 422 invalid amount; 503 unavailable or `commit_unknown`. Streams at capacity send Retry-After 2. Error messages never echo SQL, secrets or caller values.
 
 Public fields are explicit DTOs: lot, revision, state, schedule, USD amounts/count, sequence/time/alias, and terminal public winner reference. They exclude account IDs, names, emails, credentials, request IDs, private notes, catalog versions, capability keys and game secrets. Private request IDs are owner-only. A win alone does not create checkout, payment or an order.
+
+Schema 6 captures each accepted bid in the same writer transaction, keyed by its
+accepted row ID. Replay/rejection creates no extra interaction. Capture failure
+rolls back bidding; unknown commit and lost-writer behavior remain fail-closed.
+See `../interaction/README.md` and `../analytics/README.md`.

@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-19.
 
-Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Change 5 `enable-timed-auction-bidding` đã triển khai và được archive ngày 2026-10-20 với 38/39 task; task 8.4 (zoom trình duyệt 200% và reduced motion thực tế) vẫn chưa xác minh. Change 6 `add-winner-checkout-and-demo-payment` đã triển khai checkout riêng cho người thắng và thanh toán mô phỏng ngày 2026-10-21; kiểm tra PostgreSQL, test/race/build và diễn tập Vite/embedded đã đạt. Đã archive ngày 2026-10-21 với 35/36 task; nghiệm thu accessibility 7.3 còn thiếu zoom trình duyệt 200%, reduced motion thực tế và toàn bộ ma trận long-title/field-error, chưa nghiệm thu đầy đủ. Change 7 `add-order-history-and-demo-fulfillment` đã triển khai và archive ngày 2026-10-21: lịch sử đơn, tiến độ nhận hàng mô phỏng và prepare/status/reset cho schema demo riêng; nghiệm thu là 39/41 task, còn 7.5–7.6 (zoom trình duyệt 200% và reduced motion hoạt động cùng toàn bộ ma trận) chưa xác minh. Change 8 và ML extension vẫn là định hướng.
+Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Change 5 `enable-timed-auction-bidding` đã triển khai và được archive ngày 2026-10-20 với 38/39 task; task 8.4 (zoom trình duyệt 200% và reduced motion thực tế) vẫn chưa xác minh. Change 6 `add-winner-checkout-and-demo-payment` đã triển khai checkout riêng cho người thắng và thanh toán mô phỏng ngày 2026-10-21; kiểm tra PostgreSQL, test/race/build và diễn tập Vite/embedded đã đạt. Đã archive ngày 2026-10-21 với 35/36 task; nghiệm thu accessibility 7.3 còn thiếu zoom trình duyệt 200%, reduced motion thực tế và toàn bộ ma trận long-title/field-error, chưa nghiệm thu đầy đủ. Change 7 `add-order-history-and-demo-fulfillment` đã triển khai và archive ngày 2026-10-21: lịch sử đơn, tiến độ nhận hàng mô phỏng và prepare/status/reset cho schema demo riêng; nghiệm thu là 39/41 task, còn 7.5–7.6 (zoom trình duyệt 200% và reduced motion hoạt động cùng toàn bộ ma trận) chưa xác minh. Change 8 `add-auction-analytics-and-recommendations` đã triển khai và xác minh ngày 2026-10-22: analytics tổng hợp riêng, gợi ý theo quy tắc, tương tác tối thiểu và migration 6; ML extension vẫn là định hướng. Các giới hạn nghiệm thu Change 4–7 giữ nguyên.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -171,6 +171,8 @@ Dữ liệu demo đề xuất: 15–20 lot trong ba phiên có chủ đề, ví 
 **Hoàn thành khi:** người mua và admin theo dõi cùng một đơn đến hoàn tất; người mua chỉ truy cập được đơn của mình.
 
 ### Change 8 — `add-auction-analytics-and-recommendations`
+
+**Trạng thái:** đã triển khai và xác minh 40/40 task và archive ngày 2026-10-22. [Báo cáo](openspec/changes/archive/2026-10-22-add-auction-analytics-and-recommendations/verification/REPORT.md) ghi nhận PostgreSQL/test/race/build, Vite/embedded, restart/reset/replay, EN/VI, 320/375 pixels, zoom trình duyệt 200% thực tế và reduced motion hoạt động. Gợi ý theo quy tắc chưa chứng minh hiệu quả ML; các khoảng trống nghiệm thu trước đây giữ nguyên.
 
 **Mục tiêu:** bổ sung dashboard và khám phá có liên quan sau khi happy path hoàn chỉnh.
 

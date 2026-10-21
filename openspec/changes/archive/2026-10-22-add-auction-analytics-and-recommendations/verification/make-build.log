@@ -1,0 +1,24 @@
+cd web && npm run build
+
+> web@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 190 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                0.68 kB │ gzip:   0.41 kB
+dist/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2    5.24 kB
+dist/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2     5.31 kB
+dist/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2     5.83 kB
+dist/assets/noto-serif-vietnamese-600-normal-BqcqYJsL.woff2    5.99 kB
+dist/assets/noto-sans-latin-400-normal-BTkUljjl.woff2         13.12 kB
+dist/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2         13.49 kB
+dist/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2        14.40 kB
+dist/assets/noto-serif-latin-600-normal-BiuDA9L7.woff2        15.31 kB
+dist/assets/index-CJeAWckA.css                                36.44 kB │ gzip:   8.20 kB
+dist/assets/index--GKPY4IB.js                                441.97 kB │ gzip: 135.64 kB
+
+✓ built in 201ms
+CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server

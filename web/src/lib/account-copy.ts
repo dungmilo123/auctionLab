@@ -1,7 +1,7 @@
 import { useLanguage, type Lang } from './i18n'
 export const ACCOUNT_COPY = {
   login: ['Sign in', 'Đăng nhập'], register: ['Create account', 'Tạo tài khoản'],
-  intro: ['Save favorites and inspect your accepted auction participation. Winners can check out with simulated payment. Order history and simulated fulfillment are available. Analytics and recommendations are planned.', 'Lưu hiện vật yêu thích và xem lượt tham gia đấu giá hợp lệ của bạn. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và nhận hàng mô phỏng đã khả dụng. Phân tích và gợi ý sẽ có sau.'],
+  intro: ['Save favorites and inspect your accepted auction participation. Winners can check out with simulated payment. Order history and simulated fulfillment are available. Private aggregate analytics and rule-based suggestions are available. Trained ML remains future work.', 'Lưu hiện vật yêu thích và xem lượt tham gia đấu giá hợp lệ của bạn. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và nhận hàng mô phỏng đã khả dụng. Phân tích tổng hợp riêng và gợi ý theo quy tắc đã khả dụng. ML đã huấn luyện là hướng mở rộng sau.'],
   email: ['Email', 'Email'], name: ['Display name', 'Tên hiển thị'], password: ['Password', 'Mật khẩu'],
   identityHelp: ['Your email is an unverified login identifier and cannot be changed here.', 'Email là tên đăng nhập chưa được xác minh và không thể đổi tại đây.'],
   passwordHelp: ['Use 12–128 characters. Spaces and Unicode are preserved. No password recovery is available yet.', 'Dùng 12–128 ký tự. Khoảng trắng và Unicode được giữ nguyên. Chưa có chức năng khôi phục mật khẩu.'],

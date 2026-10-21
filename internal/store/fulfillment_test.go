@@ -222,7 +222,7 @@ func TestFulfillmentMigrationBackfillAndRollback(t *testing.T) {
 				if e != nil {
 					t.Fatal(e)
 				}
-				mustSQL(t, s, `DROP INDEX commerce_orders_history;DROP INDEX commerce_orders_recorded;DROP TABLE commerce_order_fulfillment_events;DROP TABLE commerce_order_fulfillment;DROP TABLE demo_environments;ALTER TABLE commerce_demo_payments DROP CONSTRAINT commerce_payment_order_key;DELETE FROM schema_migrations WHERE version=5`)
+				mustSQL(t, s, `DROP TABLE commerce_interactions,commerce_interaction_coverage;DROP INDEX commerce_orders_history;DROP INDEX commerce_orders_recorded;DROP TABLE commerce_order_fulfillment_events;DROP TABLE commerce_order_fulfillment;DROP TABLE demo_environments;ALTER TABLE commerce_demo_payments DROP CONSTRAINT commerce_payment_order_key;DELETE FROM schema_migrations WHERE version>=5`)
 				var before string
 				s.DB.QueryRow(`SELECT to_jsonb(o)::text||to_jsonb(p)::text FROM commerce_orders o JOIN commerce_demo_payments p ON p.order_id=o.id`).Scan(&before)
 				if corrupt {

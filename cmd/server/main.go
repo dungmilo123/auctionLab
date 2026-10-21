@@ -23,6 +23,7 @@ import (
 	"auctionlab/internal/catalog"
 	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
+	"auctionlab/internal/interaction"
 	"auctionlab/internal/netinfo"
 	"auctionlab/internal/order"
 	"auctionlab/internal/sqliteimport"
@@ -155,6 +156,9 @@ func run() error {
 	}
 	log.Print("postgresql: connected; schema ready; exclusive writer ownership held")
 	// Commerce execution starts only after every maintenance-mode early return.
+	if err = st.InitializeInteractionCoverage(context.Background(), time.Now()); err != nil {
+		return err
+	}
 	auctions := auction.New(store.AuctionRepository{Store: st}, time.Now)
 	if err = auctions.Reconcile(context.Background()); err != nil {
 		return err
@@ -302,7 +306,12 @@ func run() error {
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
 	orders := order.New(store.OrderRepository{Store: st}, time.Now)
-	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions).Orders = orders
+	accounts := api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions)
+	accounts.Orders = orders
+	accounts.Recommendations = store.RecommendationRepository{Store: st}
+	api.RegisterAnalytics(mux, adminKey, store.AnalyticsRepository{Store: st})
+	api.RegisterRecommendations(mux, accounts.Recommendations, time.Now)
+	api.RegisterInteractions(mux, interaction.Service{Repo: store.InteractionRepository{Store: st}, Now: time.Now})
 	api.RegisterOrders(mux, adminKey, orders)
 	auctionStreams := api.RegisterAuction(mux, auctions)
 	defer auctionStreams.Close()

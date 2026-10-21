@@ -2,6 +2,7 @@ package store
 
 import (
 	"auctionlab/internal/account"
+	"auctionlab/internal/analytics"
 	"auctionlab/internal/sqliteimport"
 	"auctionlab/internal/testpg"
 	"context"
@@ -129,7 +130,7 @@ func TestDemoPrepareResetAndReadOnlyStatus(t *testing.T) {
 		t.Fatal(durable, e)
 	}
 	var ok bool
-	s.DB.QueryRow(`SELECT (SELECT count(*)=0 FROM commerce_sessions) AND (SELECT count(*)=0 FROM commerce_accounts WHERE id LIKE 'original%') AND (SELECT count(*)=3 FROM commerce_accounts) AND (SELECT value='fixture-capability' FROM server_config) AND (SELECT count(*)=5 FROM catalog_categories) AND (SELECT max(version)=5 FROM schema_migrations)`).Scan(&ok)
+	s.DB.QueryRow(`SELECT (SELECT count(*)=0 FROM commerce_sessions) AND (SELECT count(*)=0 FROM commerce_accounts WHERE id LIKE 'original%') AND (SELECT count(*)=3 FROM commerce_accounts) AND (SELECT value='fixture-capability' FROM server_config) AND (SELECT count(*)=5 FROM catalog_categories) AND (SELECT max(version)=6 FROM schema_migrations)`).Scan(&ok)
 	if !ok {
 		t.Fatal("reset scope")
 	}
@@ -223,5 +224,30 @@ func TestDemoRejectsUnmarkedAndImportOccupancy(t *testing.T) {
 		if ValidDemoSchema(bad) {
 			t.Fatal(bad)
 		}
+	}
+}
+
+func TestDemoInteractionResetCoverage(t *testing.T) {
+	s := demoFixture(t)
+	ctx := context.Background()
+	prepareFixture(t, s)
+	mustSQL(t, s, `UPDATE catalog_events SET state='published' WHERE id='demo-event-1';UPDATE catalog_lots SET state='published' WHERE id='demo-lot-01';INSERT INTO commerce_interactions VALUES('00000000000000000000000000000001','lot_view','demo-lot-01','demo-event-1',NULL,1000,1000,true,true,NULL,'observed','00000000-0000-0000-0000-000000000001');UPDATE commerce_interaction_coverage SET collection_started_at=1`)
+	if _, e := s.SeedDemo(ctx, true, s.SchemaName, time.UnixMilli(2000), demoRows("new"), demoMedia(false)); e == nil {
+		t.Fatal("failed reset accepted")
+	}
+	var ok bool
+	if e := s.DB.QueryRow(`SELECT (SELECT count(*)=1 FROM commerce_interactions) AND (SELECT collection_started_at=1 FROM commerce_interaction_coverage)`).Scan(&ok); e != nil || !ok {
+		t.Fatal("failed reset erased observations", e)
+	}
+	d, e := s.SeedDemo(ctx, true, s.SchemaName, time.UnixMilli(2000), demoRows("new"), demoMedia(true))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.DB.QueryRow(`SELECT (SELECT count(*)=0 FROM commerce_interactions) AND (SELECT collection_started_at=$1 FROM commerce_interaction_coverage) AND (SELECT count(*)=0 FROM catalog_lots WHERE state='published')`, d.PreparedAt).Scan(&ok); e != nil || !ok {
+		t.Fatal("reset generation coverage", e)
+	}
+	report, e := (AnalyticsRepository{s}).Report(ctx, analytics.Filters{Event: "all", Dataset: "all"})
+	if e != nil || report.Data.Summary.Lots != "0" || len(report.Data.Interactions) != 0 {
+		t.Fatal(report, e)
 	}
 }

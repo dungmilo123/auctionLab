@@ -1,3 +1,4 @@
+import RecommendationSection from './RecommendationSection'
 import cameraIllustration from '@/assets/illustrations/camera.svg'
 import { useSiteCopy } from '@/lib/site-copy'
 import { useDiscoveryCopy } from '@/lib/discovery-copy'
@@ -34,6 +35,7 @@ export default function HomePage() {
           <figcaption>{t('illustration')}</figcaption>
         </figure>
       </section>
+      <RecommendationSection categories={state.status === 'success' ? state.response.data.categories : []}/>
       {state.status !== 'success' ? (
         <DataState
           kind={state.status}

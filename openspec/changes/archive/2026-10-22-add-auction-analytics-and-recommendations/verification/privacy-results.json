@@ -1,0 +1,58 @@
+[
+  {
+    "mode": "vite",
+    "action": "logout",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "vite",
+    "action": "expiry",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "vite",
+    "action": "switch",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "vite",
+    "languageSwitchViewCount": 1,
+    "newDocumentViewCount": 2
+  },
+  {
+    "mode": "vite",
+    "unavailableAccountPublicFallback": true
+  },
+  {
+    "mode": "vite",
+    "privateFailureRecovery": true
+  },
+  {
+    "mode": "embedded",
+    "action": "logout",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "embedded",
+    "action": "expiry",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "embedded",
+    "action": "switch",
+    "obsoletePrivateCards": false
+  },
+  {
+    "mode": "embedded",
+    "languageSwitchViewCount": 1,
+    "newDocumentViewCount": 2
+  },
+  {
+    "mode": "embedded",
+    "unavailableAccountPublicFallback": true
+  },
+  {
+    "mode": "embedded",
+    "privateFailureRecovery": true
+  }
+]

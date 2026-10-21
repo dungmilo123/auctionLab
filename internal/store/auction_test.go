@@ -226,9 +226,19 @@ func TestAuctionRacesAndMaximum(t *testing.T) {
 	}
 	_, e := r.Place(ctx, "b", bid("other", catalog.MaxMoney, 101), at(150))
 	wantAuctionCode(t, e, "amount_limit_reached")
+	// The first race can be won by either account. Use its actual opponent so
+	// this phase tests bid-versus-close, rather than accidentally self-outbidding.
+	var leader string
+	if err := s.DB.QueryRow(`SELECT b.account_id FROM commerce_lot_auctions a JOIN commerce_bids b ON b.id=a.leading_bid_id WHERE a.lot_id='l'`).Scan(&leader); err != nil {
+		t.Fatal(err)
+	}
+	challenger := "a"
+	if leader == "a" {
+		challenger = "b"
+	}
 	errs = make(chan error, 2)
 	wg.Add(2)
-	go func() { defer wg.Done(); _, e := r.Place(ctx, "b", bid("l", 10, 102), at(199)); errs <- e }()
+	go func() { defer wg.Done(); _, e := r.Place(ctx, challenger, bid("l", 10, 102), at(199)); errs <- e }()
 	go func() { defer wg.Done(); _, e := r.Reconcile(ctx, at(200)); errs <- e }()
 	wg.Wait()
 	close(errs)

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -211,6 +212,9 @@ func (r AuctionRepository) Place(ctx context.Context, digest string, i auction.I
 		}
 		_, e = tx.ExecContext(ctx, `UPDATE commerce_lot_auctions SET leading_bid_id=$2,bid_count=bid_count+1,revision=revision+1 WHERE lot_id=$1`, i.LotID, id)
 		if e != nil {
+			return e
+		}
+		if e = insertInteraction(ctx, tx, "bid_accepted", i.LotID, p.ID, strconv.FormatInt(id, 10), instant); e != nil {
 			return e
 		}
 		receipt = auction.Receipt{LotID: i.LotID, Bid: own}

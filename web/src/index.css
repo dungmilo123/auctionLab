@@ -353,3 +353,19 @@ html.screen-scale .border-2 {
 .order-filters label { display: grid; gap: .5rem; flex: 1 1 12rem; }
 .order-filters select, .order-workspace input { max-width: 100%; padding: .75rem; border: 1px solid #a38355; background: #fffaf2; }
 @media (max-width: 480px) { .order-facts { grid-template-columns: minmax(0,1fr); gap: .5rem; } .order-facts dd { margin-bottom: .75rem; } }
+
+@layer components {
+  .analytics-controls { display:flex; flex-wrap:wrap; align-items:end; gap:1rem; }
+  .analytics-controls label { display:grid; gap:.4rem; min-width:0; max-width:100%; }
+  .analytics-controls input,.analytics-controls select { max-width:100%; min-width:0; border:1px solid var(--border); background:transparent; padding:.65rem; border-radius:.25rem; }
+  .analytics-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:1.25rem; }
+  .analytics-summary>div { border-top:1px solid var(--border); padding-top:1rem; min-width:0; }
+  .analytics-summary dd { margin:.5rem 0 0; font-size:1.25rem; overflow-wrap:anywhere; }
+  .analytics-table-scroll { max-width:100%; overflow-x:auto; border:1px solid var(--border); }
+  .analytics-table { border-collapse:collapse; width:100%; }
+  .analytics-table th,.analytics-table td { min-width:9rem; max-width:22rem; padding:.75rem; text-align:start; vertical-align:top; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+  .analytics-table caption { text-align:start; padding:.75rem; }
+  .analytics-table th:first-child { min-width:12rem; }
+  .recommendations,.recommendations .lot-grid>* { min-width:0; }
+  .recommendation-reason { color:var(--primary); overflow-wrap:anywhere; }
+}

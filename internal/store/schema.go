@@ -10,7 +10,7 @@ import (
 
 var ErrNewerSchema = errors.New("PostgreSQL schema version is newer than this build supports; use a matching application build")
 
-const UserVersion = 5
+const UserVersion = 6
 const gameConfigJSON = `{"starting_budget":1000000,"currency":"USD"}`
 
 //go:embed migrations/001_initial.sql
@@ -28,7 +28,10 @@ var ordersDDL string
 //go:embed migrations/005_order_fulfillment.sql
 var fulfillmentDDL string
 
-var migrations = []string{initialDDL, accountsDDL, auctionsDDL, ordersDDL, fulfillmentDDL}
+//go:embed migrations/006_auction_analytics_interactions.sql
+var interactionsDDL string
+
+var migrations = []string{initialDDL, accountsDDL, auctionsDDL, ordersDDL, fulfillmentDDL, interactionsDDL}
 
 func (s *Store) Migrate() error {
 	err := s.withWriter(func(ctx context.Context, c *sql.Conn) error {

@@ -7,8 +7,8 @@ export const CATALOG_COPY = {
     "vi": "Chuẩn bị danh mục"
   },
   "notice": {
-    "en": "Save drafts and publish complete events. Accounts, watchlists and scheduled bidding are available independently. Winners can check out with simulated payment. Order history and simulated fulfillment are available. Analytics and recommendations are planned.",
-    "vi": "Lưu bản nháp và công bố phiên hoàn chỉnh. Tài khoản, danh sách theo dõi và đặt giá theo lịch hoạt động riêng. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và nhận hàng mô phỏng đã khả dụng. Phân tích và gợi ý sẽ có sau."
+    "en": "Save drafts and publish complete events. Accounts, watchlists and scheduled bidding are available independently. Winners can check out with simulated payment. Order history and simulated fulfillment are available. Private aggregate analytics and rule-based suggestions are available. Trained ML remains future work.",
+    "vi": "Lưu bản nháp và công bố phiên hoàn chỉnh. Tài khoản, danh sách theo dõi và đặt giá theo lịch hoạt động riêng. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và nhận hàng mô phỏng đã khả dụng. Phân tích tổng hợp riêng và gợi ý theo quy tắc đã khả dụng. ML đã huấn luyện là hướng mở rộng sau."
   },
   "lots": {
     "en": "Lots",

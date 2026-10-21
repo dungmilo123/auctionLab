@@ -5,3 +5,9 @@ Email is an unverified login identifier: trim surrounding space, lowercase ASCII
 `pbkdf2-sha256$v1$600000$…$…` stores a 16-byte random salt and 32-byte PBKDF2-HMAC-SHA256 output using raw standard base64. Only this exact policy is supported; reject malformed/unknown versions and iteration values before deriving. Future verifier changes require a new tagged policy, parser bounds, compatibility tests and an explicit upgrade decision. Unknown addresses perform the same KDF using a supported dummy verifier. Comparison uses constant time. Four active credential operations and ten attempts/minute/direct peer bound demo-scale work; up to 4,096 active peer keys are retained. Forwarded IP headers have no authority. Shared proxies share this limit; no permanent account lockout is stored.
 
 Opaque 32-byte random session tokens exist only in the HttpOnly host-only cookie. Store only their SHA-256 digest. Profiles expose ID, email, display name, server role and demo flag only. Registration always chooses bidder. Hash before entering the writer transaction. Credentials and raw tokens must not be logged or copied into reports. Account roles never substitute for the catalog capability. `account_test.go` pins policy boundaries and real-cost verifier behavior.
+
+Schema 6 records actual watchlist insertions atomically as private interaction
+transitions, using affected rows; duplicate saves add no history and removals
+preserve prior additions. See `../interaction/README.md`. Owner suggestions at
+`/api/account/recommendations` validate the live session inside their snapshot;
+account roles never grant analytics access.

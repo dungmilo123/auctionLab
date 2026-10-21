@@ -1,3 +1,6 @@
+import RecommendationSection from './RecommendationSection'
+import {recordLotObservation} from '@/lib/lot-observation'
+import {useEffect} from 'react'
 import WatchControl from '@/routes/account/WatchControl'
 import { lotURL } from '@/lib/discovery-links'
 import { useCallback } from 'react'
@@ -24,6 +27,8 @@ export default function LotDetailPage({ slug }: { slug: string }) {
     [slug],
   )
   const { state, retry, now } = usePublicPage(slug, load)
+  const observedID=state.status==='success'?state.response.data.record.id:null
+  useEffect(()=>{if(observedID)recordLotObservation(observedID)},[observedID])
   if (state.status !== 'success')
     return (
       <DataState
@@ -111,6 +116,7 @@ export default function LotDetailPage({ slug }: { slug: string }) {
       </section>
       <WatchControl id={lot.id} target={lotURL(lot.slug)} />
       <AuctionPanel key={lot.id} id={lot.id} target={lotURL(lot.slug)} />
+      <RecommendationSection source={lot.slug} categories={categories}/>
     </article>
   )
 }

@@ -1,0 +1,312 @@
+{
+  "results": [
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "en",
+      "width": 320,
+      "layout": {
+        "inner": 320,
+        "width": 320
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "en",
+      "width": 375,
+      "layout": {
+        "inner": 375,
+        "width": 375
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "en",
+      "width": 1280,
+      "layout": {
+        "inner": 1280,
+        "width": 1280
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 320,
+      "layout": {
+        "inner": 320,
+        "width": 320
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 375,
+      "layout": {
+        "inner": 375,
+        "width": 375
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 1280,
+      "layout": {
+        "inner": 1280,
+        "width": 1280
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/admin/analytics",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/lots/folding-travel-camera",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/admin/analytics",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "page": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "vite",
+      "reference": {
+        "lots": "5",
+        "bids": "6",
+        "bidders": "2",
+        "demo_bids": "3",
+        "non_demo_bids": "3",
+        "demo_bidders": "1",
+        "non_demo_bidders": "1",
+        "sold": "3",
+        "unsold": "1",
+        "terminal": "4",
+        "pending": "1",
+        "sell_through": {
+          "sold": "3",
+          "terminal": "4"
+        },
+        "winning_minor": "35000",
+        "paid_orders": "2",
+        "unpaid_sold_orders": "1",
+        "paid_winning_minor": "15000",
+        "paid_fees_minor": "1500",
+        "simulated_paid_minor": "16500"
+      },
+      "consoleErrors": []
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "en",
+      "width": 320,
+      "layout": {
+        "inner": 320,
+        "width": 320
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "en",
+      "width": 375,
+      "layout": {
+        "inner": 375,
+        "width": 375
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "en",
+      "width": 1280,
+      "layout": {
+        "inner": 1280,
+        "width": 1280
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 320,
+      "layout": {
+        "inner": 320,
+        "width": 320
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 375,
+      "layout": {
+        "inner": 375,
+        "width": 375
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "analytics",
+      "lang": "vi",
+      "width": 1280,
+      "layout": {
+        "inner": 1280,
+        "width": 1280
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/admin/analytics",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/lots/folding-travel-camera",
+      "lang": "en",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/admin/analytics",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "page": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "chromeZoom": 2,
+      "measured": {
+        "inner": 640,
+        "dpr": 2,
+        "scroll": 640
+      }
+    },
+    {
+      "mode": "embedded",
+      "reference": {
+        "lots": "5",
+        "bids": "6",
+        "bidders": "2",
+        "demo_bids": "3",
+        "non_demo_bids": "3",
+        "demo_bidders": "1",
+        "non_demo_bidders": "1",
+        "sold": "3",
+        "unsold": "1",
+        "terminal": "4",
+        "pending": "1",
+        "sell_through": {
+          "sold": "3",
+          "terminal": "4"
+        },
+        "winning_minor": "35000",
+        "paid_orders": "2",
+        "unpaid_sold_orders": "1",
+        "paid_winning_minor": "15000",
+        "paid_fees_minor": "1500",
+        "simulated_paid_minor": "16500"
+      },
+      "consoleErrors": []
+    }
+  ],
+  "sockets": 0,
+  "external": 0
+}

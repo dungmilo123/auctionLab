@@ -9,7 +9,7 @@ import type { Route } from '@/lib/route'
 type Destination = readonly [href: string, label: SiteKey]
 const primary: Destination[] = [['/auctions', 'auctions'], ['/lots', 'lots'], ['/account', 'account']]
 const account: Destination[] = [['/account', 'overview'], ['/account/watchlist', 'watchlist'], ['/account/bids', 'bids'], ['/account/wins', 'wins'], ['/account/orders', 'orders']]
-const admin: Destination[] = [['/admin', 'overview'], ['/admin/auctions', 'auctions'], ['/admin/lots', 'lots'], ['/admin/orders', 'orders']]
+const admin: Destination[] = [['/admin', 'overview'], ['/admin/auctions', 'auctions'], ['/admin/lots', 'lots'], ['/admin/orders', 'orders'], ['/admin/analytics', 'analytics']]
 
 function Navigation({ items, path, label, className = 'site-nav' }: {
   items: Destination[]; path: string; label: SiteKey; className?: string

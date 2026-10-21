@@ -7,7 +7,7 @@ Give AuctionLab a predictable website navigation structure across public storefr
 ## Requirements
 
 ### Requirement: Explicit website destinations
-The website SHALL recognize only the routes listed below. Public detail routes SHALL match one nonempty slug segment and resolve the corresponding published record. Matching SHALL be case-sensitive, ignore query and fragment for route identity, and accept one trailing slash. Unrecognized paths SHALL render the not-found view rather than a game or an unrelated page. Catalog administration SHALL select its editor using query parameters within existing routes. Checkout and owner detail SHALL match `/account/checkout/:orderId` and `/account/orders/:orderId` using exactly one 32-character lowercase hexadecimal ID. `/account/wins` SHALL list owned unpaid wins; `/account/orders` SHALL list owned purchase history. Admin order selection SHALL use `/admin/orders?view=<orderId>`.
+The website SHALL recognize only the routes listed below. Public detail routes SHALL match one nonempty slug segment and resolve the corresponding published record. Matching SHALL be case-sensitive, ignore query and fragment for route identity, and accept one trailing slash. Unrecognized paths SHALL render the not-found view rather than a game or an unrelated page. Catalog administration SHALL select its editor using query parameters within existing routes. Checkout and owner detail SHALL match `/account/checkout/:orderId` and `/account/orders/:orderId` using exactly one 32-character lowercase hexadecimal ID. `/account/wins` SHALL list owned unpaid wins; `/account/orders` SHALL list owned purchase history. Admin order selection SHALL use `/admin/orders?view=<orderId>`. `/admin/analytics` SHALL select the capability-protected aggregate dashboard with shareable event/dataset filters.
 
 #### Scenario: Storefront destinations
 - **WHEN** a visitor opens `/`, `/auctions`, `/auctions/:slug`, `/lots`, or `/lots/:slug`
@@ -25,9 +25,9 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 - **AND** the form offers a safe return destination and explicit validation, pending, or service-failure states
 
 #### Scenario: Administration destinations
-- **WHEN** an authorized operator opens `/admin`, `/admin/auctions`, `/admin/lots`, or `/admin/orders` through the Go server
-- **THEN** the admin overview, working auction-event management, working lot management, or working order-management workspace appears respectively with admin navigation
-- **AND** catalog editors and order operations require independently authorized APIs as well as the document gate
+- **WHEN** an authorized operator opens `/admin`, `/admin/auctions`, `/admin/lots`, `/admin/orders`, or `/admin/analytics` through the Go server
+- **THEN** the admin overview, working auction-event management, working lot management, working order-management workspace, or aggregate analytics dashboard appears respectively with admin navigation
+- **AND** catalog editors, order operations and analytics require independently authorized APIs as well as the document gate
 
 #### Scenario: Exact matching and normalization
 - **WHEN** a visitor opens `/lots/sample-camera/?view=preview#details`
@@ -48,6 +48,11 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 - **WHEN** a buyer opens `/account/orders/<32-lowercase-hex-id>/` with query/fragment or returns through browser history
 - **THEN** it selects only that owned order after current-session validation or shows login/not-found/error recovery
 - **AND** malformed IDs, uppercase route names and additional path segments render not-found without opening another order
+
+#### Scenario: Direct analytics destination
+- **WHEN** an operator directly opens or refreshes `/admin/analytics/?event=all&dataset=demo` in Vite or the embedded build
+- **THEN** the dashboard loads its independently capability-guarded API or shows access/error recovery and preserves valid filters
+- **AND** Go documents remain gated, navigation identifies analytics accessibly, and extra path segments or uppercase route variants remain not-found
 
 ### Requirement: Navigable layout shells
 The storefront SHALL have brand navigation, links to auctions, lots, and account, a main content landmark, and a footer. Account and admin shells SHALL add contextual navigation and a route back to the storefront. Every displayed navigation link SHALL resolve to an implemented foundation destination, identify the current destination accessibly, and remain usable on mobile.
@@ -108,7 +113,7 @@ The Go server SHALL retain the existing key and cookie gate on `/admin` and its 
 - **AND** the operator can subsequently navigate to the admin preview destinations
 
 ### Requirement: Honest preview boundaries
-Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts, watchlists and bid participation SHALL show only server-confirmed identity and owned data. Lot-detail bidding SHALL require current commerce eligibility; owned wins and single-order checkout SHALL support explicitly simulated payment, with owner-only order history and capability-authorized simulated fulfillment available through their private routes. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation SHALL remain capability-authorized.
+Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts, watchlists and bid participation SHALL show only server-confirmed identity and owned data. Lot-detail bidding SHALL require current commerce eligibility; owned wins and single-order checkout SHALL support explicitly simulated payment, with owner-only order history and capability-authorized simulated fulfillment available through their private routes. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation and aggregate analytics SHALL remain capability-authorized. Public related lots and owner-watchlist suggestions SHALL use explainable rules; trained ML remains future work. Optional view recording SHALL remain separate from read-only discovery APIs.
 
 #### Scenario: Exploring the foundation
 - **WHEN** a visitor browses public discovery, account pages, or order history, or activates a preview-only control
@@ -127,7 +132,7 @@ Public discovery SHALL accurately identify published content, demos, planned sch
 #### Scenario: Public notices reflect stored data
 - **WHEN** a visitor browses a non-demo published event or lot
 - **THEN** shared notices and footer copy do not describe the record as an imagined object, generic preview, or necessarily an illustration
-- **AND** notices distinguish available accounts/watchlists/scheduled bidding/private checkout/history/simulated fulfillment from future analytics and recommendations, identify every payment as simulated, and label demo records when applicable
+- **AND** notices distinguish available accounts/watchlists/scheduled bidding/private checkout/history/simulated fulfillment from the optional future ML extension, describe working private aggregate analytics and rule-based recommendations, identify every payment as simulated, and label demo records when applicable
 
 #### Scenario: Account service unavailable during discovery
 - **WHEN** account state cannot be loaded but the published catalog read succeeds

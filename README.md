@@ -18,7 +18,7 @@ For explicit demo accounts, stop the server, supply `DEMO_BIDDER_ONE_PASSWORD`, 
 
 Normal startup activates every previously published immutable schedule before opening the listener. Future lots wait, currently eligible lots open, and expired lots with no accepted commerce bids close unsold at their original deadline (with the actual recording time retained). A 250 ms worker adopts new publications and reconciles independent lots across overlapping events. Maintenance/import/seed commands do not start it. Public catalog schedule filters and opening-price sorts retain their existing meaning.
 
-For a fresh bid-to-win rehearsal, prepare **new drafts** with a future opening and staggered closes, then publish through catalog management. Seeding only prepares drafts and does not invent bids. Never edit or rebase a previously published event to replay a demo. Use two independently signed-in commerce accounts, explicitly submit increasing bids, and inspect the committed sold/unsold result and `/account/bids`. Watching/saving never bids. Sold wins create one owner order; winners can review and confirm a local simulated payment. Owner history and simulated fulfillment are available. See `docs/postgresql.md` for the stopped-writer schema-5 upgrade and backup-based rollback.
+For a fresh bid-to-win rehearsal, prepare **new drafts** with a future opening and staggered closes, then publish through catalog management. Seeding only prepares drafts and does not invent bids. Never edit or rebase a previously published event to replay a demo. Use two independently signed-in commerce accounts, explicitly submit increasing bids, and inspect the committed sold/unsold result and `/account/bids`. Watching/saving never bids. Sold wins create one owner order; winners can review and confirm a local simulated payment. Owner history and simulated fulfillment are available. See `docs/postgresql.md` for the stopped-writer schema-6 upgrade and backup-based rollback.
 
 ## Winner checkout and simulated payment (Change 6)
 
@@ -53,3 +53,29 @@ DATABASE_SCHEMA=auctionlab_demo_rehearsal ./bin/auctionlab
 The whole marked schema's rehearsal accounts/sessions, catalog, bids/results, orders/payments/fulfillment and retained game data are erased; migrations, categories and capability configuration remain. Other schemas/media remain untouched. Prefix/marker/exact confirmation and exclusive ownership are required; unmarked populated targets are refused. No automatic publication/payment/reset exists. See [the complete write scope and recovery drill](docs/postgresql.md#disposable-full-demo-preparation-status-and-reset) before using reset. Unknown reset outcomes require status inspection before any retry.
 
 Change 7 acceptance: [implementation and evidence report](openspec/changes/archive/2026-10-21-add-order-history-and-demo-fulfillment/verification/REPORT.md) records 39/41 tasks. Exact 200% browser zoom and active reduced-motion acceptance remain open; earlier archive gaps are preserved. Normal main-spec validation passes; strict validation reports length warnings in existing and synced requirement descriptions. The change is archived with both acceptance gaps preserved.
+
+### Analytics and rule-based discovery
+
+Capability-authorized operators can open `/admin/analytics` to compare lifetime
+published-event participation, committed results and simulated payments. Filters
+are shareable: `?event=all&dataset=demo` (also `all`/`non-demo`). Winning totals
+include unpaid wins; simulated paid totals include delivery. Distinct bidder
+counts cannot be added across events. Definitions, coverage/provenance and
+snapshot time appear on the page; a failed read never becomes successful zeroes.
+See [metric/API definitions](internal/analytics/README.md).
+
+Home and lot detail show up to six eligible suggestions from `rules-v1`: category
+and authored-era matches, owner-watchlist preferences after session validation,
+and deterministic closing-soon fallback. These are rules, not trained ML or a
+claim of recommendation effectiveness. Anonymous discovery is independent of
+account availability. Lot detail can emit a bounded anonymous page observation;
+it is not a unique-person count or complete traffic history.
+
+Demo drill: publish future drafts → view a lot → save → bid with two independent
+accounts → win → confirm simulated payment → compare summary/event metrics to
+SQL → stop writer → inspect generation → explicitly reset the matching marked
+demo schema → inspect fresh generation → publish and replay. Reset erases only
+that schema's documented rehearsal state, including observations/coverage, and
+invalidates its old sessions. It preserves capability/config, migrations,
+categories, external media and other schemas. See [schema-6 operations and reset
+scope](docs/postgresql.md). Earlier archived accessibility gaps remain open.

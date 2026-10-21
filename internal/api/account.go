@@ -4,6 +4,7 @@ import (
 	"auctionlab/internal/account"
 	"auctionlab/internal/auction"
 	"auctionlab/internal/order"
+	"auctionlab/internal/recommendation"
 	"encoding/json"
 	"errors"
 	"io"
@@ -18,10 +19,11 @@ import (
 const AccountCookieName = "auction_account"
 
 type AccountAPI struct {
-	Service  *account.Service
-	Limiter  *account.Limiter
-	Auctions *auction.Service
-	Orders   *order.Service
+	Service         *account.Service
+	Limiter         *account.Limiter
+	Auctions        *auction.Service
+	Orders          *order.Service
+	Recommendations recommendation.Repository
 }
 
 func RegisterAccount(mux *http.ServeMux, s *account.Service, auctions ...*auction.Service) *AccountAPI {
@@ -159,6 +161,8 @@ func (a *AccountAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch {
+	case r.URL.Path == "/api/account/recommendations":
+		serveRecommendations(w, r, a.Recommendations, digest, a.Service.Now())
 	case r.URL.Path == "/api/account/orders" || r.URL.Path == "/api/account/wins" || strings.HasPrefix(r.URL.Path, "/api/account/orders/"):
 		a.checkout(w, r, digest)
 	case r.URL.Path == "/api/account/bids" || strings.HasPrefix(r.URL.Path, "/api/account/bids/"):

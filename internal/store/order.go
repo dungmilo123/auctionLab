@@ -215,6 +215,9 @@ func (r OrderRepository) Confirm(parent context.Context, digest, id string, i or
 		if e != nil {
 			return e
 		}
+		if e = insertInteraction(ctx, tx, "payment_confirmed", o.Snapshot.LotID, p.ID, receiptID, instant); e != nil {
+			return e
+		}
 		if e = initializeProgress(ctx, tx, id, receiptID, n.FulfillmentMethod, instant); e != nil {
 			return e
 		}

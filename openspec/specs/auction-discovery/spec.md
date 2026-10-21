@@ -116,7 +116,7 @@ Public pages SHALL distinguish loading, empty catalog, no matches, missing recor
 - **AND** retry reloads public data, preserves discovery selections, and only a valid successful response produces results
 
 ### Requirement: Accessible bilingual discovery without transactions
-Discovery SHALL follow the existing design system at mobile and desktop widths, support keyboard use, 200 percent text zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored. Demo records SHALL retain a visible demo label. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout, order history and fulfillment detail SHALL link through owner-authenticated reads; public discovery SHALL expose no private purchase or shipping data. Notices SHALL identify payment and fulfillment as simulated and keep analytics/recommendations as future work.
+Discovery SHALL follow the existing design system at mobile and desktop widths, support keyboard use, 200 percent text zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored. Demo records SHALL retain a visible demo label. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout, order history and fulfillment detail SHALL link through owner-authenticated reads; public discovery SHALL expose no private purchase or shipping data. Notices SHALL identify payment and fulfillment as simulated, describe available rule-based recommendations and keep trained ML as separate future work. Optional first-party view recording SHALL use the separate interaction endpoint without blocking browsing or changing commerce state.
 
 #### Scenario: Mobile and language switch
 - **WHEN** a visitor browses at 320 or 375 CSS pixels, changes EN/VI, or enlarges text to 200 percent
@@ -145,3 +145,11 @@ Discovery filters and opening-price sorts SHALL retain their existing URL semant
 - **WHEN** catalog content loads but the execution snapshot fails, becomes stale or is malformed
 - **THEN** gallery, condition, fulfillment and parent-event navigation remain usable with an explicit auction recovery state
 - **AND** the bid form stays disabled until fresh execution and identity permit submission
+
+### Requirement: Independent recommendation discovery
+Home and lot detail SHALL load rule-based suggestions independently from existing catalog and auction execution. Existing homepage featured events, nearest-close sections, query semantics and opening-price sorts SHALL remain intact. Suggestions SHALL use only safe published cards and native stored-slug links.
+
+#### Scenario: Suggestions and observations do not transact
+- **WHEN** a visitor loads a published lot or follows a recommendation
+- **THEN** related-lot loading and optional view recording create no account, watch entry, bid, result, order or payment
+- **AND** a failed recommendation or observation request leaves the loaded gallery, fulfillment terms and eligible deliberate bid controls usable

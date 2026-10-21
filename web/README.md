@@ -161,7 +161,7 @@ Lot query keys are `q/category/phase/sort`; events use `phase`. First duplicate 
 
 Home features at most three events ordered window/upcoming/elapsed/unavailable, ascending opening within window/upcoming and descending within elapsed, then slug. Up to six nearest-close lots come only from current planned windows, derived from the same event aggregate. All categories link to their slug filter. Event details preserve published member order. Gallery buttons preserve stored image order/alt text, keyboard focus and selection; missing media uses the local fallback. Condition, specifications, supplied story and enabled shipping/pickup instructions/fees precede the separate auction bid controls. Zero amounts display explicitly as `$0.00 USD`.
 
-Direct load, refresh, new tabs and Back/Forward use ordinary document URLs in Vite and the embedded build. Language changes preserve loaded records and form selections. Required read failures show recovery rather than partial results. Unknown/draft details share one public not-found view. The five-route browser evidence and requirement mapping live in `openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/`. Accounts/watchlists and timed bidding are implemented; later checkout/orders, analytics and the ML extension remain future work. Change 5 acceptance evidence records its remaining manual browser checks separately.
+Direct load, refresh, new tabs and Back/Forward use ordinary document URLs in Vite and the embedded build. Language changes preserve loaded records and form selections. Required read failures show recovery rather than partial results. Unknown/draft details share one public not-found view. The five-route browser evidence and requirement mapping live in `openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/`. Accounts/watchlists and timed bidding are implemented; checkout/orders, private aggregate analytics and rule-based recommendations are implemented; the trained ML extension remains future work. Change 5 acceptance evidence records its remaining manual browser checks separately.
 
 ## Commerce account API
 
@@ -224,3 +224,35 @@ Absent status/method means `all`. Status accepts `all|awaiting_payment|paid|prep
 Use the same browser origin (including Vite's `/api` proxy), `Content-Type: application/json`, and `X-AuctionLab-Admin: 1` for transitions. At most 8 KiB; financial/identity/contact fields are unsupported. Example preparation body: `{"expected_version":1,"next_status":"preparing"}`. At version 2 ship with `{"expected_version":2,"next_status":"shipped","shipment":{"carrier":"Demo carrier","tracking_reference":"DEMO-01"}}`. Carrier/reference are trimmed, control-free, 1–120/1–200 Unicode code points, rendered as text and immutable after shipment. Pickup uses ready_for_pickup then completed without shipment fields. No carrier service is contacted.
 
 Errors are no-store JSON: 400 body, 401 access, 403 origin/header, 404 missing, 409 stale/invalid transition, 415 media type, 422 fields/filters, 503 unavailable/commit_unknown. The workspace disables duplicate pending actions, retains valid unsaved shipping text across language changes, and requires successful durable reload after conflict/unknown outcome before a deliberate action. Gate recovery never replays a mutation. See `internal/order/README.md` for full projection and payment/fulfillment invariants.
+
+## Analytics and recommendations (Change 8)
+
+`/admin/analytics` (one optional trailing slash) is an explicit website route.
+Go document access and `GET /api/admin/analytics` independently require the admin
+capability; an account role cannot grant it. Native GET form filters preserve
+`event=all|published-slug` and `dataset=all|demo|non-demo` in URLs and browser
+history. Loading, empty, access, malformed/unavailable and retry states are
+separate. Exact decimal-string counts/cents are formatted with BigInt; percentage
+rounding is labeled beside exact sold/terminal operands. Comparison uses a
+semantic table in a labeled focusable local scroller, without page overflow.
+EN/VI includes definitions, actor-demo separation, simulated values, as-of time
+and honest observed/backfilled/snapshot coverage. Refresh is explicit, not SSE.
+
+Home and lot detail independently load `/api/catalog/recommendations` without
+cookies. Validated owners may replace that public fallback using
+`/api/account/recommendations` through the existing account namespace. Source
+context takes precedence over watchlist feature sets. Reasons, demo markers and
+native stored-slug links use existing public cards. Checking/unavailable identity
+is labeled public fallback; account recovery stays separate. A private failure
+clears private cards and offers retry while public suggestions remain usable.
+Source/identity changes remount the suggestion state, abort independent reads
+and ignore delayed results, including logout/expiry/pagehide. Language changes
+translate states/reasons without changing authored content or commerce state.
+
+Successful lot-detail rendering calls `/api/catalog/lot-views` separately from
+GET loaders. One UUID per lot/document stays only in memory, surviving effect,
+language and execution refreshes. No card view is emitted and failed recording
+has no automatic retry or blocking UI. A new document can create a new view.
+No external SDK, persistent tracking identifier or game socket is introduced.
+See `internal/interaction/README.md` and `internal/recommendation/README.md` for
+request/error boundaries, authored-era limitations and the `rules-v1` baseline.

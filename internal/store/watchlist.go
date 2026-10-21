@@ -27,9 +27,25 @@ func (r AccountRepository) Membership(parent context.Context, digest, id string,
 			return account.Fail("not_found")
 		}
 		if saved != nil {
-			_, e = tx.ExecContext(ctx, `INSERT INTO commerce_watchlist(account_id,lot_id,saved_at) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, p.ID, id, now)
+			changed, err := tx.ExecContext(ctx, `INSERT INTO commerce_watchlist(account_id,lot_id,saved_at) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, p.ID, id, now)
+			if err != nil {
+				return err
+			}
+			n, err := changed.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if n > 0 {
+				key, err := purchaseID()
+				if err != nil {
+					return err
+				}
+				if err = insertInteraction(ctx, tx, "watchlist_add", id, p.ID, key, now); err != nil {
+					return err
+				}
+			}
 			result = true
-			return e
+			return nil
 		}
 		return tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM commerce_watchlist WHERE account_id=$1 AND lot_id=$2)`, p.ID, id).Scan(&result)
 	}

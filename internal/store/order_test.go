@@ -217,7 +217,7 @@ func TestWinnerMigrationFourUpgradeAndRollback(t *testing.T) {
 				}
 			}
 			var ok bool
-			e = s.DB.QueryRow(`SELECT (SELECT max(version)=5 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT value='fixture' FROM server_config) AND (SELECT count(*)=0 FROM commerce_orders) AND (SELECT count(*)=0 FROM commerce_demo_payments)`).Scan(&ok)
+			e = s.DB.QueryRow(`SELECT (SELECT max(version)=6 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT value='fixture' FROM server_config) AND (SELECT count(*)=0 FROM commerce_orders) AND (SELECT count(*)=0 FROM commerce_demo_payments)`).Scan(&ok)
 			if e != nil || !ok {
 				t.Fatal(ok, e)
 			}
@@ -395,7 +395,11 @@ func TestWinnerUpgradePreservesPopulatedVersionThree(t *testing.T) {
 		t.Fatal(e)
 	}
 	a := AuctionRepository{s}
-	if _, e = a.Place(ctx, "a", bid("l", 12550, 1), at(150)); e != nil {
+	// Construct the historical v3 fact with v3 SQL; current Place requires v6 capture.
+	if _, e = s.DB.Exec(initializeAuction + publishedSchedule + ` AND l.id='l' ON CONFLICT(lot_id) DO NOTHING`); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.DB.Exec(`INSERT INTO commerce_bids(lot_id,account_id,sequence,amount_minor,accepted_at,request_id,bidder_number) VALUES('l','a',1,12550,150,'00000000-0000-0000-0000-000000000001',1);UPDATE commerce_lot_auctions SET leading_bid_id=(SELECT id FROM commerce_bids LIMIT 1),bid_count=1,state='open',revision=revision+1`); e != nil {
 		t.Fatal(e)
 	}
 	_, e = s.DB.Exec(`INSERT INTO commerce_auction_results SELECT a.lot_id,'sold',a.closes_at,210,b.id,b.account_id,b.amount_minor FROM commerce_lot_auctions a JOIN commerce_bids b ON b.id=a.leading_bid_id;UPDATE commerce_lot_auctions SET state='sold',revision=revision+1`)
