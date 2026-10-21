@@ -24,6 +24,7 @@ import (
 	"auctionlab/internal/game"
 	"auctionlab/internal/hub"
 	"auctionlab/internal/netinfo"
+	"auctionlab/internal/order"
 	"auctionlab/internal/sqliteimport"
 	"auctionlab/internal/store"
 	"auctionlab/internal/tunnel"
@@ -287,7 +288,7 @@ func run() error {
 	// is chosen by specificity, not registration order (the comment above).
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
-	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions)
+	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions).Orders = order.New(store.OrderRepository{Store: st}, time.Now)
 	auctionStreams := api.RegisterAuction(mux, auctions)
 	defer auctionStreams.Close()
 	api.RegisterCatalog(mux, adminKey, catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa}))

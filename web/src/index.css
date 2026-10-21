@@ -330,3 +330,13 @@ html.screen-scale .border-2 {
 @media (max-width: 400px) { .auction-history li strong { margin-inline-start: 0; flex-basis: 100%; } .bid-panel .metadata > div { min-width: 0; } }
 
 .auction-form [aria-disabled=true] { opacity: .55; cursor: not-allowed; }
+
+/* Private winner checkout shares the vintage account shell. */
+.checkout { min-width: 0; overflow-wrap: anywhere; }
+.checkout fieldset { min-width: 0; border: 1px solid var(--border); padding: 1rem; }
+.checkout input, .checkout select { width: 100%; min-width: 0; max-width: 100%; padding: .7rem; border: 1px solid currentColor; border-radius: .25rem; background: transparent; font: inherit; }
+.checkout [aria-invalid="true"] { outline: 2px solid #a43828; outline-offset: 2px; }
+.checkout-snapshot { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.checkout-snapshot img { width: 100%; height: auto; border-radius: .25rem; }
+.checkout .metadata dd { overflow-wrap: anywhere; }
+@media (max-width: 420px) { .checkout-snapshot { grid-template-columns: minmax(0, 1fr); } .checkout-snapshot img { max-width: 10rem; } .checkout .actions { align-items: stretch; } }

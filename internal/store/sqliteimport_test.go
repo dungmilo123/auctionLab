@@ -291,3 +291,41 @@ func TestImportAuctionOccupied(t *testing.T) {
 		t.Fatal("source modified", e)
 	}
 }
+
+func TestImportPurchaseOccupied(t *testing.T) {
+	for _, paid := range []bool{false, true} {
+		t.Run(map[bool]string{false: "order", true: "receipt"}[paid], func(t *testing.T) {
+			s, r, id := soldOrder(t)
+			ctx := context.Background()
+			if paid {
+				if _, e := r.Confirm(ctx, "a", id, checkoutIntent(1), at(300)); e != nil {
+					t.Fatal(e)
+				}
+			}
+			path := sourceFixture(t)
+			before, e := os.ReadFile(path)
+			if e != nil {
+				t.Fatal(e)
+			}
+			source, e := sqliteimport.Read(ctx, path)
+			if e != nil {
+				t.Fatal(e)
+			}
+			var orders, payments int
+			s.DB.QueryRow(`SELECT count(*) FROM commerce_orders`).Scan(&orders)
+			s.DB.QueryRow(`SELECT count(*) FROM commerce_demo_payments`).Scan(&payments)
+			if _, e = s.ImportSQLite(ctx, source); e == nil || !strings.Contains(e.Error(), "occupied") {
+				t.Fatal("occupied purchase accepted")
+			}
+			var ok bool
+			e = s.DB.QueryRow(`SELECT (SELECT count(*)=$1 FROM commerce_orders) AND (SELECT count(*)=$2 FROM commerce_demo_payments) AND (SELECT count(*)=0 FROM players) AND (SELECT count(*)=0 FROM sqlite_import_runs)`, orders, payments).Scan(&ok)
+			if e != nil || !ok {
+				t.Fatal(ok, e)
+			}
+			after, e := os.ReadFile(path)
+			if e != nil || string(after) != string(before) {
+				t.Fatal("source modified")
+			}
+		})
+	}
+}

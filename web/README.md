@@ -1,6 +1,6 @@
 # AuctionLab — Collected Stories
 
-A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Commerce registration, sessions, self-profiles and private watchlists are available. Independent timed auctions, manual bids and private participation are available. Checkout and orders remain unavailable.
+A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Commerce registration, sessions, self-profiles and private watchlists are available. Independent timed auctions, manual bids and private participation are available. Private winner checkout with simulated payment is available; order history and fulfillment remain Change 7 work.
 
 ## Run and build
 
@@ -29,7 +29,9 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/account/register` | Account | Bidder registration with safe return navigation |
 | `/account/watchlist` | Account | Private saved published lots and confirmed removal |
 | `/account/bids` | Account | Session-owned accepted participation and leading/outbid/won/lost filters |
-| `/account/orders` | Account | Orders unavailable |
+| `/account/wins` | Account | Owned awaiting-payment wins |
+| `/account/checkout/:orderId` | Account | Owned checkout or stored simulated confirmation |
+| `/account/orders` | Account | Change 7 order-history preview |
 | `/admin` | Admin | Management overview |
 | `/admin/auctions` | Admin | Stored event list, draft editor, schedule/order, preview and publish |
 | `/admin/lots` | Admin | Stored lot list and draft content editor |
@@ -129,7 +131,7 @@ PUT is a replacement: include every editable field you intend to retain, includi
 
 `/admin/lots?new=1` and `/admin/auctions?new=1` create drafts; `?edit=<id>` loads a stored editor. Unknown selections show not-found recovery. `routes/admin/CatalogPage.tsx`, `LotEditor.tsx`, `EventEditor.tsx`, and `Controls.tsx` supply stored lists, title-only creation, content/gallery/specification/money/fulfillment editing, membership/order, server-derived schedule, public-field preview and explicit publish. Ordered rows have labeled keyboard Move up/Move down/Remove actions. EN/VI labels and errors do not translate or clear entered content. Published records are read-only. Pending actions are disabled; failed saves retain input, and conflicts/uncertain commits require reload rather than automatic overwrite. Reload explicitly replaces entered values with the committed record, with a warning to copy unsaved content first.
 
-The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account/profile/watchlist views use their independent commerce session, and bids use the separate commerce auction service; orders remain unavailable previews. The website mounts no legacy game view or WebSocket.
+The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account/profile/watchlist views use their independent commerce session, and bids use the separate commerce auction service; private winner checkout with simulated payment is available; order history and fulfillment remain Change 7 previews. The website mounts no legacy game view or WebSocket.
 
 ## Explicit demo dataset
 
@@ -145,7 +147,7 @@ For legacy data, follow [offline import, verify, backup/restore and rollback](..
 
 ## Published discovery
 
-`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account and order views retain notices distinguishing working accounts/watchlists/bidding from unavailable checkout/orders. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
+`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account and order views retain notices distinguishing working accounts/watchlists/bidding/private checkout with simulated payment from future order history and fulfillment. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
 
 `api/public-catalog.ts` performs only anonymous GET requests with `credentials: 'omit'`, no admin headers and `cache: 'no-store'`. It validates envelopes, public record shape and server time. It never calls private APIs. The primary response's time sample plus monotonic elapsed time drives presentation, independently of the device wall clock. Visible pages tick once per second; resuming a hidden tab reloads public records and a failed refresh shows retry. Absolute planned dates identify the viewer timezone. Upcoming means before opening; within planned window includes opening and excludes close; elapsed includes close. Events use planned end; lots use individual closes. Missing/inconsistent timing is unavailable. These phases do not determine execution or results.
 
@@ -191,3 +193,13 @@ Manual decimal USD entry uses exact cents, without floating-point rounding. Subm
 `/account/bids` loads only the current session's accepted participation, one row per lot, latest own/current amounts, native lot links and All/leading/outbid/won/lost filters. Closing stays in All. Visible private reads refresh every two seconds, on focus/public revision and after submission. Loading, signed-out, failed read and empty results are distinct; obsolete responses and prior account state are cleared. EN/VI labels and polite confirmed-result announcements preserve keyboard focus; countdown ticks are not live announcements.
 
 Discovery's planned URL phases (`all/upcoming/window/elapsed`), catalog DTOs and opening-price sorts are unchanged. Accounts, watchlists and scheduled bidding are available. Winning is a durable auction result only: checkout, payment and orders remain unavailable, including in the won view. Published schedules/results cannot be edited to replay a demo; prepare new future-scheduled drafts as described in the root README.
+
+## Winner checkout (Change 6)
+
+`/account/wins` lists the current owner's unpaid wins. `/account/checkout/<32-lowercase-hex-order-id>` is an exact single-order route, with safe login return and explicit selected-ID dispatch. The existing account namespace serves private wins/order reads and stateless review/atomic simulated confirmation; see `../internal/order/README.md`. Vite uses the same API guard as the embedded binary. `/account/orders` and `/admin/orders` remain unavailable Change 7 history/management previews.
+
+The checkout flow is form → server review → deliberate simulation → stored paid confirmation. EN/VI labels cover loading, empty, signed-out, missing, field validation, pending, unknown, unavailable and paid states. Both simulation methods state that no money is charged, including for non-demo lots. No card/bank inputs exist. Item/fee components retain their catalog limit; the separate order formatter accepts their exact combined maximum of 2,000,000,000,000 USD cents.
+
+Private reads/mutations are bound to owner/order and lifecycle tokens. Navigation, logout, account switch and page restoration abort obsolete work and suppress late responses. Language changes preserve the active owned form. Edits discard the previous review/intent. Confirmation disables competing edits/submits; unknown outcomes require stored-order recovery before deliberate same-intent retry. Reload reads durable state and clears unsent personal values; login/reconnect never replays payment. Contact/address/request intent stays out of URLs, browser storage and logs. Paid orders show their stored contact/fulfillment, exact amounts, receipt and time without pay controls. Unpaid wins omit paid orders on the next read. General order history and delivery tracking remain future work.
+
+Current measured acceptance and any missing actual-browser zoom/reduced-motion checks are in the [Change 6 archive report](../openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/REPORT.md); earlier Change 4/5 archive limitations remain unchanged.

@@ -29,6 +29,8 @@ func auctionFixture(t *testing.T) (*Store, AuctionRepository) {
  INSERT INTO commerce_accounts VALUES('a','secret-a@example.test','Secret name A','secret-password','bidder',false,0,0),('b','secret-b@example.test','Secret name B','secret-password','admin',false,0,0);
  INSERT INTO commerce_sessions VALUES('a','a',0,10000,NULL),('b','b',0,10000,NULL);
  INSERT INTO catalog_lots(id,slug,title,state,starting_price_minor,bid_increment_minor,admin_notes,created_at,updated_at) VALUES('l','lot','Lot','published',0,5,'secret-notes',0,0),('other','other','Other','published',12550,500,'secret-notes',0,0),('draft','draft','Draft','draft',0,1,'secret-notes',0,0),('expired','expired','Expired','published',0,1,'secret-notes',0,0);
+ UPDATE catalog_lots SET condition='Fixture condition',fulfillment='{"shipping_enabled":true,"pickup_enabled":true,"shipping_fee_minor":1500,"shipping_instructions":"Fixture shipping","pickup_instructions":"Fixture pickup"}';
+ INSERT INTO catalog_lot_images(lot_id,position,path,alt) SELECT id,0,'/site-assets/camera.svg','Fixture image' FROM catalog_lots;
  INSERT INTO catalog_events(id,slug,title,state,opens_at,first_closes_at,close_interval_ms,created_at,updated_at) VALUES('e','event','Event','published',100,200,50,0,0),('overlap','overlap','Overlap','published',100,180,50,0,0),('past','past','Past','published',10,20,1,0,0);
  INSERT INTO catalog_event_lots VALUES('e','l',0),('overlap','other',0),('e','draft',1),('past','expired',0);`)
 	if e != nil {
@@ -171,7 +173,7 @@ func TestAuctionBidLadderReplayAndPrivateReads(t *testing.T) {
 	}
 	for _, v := range []struct{ digest, status string }{{"a", "lost"}, {"b", "won"}} {
 		p, e := r.Participation(ctx, v.digest, "other", at(190))
-		if e != nil || p[0].Status != v.status || p[0].CheckoutAvailable {
+		if e != nil || p[0].Status != v.status || p[0].CheckoutAvailable != (v.status == "won") {
 			t.Fatal(p, e)
 		}
 	}

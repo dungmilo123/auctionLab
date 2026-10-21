@@ -3,6 +3,7 @@ package api
 import (
 	"auctionlab/internal/account"
 	"auctionlab/internal/auction"
+	"auctionlab/internal/order"
 	"encoding/json"
 	"errors"
 	"io"
@@ -20,9 +21,10 @@ type AccountAPI struct {
 	Service  *account.Service
 	Limiter  *account.Limiter
 	Auctions *auction.Service
+	Orders   *order.Service
 }
 
-func RegisterAccount(mux *http.ServeMux, s *account.Service, auctions ...*auction.Service) {
+func RegisterAccount(mux *http.ServeMux, s *account.Service, auctions ...*auction.Service) *AccountAPI {
 	a := &AccountAPI{Service: s, Limiter: account.NewLimiter()}
 	if len(auctions) > 0 {
 		a.Auctions = auctions[0]
@@ -30,6 +32,7 @@ func RegisterAccount(mux *http.ServeMux, s *account.Service, auctions ...*auctio
 	mux.Handle("/api/auth/", a)
 	mux.Handle("/api/account", a)
 	mux.Handle("/api/account/", a)
+	return a
 }
 func accountDigest(r *http.Request) string {
 	c, e := r.Cookie(AccountCookieName)
@@ -103,11 +106,10 @@ func accountDecode(w http.ResponseWriter, r *http.Request, out any) bool {
 		catalogError(w, 400, "malformed_json", nil)
 		return false
 	}
-	for _, v := range fields {
-		if string(v) == "null" {
-			catalogError(w, 400, "malformed_json", nil)
-			return false
-		}
+	var tree any
+	if json.Unmarshal(raw, &tree) != nil || containsJSONNull(tree) {
+		catalogError(w, 400, "malformed_json", nil)
+		return false
 	}
 	if decoder.Decode(new(any)) != io.EOF {
 		catalogError(w, 400, "malformed_json", nil)
@@ -157,6 +159,8 @@ func (a *AccountAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch {
+	case r.URL.Path == "/api/account/wins" || strings.HasPrefix(r.URL.Path, "/api/account/orders/"):
+		a.checkout(w, r, digest)
 	case r.URL.Path == "/api/account/bids" || strings.HasPrefix(r.URL.Path, "/api/account/bids/"):
 		a.auction(w, r, digest)
 	case r.Method == "POST" && (r.URL.Path == "/api/auth/register" || r.URL.Path == "/api/auth/login"):
@@ -255,4 +259,25 @@ func (a *AccountAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		catalogError(w, 404, "not_found", nil)
 	}
+}
+
+func containsJSONNull(v any) bool {
+	if v == nil {
+		return true
+	}
+	switch x := v.(type) {
+	case map[string]any:
+		for _, child := range x {
+			if containsJSONNull(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range x {
+			if containsJSONNull(child) {
+				return true
+			}
+		}
+	}
+	return false
 }

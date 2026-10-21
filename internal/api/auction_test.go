@@ -3,6 +3,7 @@ package api
 import (
 	"auctionlab/internal/account"
 	"auctionlab/internal/auction"
+	"auctionlab/internal/order"
 	"auctionlab/internal/store"
 	"auctionlab/internal/testpg"
 	"bufio"
@@ -35,11 +36,13 @@ func commerceAPI(t *testing.T) (*http.ServeMux, *auction.Service, *store.Store, 
 	as.Now = now
 	svc := auction.New(store.AuctionRepository{Store: st}, now)
 	mux := http.NewServeMux()
-	RegisterAccount(mux, as, svc)
+	RegisterAccount(mux, as, svc).Orders = order.New(store.OrderRepository{Store: st}, now)
 	streams := RegisterAuction(mux, svc)
 	streams.SampleInterval = 10 * time.Millisecond
 	t.Cleanup(streams.Close)
 	_, e = st.DB.Exec(`INSERT INTO catalog_lots(id,slug,title,state,starting_price_minor,bid_increment_minor,admin_notes,created_at,updated_at) VALUES('l','lot','Public lot','published',0,5,'DISTINCT-PRIVATE-NOTE',0,0),('draft','draft','DRAFT-SECRET','draft',0,1,'DISTINCT-PRIVATE-NOTE',0,0);
+ UPDATE catalog_lots SET condition='Fixture condition',fulfillment='{"shipping_enabled":true,"pickup_enabled":true,"shipping_fee_minor":1500,"shipping_instructions":"Published shipping","pickup_instructions":"Published pickup"}';
+ INSERT INTO catalog_lot_images(lot_id,position,path,alt) SELECT id,0,'/site-assets/camera.svg','Fixture image' FROM catalog_lots;
  INSERT INTO catalog_events(id,slug,title,state,opens_at,first_closes_at,close_interval_ms,created_at,updated_at) VALUES('e','event','Event','published',100,200,1,0,0);
  INSERT INTO catalog_event_lots VALUES('e','l',0);
  INSERT INTO server_config VALUES('admin_key','DISTINCT-CAPABILITY');

@@ -11,7 +11,7 @@ export type AuctionSnapshot = {
   result: { outcome: 'sold' | 'unsold'; closes_at: number; recorded_at: number; winner: AuctionBid | null } | null
 }
 export type ParticipationStatus = 'not_participating' | 'leading' | 'outbid' | 'closing' | 'won' | 'lost'
-export type Participation = { lot_id: string; slug: string; title: string; status: ParticipationStatus; latest: OwnBid | null; bids: OwnBid[]; current_price_minor: number | null; revision: number; checkout_available: false }
+export type Participation = { lot_id: string; slug: string; title: string; status: ParticipationStatus; latest: OwnBid | null; bids: OwnBid[]; current_price_minor: number | null; revision: number; checkout_available: boolean; order_id?: string; order_state?: 'awaiting_payment' | 'paid' }
 export type Intent = { lot_id: string; amount_minor: number; request_id: string }
 export type Receipt = { lot_id: string; bid: OwnBid; replay: boolean }
 export type AuctionResponse = PublicResponse<AuctionSnapshot>
@@ -50,7 +50,7 @@ export function mergeAuction(current: AuctionResponse | null, next: AuctionRespo
   return next
 }
 export function isParticipation(v: unknown): v is Participation {
-  return object(v) && ['lot_id','slug','title'].every(k => typeof v[k] === 'string') && ['not_participating','leading','outbid','closing','won','lost'].includes(v.status as string) && integer(v.revision) && maybeMoney(v.current_price_minor) && v.checkout_available === false && (v.latest === null || isOwn(v.latest)) && Array.isArray(v.bids) && v.bids.every(isOwn) && (v.status === 'not_participating' ? v.latest === null && v.bids.length === 0 : v.latest !== null && v.bids.length > 0)
+  return object(v) && ['lot_id','slug','title'].every(k => typeof v[k] === 'string') && ['not_participating','leading','outbid','closing','won','lost'].includes(v.status as string) && integer(v.revision) && maybeMoney(v.current_price_minor) && typeof v.checkout_available === 'boolean' && (v.status === 'won' ? (typeof v.order_id === 'string' && /^[0-9a-f]{32}$/.test(v.order_id) && ['awaiting_payment','paid'].includes(v.order_state as string) && v.checkout_available === (v.order_state === 'awaiting_payment')) : v.checkout_available === false && v.order_id === undefined && v.order_state === undefined) && (v.latest === null || isOwn(v.latest)) && Array.isArray(v.bids) && v.bids.every(isOwn) && (v.status === 'not_participating' ? v.latest === null && v.bids.length === 0 : v.latest !== null && v.bids.length > 0)
 }
 export class AuctionError extends AccountError { snapshot?: AuctionResponse }
 async function request(path: string, signal?: AbortSignal, intent?: Intent): Promise<Record<string, unknown>> {

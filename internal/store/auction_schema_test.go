@@ -62,7 +62,7 @@ func TestAuctionMigrationConstraints(t *testing.T) {
 		t.Fatal(e)
 	}
 	v, e := s.Ready(context.Background())
-	if e != nil || v != 3 {
+	if e != nil || v != UserVersion {
 		t.Fatal(v, e)
 	}
 }
@@ -111,7 +111,7 @@ func TestUpgradeFromVersionTwo(t *testing.T) {
 				}
 			}
 			var ok bool
-			e = s.DB.QueryRow(`SELECT (SELECT max(version)=3 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT budget=123 AND token='token' FROM players) AND (SELECT value='capability' FROM server_config) AND (SELECT state='published' AND version=1 FROM catalog_events) AND (SELECT state='published' AND version=1 FROM catalog_lots) AND (SELECT count(*)=1 FROM catalog_event_lots) AND (SELECT password_verifier='verifier' FROM commerce_accounts) AND (SELECT token_digest='digest' AND revoked_at IS NULL FROM commerce_sessions) AND (SELECT saved_at=2 FROM commerce_watchlist) AND (SELECT completed_at=3 FROM commerce_account_seed_runs) AND (SELECT count(*)=0 FROM commerce_bids) AND (SELECT count(*)=0 FROM commerce_auction_results)`).Scan(&ok)
+			e = s.DB.QueryRow(`SELECT (SELECT max(version)=4 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT budget=123 AND token='token' FROM players) AND (SELECT value='capability' FROM server_config) AND (SELECT state='published' AND version=1 FROM catalog_events) AND (SELECT state='published' AND version=1 FROM catalog_lots) AND (SELECT count(*)=1 FROM catalog_event_lots) AND (SELECT password_verifier='verifier' FROM commerce_accounts) AND (SELECT token_digest='digest' AND revoked_at IS NULL FROM commerce_sessions) AND (SELECT saved_at=2 FROM commerce_watchlist) AND (SELECT completed_at=3 FROM commerce_account_seed_runs) AND (SELECT count(*)=0 FROM commerce_bids) AND (SELECT count(*)=0 FROM commerce_auction_results)`).Scan(&ok)
 			if e != nil || !ok {
 				t.Fatal("upgrade preservation", ok, e)
 			}

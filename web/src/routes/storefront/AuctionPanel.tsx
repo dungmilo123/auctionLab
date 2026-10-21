@@ -5,11 +5,12 @@ import { mayBid } from '@/auction/eligibility'
 import { useParticipation } from '@/auction/useParticipation'
 import { useAuctionCopy, auctionErrorKey, type AuctionKey } from '@/lib/auction-copy'
 import { formatCatalogMoney, parseCatalogMoney } from '@/lib/catalog-money'
+import { useOrderCopy } from '@/lib/order-copy'
 import { useAccount } from '@/account/AccountProvider'
 import { AccountStatus } from '@/routes/account/AccountStatus'
 
 function BidForm({ id, response, now, stale, accept, refresh }: { id:string;response:AuctionResponse|null;now:number;stale:boolean;accept:(s:AuctionResponse)=>void;refresh:()=>Promise<void> }) {
-  const { b }=useAuctionCopy();const {store}=useAccount();const [value,setValue]=useState('');const [intent,setIntent]=useState<Intent|null>(null);const [sending,setSending]=useState(false);const [message,setMessage]=useState<AuctionKey|null>(null)
+  const { b }=useAuctionCopy();const {o}=useOrderCopy();const {store}=useAccount();const [value,setValue]=useState('');const [intent,setIntent]=useState<Intent|null>(null);const [sending,setSending]=useState(false);const [message,setMessage]=useState<AuctionKey|null>(null)
   const pending=useRef<Intent|null>(null);const alive=useRef(true);const operation=useRef<AbortController|null>(null)
   useEffect(()=>{alive.current=true;const hide=()=>{alive.current=false;pending.current=null;operation.current?.abort();setIntent(null);setMessage(null);setSending(false)};window.addEventListener('pagehide',hide);return()=>{alive.current=false;pending.current=null;operation.current?.abort();window.removeEventListener('pagehide',hide)}},[])
   const load=useCallback((signal:AbortSignal)=>auctionAPI.participation(id,signal),[id]);const {state,retry}=useParticipation(load,response?.data.revision)
@@ -40,6 +41,7 @@ function BidForm({ id, response, now, stale, accept, refresh }: { id:string;resp
   }
   return <div className="stack">
     <p>{b(state.status==='success'?state.data.status:state.status==='loading'?'identity':'privateUnavailable')}</p>
+    {participation?.order_id&&<a className="site-button" href={`/account/checkout/${participation.order_id}`}>{o(participation.checkout_available?'open':'viewPaid')}</a>}
     {state.status==='error'&&<button className="site-button" type="button" onClick={retry}>{b('retry')}</button>}
     <form className="stack-small auction-form" onSubmit={submit}>
       <label htmlFor={`bid-${id}`}>{b('amount')}</label>

@@ -1,8 +1,8 @@
 export type Page = 'home' | 'auctions' | 'auctionDetail' | 'lots' | 'lotDetail'
-  | 'account' | 'login' | 'register' | 'watchlist' | 'bids' | 'orders'
+  | 'account' | 'login' | 'register' | 'watchlist' | 'bids' | 'wins' | 'checkout' | 'orders'
   | 'admin' | 'adminAuctions' | 'adminLots' | 'adminOrders' | 'notFound'
 export type Layout = 'storefront' | 'account' | 'admin'
-export type Route = { page: Page; layout: Layout; path: string; slug?: string }
+export type Route = { page: Page; layout: Layout; path: string; slug?: string; orderId?: string }
 
 export const SITE_ROUTES = [
   ['/', 'home', 'storefront'],
@@ -13,6 +13,7 @@ export const SITE_ROUTES = [
   ['/account/register', 'register', 'account'],
   ['/account/watchlist', 'watchlist', 'account'],
   ['/account/bids', 'bids', 'account'],
+  ['/account/wins', 'wins', 'account'],
   ['/account/orders', 'orders', 'account'],
   ['/admin', 'admin', 'admin'],
   ['/admin/auctions', 'adminAuctions', 'admin'],
@@ -26,6 +27,8 @@ export function routeFor(input: string): Route {
   const path = pathname !== '/' && pathname !== '//' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
   const exact = SITE_ROUTES.find(([href]) => href === path)
   if (exact) return { path, page: exact[1], layout: exact[2] }
+  const checkout = /^\/account\/checkout\/([0-9a-f]{32})$/.exec(path)
+  if (checkout) return { path, page: 'checkout', layout: 'account', orderId: checkout[1] }
   const detail = /^\/(auctions|lots)\/([^/]+)$/.exec(path)
   if (detail) return {
     path, layout: 'storefront',

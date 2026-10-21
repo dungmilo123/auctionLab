@@ -67,6 +67,30 @@ func (r AuctionRepository) Reconcile(ctx context.Context, now func() time.Time) 
 			}
 			n++
 		}
+		rows, e = tx.QueryContext(ctx, `SELECT r.lot_id FROM commerce_auction_results r WHERE r.outcome='sold' AND NOT EXISTS(SELECT 1 FROM commerce_orders o WHERE o.lot_id=r.lot_id) ORDER BY r.recorded_at,r.lot_id LIMIT 100`)
+		if e != nil {
+			return e
+		}
+		ids = nil
+		for rows.Next() {
+			var id string
+			if e = rows.Scan(&id); e != nil {
+				rows.Close()
+				return e
+			}
+			ids = append(ids, id)
+		}
+		e = rows.Err()
+		rows.Close()
+		if e != nil {
+			return e
+		}
+		for _, id := range ids {
+			if e = insertWinnerOrder(ctx, tx, id, now().UnixMilli()); e != nil {
+				return e
+			}
+			n++
+		}
 		return nil
 	})
 	return n, e
@@ -90,6 +114,11 @@ func advanceAuction(ctx context.Context, tx *sql.Tx, id string, now int64) error
 		_, e := tx.ExecContext(ctx, `INSERT INTO commerce_auction_results(lot_id,outcome,closes_at,recorded_at,winning_bid_id,winning_account_id,winning_amount_minor) SELECT a.lot_id,$2,a.closes_at,$3,b.id,b.account_id,b.amount_minor FROM commerce_lot_auctions a LEFT JOIN commerce_bids b ON b.id=a.leading_bid_id WHERE a.lot_id=$1`, id, outcome, now)
 		if e != nil {
 			return e
+		}
+		if outcome == "sold" {
+			if e = insertWinnerOrder(ctx, tx, id, now); e != nil {
+				return e
+			}
 		}
 		_, e = tx.ExecContext(ctx, `UPDATE commerce_lot_auctions SET state=$2,revision=revision+1 WHERE lot_id=$1`, id, outcome)
 		return e
@@ -374,6 +403,17 @@ func (r AuctionRepository) Participation(ctx context.Context, digest, id string,
 					}
 				} else if s.Leader != nil && s.Leader.Sequence == row.Latest.Sequence {
 					row.Status = "leading"
+				}
+			}
+			if row.Status == "won" {
+				var orderID, orderState string
+				e = tx.QueryRowContext(ctx, `SELECT id,state FROM commerce_orders WHERE lot_id=$1 AND owner_id=$2`, lotID, p.ID).Scan(&orderID, &orderState)
+				if e == nil {
+					row.OrderID = &orderID
+					row.OrderState = &orderState
+					row.CheckoutAvailable = orderState == "awaiting_payment"
+				} else if !errors.Is(e, sql.ErrNoRows) {
+					return e
 				}
 			}
 			out = append(out, row)

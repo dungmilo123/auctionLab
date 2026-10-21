@@ -1,0 +1,42 @@
+[
+  {
+    "capability": "auction-discovery",
+    "requirements_synced": 2,
+    "new_capability": false
+  },
+  {
+    "capability": "auction-event-publishing",
+    "requirements_synced": 1,
+    "new_capability": false
+  },
+  {
+    "capability": "catalog-administration",
+    "requirements_synced": 1,
+    "new_capability": false
+  },
+  {
+    "capability": "demo-payments",
+    "requirements_synced": 6,
+    "new_capability": true
+  },
+  {
+    "capability": "postgresql-persistence",
+    "requirements_synced": 3,
+    "new_capability": false
+  },
+  {
+    "capability": "timed-auction-bidding",
+    "requirements_synced": 3,
+    "new_capability": false
+  },
+  {
+    "capability": "website-navigation",
+    "requirements_synced": 3,
+    "new_capability": false
+  },
+  {
+    "capability": "winner-checkout",
+    "requirements_synced": 8,
+    "new_capability": true
+  }
+]

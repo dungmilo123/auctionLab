@@ -1,0 +1,44 @@
+[
+  {
+    "path": "/api/health",
+    "status": 200,
+    "cache_control": "no-store",
+    "content_type": "application/json",
+    "body": {
+      "database": "postgresql",
+      "ready": true,
+      "schema_version": 4,
+      "status": "ok"
+    }
+  },
+  {
+    "path": "/account/wins",
+    "status": 200,
+    "cache_control": "no-cache",
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "path": "/account/checkout/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": 200,
+    "cache_control": "no-cache",
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "path": "/api/account/wins",
+    "status": 401,
+    "cache_control": "no-store",
+    "content_type": "application/json"
+  },
+  {
+    "path": "/api/account/orders/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": 401,
+    "cache_control": "no-store",
+    "content_type": "application/json"
+  },
+  {
+    "path": "/api/catalog/lots",
+    "status": 200,
+    "cache_control": "no-store",
+    "content_type": "application/json"
+  }
+]

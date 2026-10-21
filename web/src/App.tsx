@@ -10,7 +10,7 @@ import AdminPage from '@/routes/admin-preview/AdminPage'
 
 const titles: Record<Page, SiteKey> = {
   home: 'homeTitle', auctions: 'auctions', auctionDetail: 'auctionDetail', lots: 'lots', lotDetail: 'lotDetail',
-  account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', orders: 'orders',
+  account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', wins: 'wins', checkout: 'checkout', orders: 'orders',
   admin: 'admin', adminAuctions: 'adminAuctions', adminLots: 'adminLots', adminOrders: 'adminOrders', notFound: 'notFound',
 }
 
@@ -25,7 +25,7 @@ export default function App() {
   const Layout = route.layout === 'account' ? AccountLayout : route.layout === 'admin' ? AdminLayout : StorefrontLayout
   return <LanguageProvider lang={lang} setLang={changeLang}>
     <AccountProvider><Layout route={route}>
-      {route.layout === 'account' ? <AccountPage page={route.page} />
+      {route.layout === 'account' ? <AccountPage page={route.page} orderId={route.orderId} />
         : route.layout === 'admin' ? <AdminPage page={route.page} />
           : <StorefrontPage route={route} />}
     </Layout></AccountProvider>

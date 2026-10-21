@@ -1,0 +1,97 @@
+{
+  "review": [
+    {
+      "focused": "BUTTON",
+      "language": "en",
+      "scrollWidth": 305,
+      "width": 320
+    },
+    {
+      "focused": "BUTTON",
+      "language": "vi",
+      "scrollWidth": 305,
+      "width": 320
+    },
+    {
+      "focused": "BUTTON",
+      "language": "en",
+      "scrollWidth": 360,
+      "width": 375
+    },
+    {
+      "focused": "BUTTON",
+      "language": "vi",
+      "scrollWidth": 360,
+      "width": 375
+    }
+  ],
+  "wins": [
+    {
+      "lang": "en",
+      "scroll": 305,
+      "width": 320
+    },
+    {
+      "lang": "vi",
+      "scroll": 305,
+      "width": 320
+    },
+    {
+      "lang": "en",
+      "scroll": 360,
+      "width": 375
+    },
+    {
+      "lang": "vi",
+      "scroll": 360,
+      "width": 375
+    }
+  ],
+  "paid": [
+    {
+      "lang": "en",
+      "scroll": 305,
+      "width": 320
+    },
+    {
+      "lang": "vi",
+      "scroll": 305,
+      "width": 320
+    },
+    {
+      "lang": "en",
+      "scroll": 360,
+      "width": 375
+    },
+    {
+      "lang": "vi",
+      "scroll": 360,
+      "width": 375
+    }
+  ],
+  "knownLimitations": [
+    "Actual 200-percent browser zoom unavailable",
+    "Reduced-motion preference control unavailable",
+    "Complete long-title and field-error matrix not exercised"
+  ],
+  "shippingTotalMinor": 14050,
+  "pickupTotalMinor": 12550,
+  "freeShippingZeroTotalMinor": 0,
+  "duplicateTabsSameReceipt": true,
+  "losingAccountOrderNotFound": true,
+  "logoutOldContactCleared": true,
+  "serviceInterruptionShowsUnknown": true,
+  "paidRemovedFromWins": true,
+  "receiptStableAfterRestart": true,
+  "zoomShortcutAttempt": {
+    "before": {
+      "width": 1280,
+      "dpr": 1
+    },
+    "after": {
+      "width": 1280,
+      "dpr": 1
+    },
+    "actualZoomChanged": false
+  }
+}

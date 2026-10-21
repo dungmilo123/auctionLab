@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-19.
 
-Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Change 5 `enable-timed-auction-bidding` đã triển khai và được archive ngày 2026-10-20 với 38/39 task; task 8.4 (zoom trình duyệt 200% và reduced motion thực tế) vẫn chưa xác minh. Các Changes 6–8 và ML extension vẫn là định hướng.
+Trạng thái: Changes 1–3 đã được archive. Change 4 `add-bidder-accounts-and-watchlists` đã triển khai và được archive ngày 2026-10-20 với 32/34 task; hai kiểm tra zoom trình duyệt 200% (7.3, 8.3) vẫn chờ xác minh thủ công, chưa nghiệm thu đầy đủ. Change 5 `enable-timed-auction-bidding` đã triển khai và được archive ngày 2026-10-20 với 38/39 task; task 8.4 (zoom trình duyệt 200% và reduced motion thực tế) vẫn chưa xác minh. Change 6 `add-winner-checkout-and-demo-payment` đã triển khai checkout riêng cho người thắng và thanh toán mô phỏng ngày 2026-10-21; kiểm tra PostgreSQL, test/race/build và diễn tập Vite/embedded đã đạt. Đã archive ngày 2026-10-21 với 35/36 task; nghiệm thu accessibility 7.3 còn thiếu zoom trình duyệt 200%, reduced motion thực tế và toàn bộ ma trận long-title/field-error, chưa nghiệm thu đầy đủ. Các Changes 7–8 và ML extension vẫn là định hướng.
 
 ## 1. Mục tiêu và phạm vi
 

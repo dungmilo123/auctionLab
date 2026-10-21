@@ -7,10 +7,14 @@ import AuthForm from './AuthForm'
 import Profile from './Profile'
 import Watchlist from './Watchlist'
 import Bids from './Bids'
+import Wins from './Wins'
+import Checkout from './Checkout'
 import { AccountStatus } from './AccountStatus'
-export default function AccountPage({ page }: { page: Page }) {
+export default function AccountPage({ page, orderId }: { page: Page; orderId?: string }) {
   const { t } = useSiteCopy(); const { a } = useAccountCopy(); const { state } = useAccount()
   if (page === 'login' || page === 'register') return <AuthForm key={page} kind={page} />
+  if (page === 'wins' || page === 'checkout') return <><PageHeading title={t(page)} intro={a('intro')}/><AccountStatus target={page==='wins'?'/account/wins':`/account/checkout/${orderId}`}>
+    {state.status==='signed-in'&&(page==='wins'?<Wins key={state.profile.id} owner={state.profile.id}/>:orderId&&<Checkout key={`${state.profile.id}:${orderId}`} owner={state.profile.id} orderID={orderId}/>)}</AccountStatus></>
   if (page === 'bids') return <><PageHeading title={t('bids')} intro={a('intro')}/><AccountStatus target="/account/bids">{state.status==='signed-in'&&<Bids key={state.profile.id}/>}</AccountStatus></>
   if (page === 'orders') return <><PageHeading title={t(page)} intro={a('intro')} /><UnavailableState title={t('unavailable')}>{t('ordersNote')}</UnavailableState></>
   return <><PageHeading title={page === 'watchlist' ? a('watchlist') : t('account')} intro={a('intro')} />

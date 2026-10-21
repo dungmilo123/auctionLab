@@ -73,6 +73,8 @@ type Participation struct {
 	CurrentPriceMinor *int64   `json:"current_price_minor"`
 	Revision          int64    `json:"revision"`
 	CheckoutAvailable bool     `json:"checkout_available"`
+	OrderID           *string  `json:"order_id,omitempty"`
+	OrderState        *string  `json:"order_state,omitempty"`
 }
 type Error struct{ Code string }
 

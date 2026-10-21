@@ -2,8 +2,8 @@ import { useLanguage } from './i18n'
 export const DISCOVERY_COPY = {
   published: ['Published collection', 'Bộ sưu tập đã công bố'],
   notice: [
-    'Explore published records, save lots and bid on open auctions. Checkout and orders remain unavailable.',
-    'Khám phá hiện vật đã công bố, lưu hiện vật và đặt giá khi mở đấu giá. Thanh toán và đơn hàng chưa khả dụng.',
+    'Explore published records, save lots and bid on open auctions. Winners can check out with simulated payment. Order history and fulfillment are planned for Change 7.',
+    'Khám phá hiện vật đã công bố, lưu hiện vật và đặt giá khi mở đấu giá. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và giao hàng sẽ có trong Change 7.',
   ],
   featured: ['Featured events', 'Phiên nổi bật'],
   nearest: ['Nearest planned closes', 'Hiện vật gần giờ đóng dự kiến'],
