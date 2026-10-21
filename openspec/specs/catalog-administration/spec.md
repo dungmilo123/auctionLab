@@ -90,7 +90,7 @@ Catalog controls SHALL reuse the vintage design system, support English/Vietname
 - **AND** entered catalog text retains its original content
 
 ### Requirement: Honest management and development boundaries
-Catalog pages SHALL identify working content management and available commerce accounts/watchlists/scheduled bidding and private winner checkout with simulated payment while order history, order administration and fulfillment remain unavailable. Bid participation SHALL show confirmed owner data. Publication SHALL remain a preparation action; the separate lifecycle executes its immutable schedules. A development admin page without a capability SHALL show an access-required state linking to the existing Go gate, preserve the HttpOnly credential boundary, and never expose draft data or simulate a successful save.
+Catalog pages SHALL identify working content management and available commerce accounts/watchlists/scheduled bidding and private winner checkout with simulated payment alongside owner order history and capability-authorized simulated fulfillment. Bid participation SHALL show confirmed owner data. Publication SHALL remain a preparation action; the separate lifecycle executes its immutable schedules. A development admin page without a capability SHALL show an access-required state linking to the existing Go gate, preserve the HttpOnly credential boundary, and never expose draft data or simulate a successful save.
 
 #### Scenario: Frontend-only development
 - **WHEN** an operator opens a catalog admin page on the development frontend without a reachable authorized API
@@ -99,7 +99,7 @@ Catalog pages SHALL identify working content management and available commerce a
 
 #### Scenario: Return to public previews
 - **WHEN** an operator saves or publishes content and visits the storefront, account, or order pages
-- **THEN** discovery remains public, account/profile/watchlist pages use their independent commerce session, and bid participation and lot execution use the separate commerce service while winners can use owned single-order checkout with explicitly simulated payment; order history, admin order operations and fulfillment remain unavailable
+- **THEN** discovery remains public, account/profile/watchlist pages use their independent commerce session, and bid participation and lot execution use the separate commerce service while winners can use owned single-order checkout/history with explicitly simulated payment and operators can track simulated fulfillment through dedicated authorized order APIs
 - **AND** catalog management itself neither signs an account in nor creates watch entries, bids, checkout or orders; publication makes its scheduled lots eligible for independent execution
 
 #### Scenario: Account sessions do not authorize catalog management
@@ -109,5 +109,5 @@ Catalog pages SHALL identify working content management and available commerce a
 
 #### Scenario: Catalog capability grants no purchase access
 - **WHEN** an operator has a catalog capability without the winning commerce account session
-- **THEN** catalog management remains usable but the capability grants no access to another account's order, contact, address or simulated receipt
-- **AND** `/admin/orders` remains a preview without order read/update controls
+- **THEN** the capability grants no purchase access through the owner-account namespace, no payment confirmation, profile access or buyer impersonation
+- **AND** `/admin/orders` uses its independently guarded operational API to inspect purchase/contact/address/receipt data and advance simulated fulfillment

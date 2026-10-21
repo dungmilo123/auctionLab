@@ -36,7 +36,7 @@ Each order SHALL retain lot/event IDs, public lot slug/title/condition/primary i
 - **AND** the snapshot contains no catalog admin notes, capability keys, game secrets or other participants' identity data
 
 ### Requirement: Private unpaid wins and order reads
-`/api/account/wins` SHALL list only the session owner's awaiting-payment orders, newest result-recording time first then order ID. `/api/account/orders/:orderId` SHALL return only that owner's checkout/confirmation data. Missing/foreign IDs SHALL share HTTP 404; invalid sessions SHALL receive HTTP 401. All private responses SHALL be no-store, and reads SHALL NOT create orders or payments.
+`/api/account/wins` SHALL list only the session owner's awaiting-payment orders, newest result-recording time first then order ID. `/api/account/orders/:orderId` SHALL return only that owner's checkout/confirmation data. Missing/foreign IDs SHALL share HTTP 404; invalid sessions SHALL receive HTTP 401. All private responses SHALL be no-store, and reads SHALL NOT create orders or payments. These account routes SHALL remain owner-only; dedicated capability-authorized admin order APIs are a separate operational projection.
 
 #### Scenario: Winner, loser and capability holder
 - **WHEN** the winner, a losing bidder, or a client with only an admin capability requests the order
@@ -47,6 +47,11 @@ Each order SHALL retain lot/event IDs, public lot slug/title/condition/primary i
 - **WHEN** an owned order becomes paid
 - **THEN** it disappears from unpaid wins and its direct private URL still returns the same paid confirmation
 - **AND** an owner without unpaid wins receives a successful empty list, distinct from backend failure
+
+#### Scenario: Fulfillment after checkout
+- **WHEN** an owner reopens a paid checkout after fulfillment has progressed
+- **THEN** the original paid confirmation remains read-only and links to `/account/orders/<orderId>` for its timeline
+- **AND** history detail links back to the same checkout for unpaid purchases and never offers another payment on paid orders
 
 ### Requirement: Single-order fulfillment and contact
 Checkout SHALL accept contact name, email and phone plus one fulfillment option enabled in the order snapshot. Delivery SHALL require address line 1, locality and two-letter country code, with optional line 2, region and postal code. Pickup SHALL require no address and SHALL discard address fields. Invalid or oversized values SHALL produce field errors without changing the order.

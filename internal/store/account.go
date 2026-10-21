@@ -137,6 +137,16 @@ func (r AccountRepository) Seeded(parent context.Context) (bool, error) {
 func (r AccountRepository) Seed(ctx context.Context, rows []account.Record, now int64) (bool, error) {
 	already := false
 	e := r.write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var e error
+		already, e = seedAccountsTx(ctx, tx, rows, now)
+		return e
+	})
+	return already, e
+}
+
+func seedAccountsTx(ctx context.Context, tx *sql.Tx, rows []account.Record, now int64) (bool, error) {
+	already := false
+	e := func() error {
 		if e := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM commerce_account_seed_runs WHERE version=1)`).Scan(&already); e != nil || already {
 			return e
 		}
@@ -147,6 +157,6 @@ func (r AccountRepository) Seed(ctx context.Context, rows []account.Record, now 
 		}
 		_, e := tx.ExecContext(ctx, `INSERT INTO commerce_account_seed_runs VALUES(1,$1)`, now)
 		return e
-	})
+	}()
 	return already, e
 }

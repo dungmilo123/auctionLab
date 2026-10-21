@@ -38,7 +38,7 @@ func TestCheckoutHTTPBoundariesPrivacyAndRecovery(t *testing.T) {
 		cookie             *http.Cookie
 		status             int
 	}{
-		{"GET", path, "", nil, 401}, {"GET", path, "", loser, 404}, {"GET", "/api/account/orders/missing", "", loser, 404}, {"GET", "/api/account/orders", "", winner, 404},
+		{"GET", path, "", nil, 401}, {"GET", path, "", loser, 404}, {"GET", "/api/account/orders/missing", "", loser, 404}, {"GET", "/api/account/orders", "", winner, 200},
 		{"POST", path + "/review", selection, winner, 200}, {"POST", path + "/review", strings.Replace(selection, `"name":"PII-MARKER"`, `"name":""`, 1), winner, 422},
 		{"POST", path + "/confirm", strings.TrimSuffix(confirm, "}") + `,"total_minor":0}`, winner, 400}, {"POST", path + "/confirm", strings.TrimSuffix(confirm, "}") + `,"owner_id":"other"}`, winner, 400},
 		{"POST", path + "/confirm", strings.TrimSuffix(confirm, "}") + `,"card_number":"123"}`, winner, 400}, {"POST", path + "/confirm", "null", winner, 400}, {"POST", path + "/review", `{"contact":null}`, winner, 400}, {"POST", path + "/confirm", strings.Repeat(" ", 8193) + confirm, winner, 400},

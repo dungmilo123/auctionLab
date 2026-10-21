@@ -1,0 +1,18 @@
+{
+  "shipping": {
+    "order_id": "879f2c97ee51326d1ad97467a6d4ba25",
+    "receipt_id": "26a01b71929e553c7a6d577f93deded8",
+    "version": 4,
+    "timeline_entries": 5,
+    "owner_admin_sha256": "a21971bdf9ea24481cf319eb37c81c3984d73149941b2d74eea1c2a62101a77e",
+    "public_projection_private_markers_absent": true
+  },
+  "pickup": {
+    "order_id": "1ed02cc10de258bf76b72d18ec7288bf",
+    "receipt_id": "ec1c5f998425e60a1c242139773ac207",
+    "version": 3,
+    "timeline_entries": 4,
+    "owner_admin_sha256": "e9f16df0f33ee3401f2d06ac63a8aac8fdeadaf6a927c973be5fdc3db660107a",
+    "public_projection_private_markers_absent": true
+  }
+}

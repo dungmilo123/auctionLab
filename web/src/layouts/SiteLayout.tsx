@@ -42,7 +42,7 @@ function SiteLayout({ route, children }: { route: Route; children: ReactNode }) 
     {route.page === 'adminLots' || route.page === 'adminAuctions' ? <div className="site-container preview-notice"><strong>{c('management')}</strong><span>{c('notice')}</span></div> : route.layout === 'storefront' ? <div className="site-container preview-notice"><strong>{d('published')}</strong><span>{d('notice')}</span></div> : <PreviewNotice />}
     <main id="main" tabIndex={-1} className="site-container site-main">
       {route.layout === 'storefront' ? children : <div className="context-layout">
-        <Navigation items={route.layout === 'account' ? account : admin} path={route.path}
+        <Navigation items={route.layout === 'account' ? account : admin} path={route.page==='orderDetail'?'/account/orders':route.path}
           label={route.layout === 'account' ? 'accountNav' : 'adminNav'} className="context-nav" />
         <div className="stack">{children}<a className="site-button site-button-link" href="/">{t('homeLink')}</a></div>
       </div>}

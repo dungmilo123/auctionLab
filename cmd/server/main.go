@@ -48,7 +48,20 @@ func run() error {
 	seedAccounts := flag.Bool("seed-accounts", false, "provision commerce demo accounts and exit")
 	seedCatalog := flag.Bool("seed-catalog", false, "seed catalog drafts and exit")
 	seedAt := flag.String("seed-at", "", "explicit RFC3339 seed reference instant")
+	prepareDemo := flag.Bool("prepare-demo", false, "prepare a new disposable demo schema and exit")
+	resetDemo := flag.Bool("reset-demo", false, "clear and reseed a marked disposable schema and exit")
+	demoStatus := flag.Bool("demo-status", false, "read committed demo generation without initialization")
+	demoSchema := flag.String("demo-schema", "", "explicit auctionlab_demo_<suffix> target")
+	confirmDemo := flag.String("confirm-demo-schema", "", "exact reset target confirmation")
 	flag.Parse()
+	demo := demoOptions{Prepare: *prepareDemo, Reset: *resetDemo, Status: *demoStatus, Schema: *demoSchema, Confirm: *confirmDemo, SeedAt: *seedAt}
+	otherDemoFlags := *seedAccounts || *seedCatalog || *importPath != "" || *verifyOnly || *wantTunnel || *cloudflaredBin != "" || *publicURL != "" || flag.NArg() != 0
+	if err := demo.validate(otherDemoFlags); err != nil {
+		return err
+	}
+	if demo.active() {
+		return demoMaintenance(demo, os.Getenv, os.Stdout)
+	}
 	if err := validateAccountSeedMode(*seedAccounts, *seedCatalog, *importPath, *verifyOnly, *seedAt, *wantTunnel); err != nil {
 		return err
 	}
@@ -288,7 +301,9 @@ func run() error {
 	// is chosen by specificity, not registration order (the comment above).
 	images := api.NewImages(api.ImagesDir(os.Getenv))
 	mux := http.NewServeMux()
-	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions).Orders = order.New(store.OrderRepository{Store: st}, time.Now)
+	orders := order.New(store.OrderRepository{Store: st}, time.Now)
+	api.RegisterAccount(mux, account.New(store.AccountRepository{Store: st}), auctions).Orders = orders
+	api.RegisterOrders(mux, adminKey, orders)
 	auctionStreams := api.RegisterAuction(mux, auctions)
 	defer auctionStreams.Close()
 	api.RegisterCatalog(mux, adminKey, catalog.New(store.CatalogRepository{Store: st}, time.Now, catalog.LocalMedia{ImagesDir: api.ImagesDir(os.Getenv), Embedded: spa}))

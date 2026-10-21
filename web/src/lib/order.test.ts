@@ -58,5 +58,5 @@ it("provides complete bilingual checkout and simulation copy", () => {
     expect(v.vi.trim()).not.toBe("");
   }
   expect(ORDER_COPY.simulation.en).toContain("No money");
-  expect(ORDER_COPY.history.en).toContain("Change 7");
+  expect(ORDER_COPY.history.en).toContain("timeline");
 });

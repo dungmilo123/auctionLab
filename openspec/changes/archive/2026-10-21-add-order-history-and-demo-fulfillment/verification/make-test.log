@@ -1,0 +1,43 @@
+go test ./...
+ok  	auctionlab	(cached)
+ok  	auctionlab/cmd/server	2.347s
+ok  	auctionlab/internal/account	(cached)
+ok  	auctionlab/internal/api	(cached)
+ok  	auctionlab/internal/auction	(cached)
+ok  	auctionlab/internal/catalog	(cached)
+ok  	auctionlab/internal/game	(cached)
+ok  	auctionlab/internal/hub	(cached)
+ok  	auctionlab/internal/netinfo	(cached)
+ok  	auctionlab/internal/order	(cached)
+?   	auctionlab/internal/sqliteimport	[no test files]
+ok  	auctionlab/internal/store	21.161s
+ok  	auctionlab/internal/testpg	(cached)
+ok  	auctionlab/internal/tunnel	(cached)
+?   	auctionlab/openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/verification/legacy-fixture	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-20-enable-timed-auction-bidding/verification/prepare	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/audit	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/prepare	[no test files]
+?   	auctionlab/scripts/dbfixture	[no test files]
+ok  	auctionlab/scripts/loadtest	(cached)
+cd web && npm run test
+
+> web@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.0 /home/milo/workspace/project/auctionLab/web
+
+
+ Test Files  34 passed (34)
+      Tests  543 passed (543)
+   Start at  21:18:10
+   Duration  533ms (transform 80%, import 11%, tests 7%, worker 2%)
+
+  Transform  transforming modules took 5.36s · 80% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+cd web && npm run lint
+
+> web@0.0.0 lint
+> oxlint

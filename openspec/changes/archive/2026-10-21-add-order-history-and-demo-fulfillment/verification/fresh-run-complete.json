@@ -1,0 +1,11 @@
+{
+  "fresh_order_id": "0a9e94df802dc74ac3dce6a39d0377e8",
+  "receipt_id": "9dc23ab893d55dd9f67baea61fc97389",
+  "state": "paid",
+  "status": "completed",
+  "version": 3,
+  "timeline_entries": 4,
+  "total_minor": 13050,
+  "owner_admin_equal": true,
+  "normal_apis_real_server_deadline": true
+}

@@ -19,7 +19,7 @@ func orderError(w http.ResponseWriter, e error) {
 		status = 404
 	case "validation":
 		status = 422
-	case "request_conflict":
+	case "request_conflict", "transition_conflict":
 		status = 409
 	}
 	catalogError(w, status, oe.Code, oe.Fields)
@@ -37,6 +37,19 @@ func (a *AccountAPI) checkout(w http.ResponseWriter, r *http.Request, digest str
 		} else {
 			catalogJSON(w, 200, map[string]any{"data": v})
 		}
+	}
+	if r.URL.Path == "/api/account/orders" {
+		if r.Method != "GET" {
+			catalogError(w, 404, "not_found", nil)
+			return
+		}
+		if r.URL.RawQuery != "" {
+			catalogError(w, 422, "validation", nil)
+			return
+		}
+		v, e := s.Repo.History(ctx, digest, s.Now)
+		send(v, e)
+		return
 	}
 	if r.URL.Path == "/api/account/wins" {
 		if r.Method != "GET" {

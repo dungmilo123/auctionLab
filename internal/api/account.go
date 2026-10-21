@@ -159,7 +159,7 @@ func (a *AccountAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch {
-	case r.URL.Path == "/api/account/wins" || strings.HasPrefix(r.URL.Path, "/api/account/orders/"):
+	case r.URL.Path == "/api/account/orders" || r.URL.Path == "/api/account/wins" || strings.HasPrefix(r.URL.Path, "/api/account/orders/"):
 		a.checkout(w, r, digest)
 	case r.URL.Path == "/api/account/bids" || strings.HasPrefix(r.URL.Path, "/api/account/bids/"):
 		a.auction(w, r, digest)

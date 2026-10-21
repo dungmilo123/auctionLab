@@ -520,7 +520,7 @@ export default function Checkout({
           )}
         </>
       )}
-      <p>{o("history")}</p>
+      <p><a href={`/account/orders/${orderID}`}>{o("history")}</a></p>
       <a href="/account/wins">{o("wins")}</a>
     </section>
   );

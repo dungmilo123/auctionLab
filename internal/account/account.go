@@ -172,20 +172,29 @@ func (s *Service) Provision(ctx context.Context, passwords [3]string) (bool, err
 	if e != nil || done {
 		return done, e
 	}
+	rows, e := s.PrepareSeed(passwords)
+	if e != nil {
+		return false, e
+	}
+	return s.Repo.Seed(ctx, rows, s.Now().UnixMilli())
+}
+
+// PrepareSeed validates and hashes operator credentials without database writes.
+func (s *Service) PrepareSeed(passwords [3]string) ([]Record, error) {
 	emails := []string{"bidder-one@demo.auctionlab.test", "bidder-two@demo.auctionlab.test", "operator@demo.auctionlab.test"}
 	names := []string{"Demo bidder one", "Demo bidder two", "Demo operator"}
 	rows := make([]Record, 3)
 	for i, p := range passwords {
 		if Password(p) != nil {
-			return false, Fail("seed_credentials_required")
+			return nil, Fail("seed_credentials_required")
 		}
 		v, e := s.Hash(p)
 		if e != nil {
-			return false, Fail("unavailable")
+			return nil, Fail("unavailable")
 		}
 		id, e := Random(24)
 		if e != nil {
-			return false, Fail("unavailable")
+			return nil, Fail("unavailable")
 		}
 		role := "bidder"
 		if i == 2 {
@@ -193,5 +202,5 @@ func (s *Service) Provision(ctx context.Context, passwords [3]string) (bool, err
 		}
 		rows[i] = Record{Profile: Profile{ID: id, Email: emails[i], DisplayName: names[i], Role: role, Demo: true}, Verifier: v, CreatedAt: s.Now().UnixMilli()}
 	}
-	return s.Repo.Seed(ctx, rows, s.Now().UnixMilli())
+	return rows, nil
 }

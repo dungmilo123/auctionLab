@@ -1,0 +1,14 @@
+{
+  "before_generation": "c4243b9606828aefbb40e5ab6a072db5",
+  "after_generation": "fca72defc58825a6d5e9a5bba94c8377",
+  "generation_changed": true,
+  "fresh_catalog_and_accounts": true,
+  "old_purchases_progress_absent": true,
+  "migrations_categories_capability_configuration_preserved": true,
+  "capability_pinned_by_operator_environment": true,
+  "control_schema_unchanged": true,
+  "media_unchanged": {
+    "files": 51,
+    "sha256": "ab4c19e2054b5ab233ebb3f7f953338e9fe397b86be3f78ccab8ecea4529c71e"
+  }
+}

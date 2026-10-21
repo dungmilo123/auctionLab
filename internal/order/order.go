@@ -81,6 +81,7 @@ type Order struct {
 	Selection          *Selection `json:"selection"`
 	Total              *Total     `json:"total"`
 	Receipt            *Receipt   `json:"receipt"`
+	Fulfillment        Progress   `json:"fulfillment"`
 }
 type Review struct {
 	Order     Order      `json:"order"`
@@ -221,6 +222,10 @@ func MakeReview(o Order, s Selection) (Review, error) {
 
 type Repository interface {
 	Wins(context.Context, string, func() time.Time) ([]Order, error)
+	History(context.Context, string, func() time.Time) ([]Summary, error)
+	AdminList(context.Context, Filters) ([]Summary, error)
+	AdminGet(context.Context, string) (Order, error)
+	Transition(context.Context, string, Transition, func() time.Time) (Order, error)
 	Get(context.Context, string, string, func() time.Time) (Order, error)
 	Confirm(context.Context, string, string, Intent, func() time.Time) (Confirmation, error)
 }

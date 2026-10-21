@@ -94,6 +94,9 @@ func readOrder(ctx context.Context, tx *sql.Tx, owner, id string, lock bool) (or
 			return o, order.Fail("unavailable")
 		}
 	}
+	if e = readProgress(ctx, tx, &o); e != nil {
+		return o, e
+	}
 	return o, nil
 }
 func (r OrderRepository) Get(ctx context.Context, digest, id string, now func() time.Time) (order.Order, error) {
@@ -210,6 +213,9 @@ func (r OrderRepository) Confirm(parent context.Context, digest, id string, i or
 		}
 		_, e = tx.ExecContext(ctx, `UPDATE commerce_orders SET state='paid',selection=$2,fulfillment_fee_minor=$3,total_minor=$4,paid_at=$5 WHERE id=$1`, id, string(selection), review.Total.FulfillmentFeeMinor, review.Total.TotalMinor, instant)
 		if e != nil {
+			return e
+		}
+		if e = initializeProgress(ctx, tx, id, receiptID, n.FulfillmentMethod, instant); e != nil {
 			return e
 		}
 		o, e = readOrder(ctx, tx, p.ID, id, false)

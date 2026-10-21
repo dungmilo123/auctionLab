@@ -1,6 +1,6 @@
 # AuctionLab — Collected Stories
 
-A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Commerce registration, sessions, self-profiles and private watchlists are available. Independent timed auctions, manual bids and private participation are available. Private winner checkout with simulated payment is available; order history and fulfillment remain Change 7 work.
+A vintage auction website using React, Vite, and TypeScript. Authorized catalog administration stores drafts and publishes complete events on PostgreSQL 18. Public discovery reads published records with search, category/phase filters, sorting, galleries and planned schedules. Commerce registration, sessions, self-profiles and private watchlists are available. Independent timed auctions, manual bids and private participation are available. Private winner checkout with simulated payment is available; owner order history and capability-authorized simulated fulfillment are available.
 
 ## Run and build
 
@@ -31,11 +31,12 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/account/bids` | Account | Session-owned accepted participation and leading/outbid/won/lost filters |
 | `/account/wins` | Account | Owned awaiting-payment wins |
 | `/account/checkout/:orderId` | Account | Owned checkout or stored simulated confirmation |
-| `/account/orders` | Account | Change 7 order-history preview |
+| `/account/orders` | Account | All owned purchases, minimal summaries |
+| `/account/orders/:orderId` | Account | Owned snapshot, receipt, contact and fulfillment timeline |
 | `/admin` | Admin | Management overview |
 | `/admin/auctions` | Admin | Stored event list, draft editor, schedule/order, preview and publish |
 | `/admin/lots` | Admin | Stored lot list and draft content editor |
-| `/admin/orders` | Admin | Processing unavailable |
+| `/admin/orders` | Admin | Capability-authorized stored orders and simulated fulfillment |
 | All other paths, including `/screen` and descendants | Storefront | Explicit 404 with a home recovery link |
 
 `src/lib/route.ts` matches case-sensitive segments, ignoring query/fragment and allowing one trailing slash. Detail routes accept exactly one nonempty slug and resolve the published record or a common draft/missing not-found view. Slugs are not inserted into HTML. No game alias is provided. The old player/admin/projector source and tests remain unmounted for future evaluation; the backend, database, protocol, and existing game data are preserved. Saved player tokens are not read or restored by the website.
@@ -131,7 +132,7 @@ PUT is a replacement: include every editable field you intend to retain, includi
 
 `/admin/lots?new=1` and `/admin/auctions?new=1` create drafts; `?edit=<id>` loads a stored editor. Unknown selections show not-found recovery. `routes/admin/CatalogPage.tsx`, `LotEditor.tsx`, `EventEditor.tsx`, and `Controls.tsx` supply stored lists, title-only creation, content/gallery/specification/money/fulfillment editing, membership/order, server-derived schedule, public-field preview and explicit publish. Ordered rows have labeled keyboard Move up/Move down/Remove actions. EN/VI labels and errors do not translate or clear entered content. Published records are read-only. Pending actions are disabled; failed saves retain input, and conflicts/uncertain commits require reload rather than automatic overwrite. Reload explicitly replaces entered values with the committed record, with a warning to copy unsaved content first.
 
-The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account/profile/watchlist views use their independent commerce session, and bids use the separate commerce auction service; private winner checkout with simulated payment is available; order history and fulfillment remain Change 7 previews. The website mounts no legacy game view or WebSocket.
+The Go document gate remains unchanged. For Vite, authorize on the Go `/admin` gate at **the same hostname** (for example `http://localhost:8080/admin` and `http://localhost:5173/admin/lots`); do not mix `localhost` and `127.0.0.1`. Use the entry link from the server console, return to Vite, then reload. Host-only cookies work across ports. A frontend-only page shows access-required/backend-unavailable recovery and never offers a secret field or mutable sample fallback. Public discovery reads only published records; account/profile/watchlist views use their independent commerce session, and bids use the separate commerce auction service; private winner checkout with simulated payment is available; owner history and simulated fulfillment are available. The website mounts no legacy game view or WebSocket.
 
 ## Explicit demo dataset
 
@@ -180,7 +181,7 @@ GET `/api/account/watchlist/{lotID}` returns `{data:{saved:boolean}}` for a publ
 
 `/account/login` and `/account/register` are native document destinations within the account shell. Labeled forms use username/new-password/current-password autocomplete, field-associated errors, disabled pending controls and a focused error summary. Confirmed login/registration navigates to validated `return_to`; unknown, external, encoded-path, control/backslash, admin/API/WS/assets or auth-loop destinations fall back to `/account`. Ordinary discovery queries are retained, fragments removed. Authentication never replays a watch or bid action.
 
-An in-memory provider checks GET `/api/account` independently of public discovery and distinguishes checking, signed-out, signed-in and unavailable. It clears private state before restoration/focus revalidation and on pagehide/logout, aborting or ignoring obsolete responses. No game token or account credential enters browser storage. Private views wait for server validation. `/account` shows the safe profile, read-only email, editable display name, role/demo labels and explicit logout; failures retain inputs and offer recovery. `/account/bids` shows accepted owner participation; `/account/orders` remains an unavailable preview.
+An in-memory provider checks GET `/api/account` independently of public discovery and distinguishes checking, signed-out, signed-in and unavailable. It clears private state before restoration/focus revalidation and on pagehide/logout, aborting or ignoring obsolete responses. No game token or account credential enters browser storage. Private views wait for server validation. `/account` shows the safe profile, read-only email, editable display name, role/demo labels and explicit logout; failures retain inputs and offer recovery. `/account/bids` shows accepted owner participation; `/account/orders` loads owner history and fulfillment details.
 
 Published lot detail has a separate authenticated save/remove action alongside the separate commerce bid panel and existing delivery/pickup disclosures. Anonymous visitors get a login link back to that lot and must explicitly choose save after login. Membership is loaded per lot/account, confirmed before display, and uncertain results require reloading saved state before another action. `/account/watchlist` loads real server-owned cards, deterministic order/count and confirmed removal. Checking, login-required, empty, unavailable and other errors remain distinct; failed reads never become empty fixtures. EN/VI messages announce pending/results, native links remain usable, and long titles/missing images use the existing responsive fallback. Public content stays usable when the account service fails.
 
@@ -192,14 +193,34 @@ Manual decimal USD entry uses exact cents, without floating-point rounding. Subm
 
 `/account/bids` loads only the current session's accepted participation, one row per lot, latest own/current amounts, native lot links and All/leading/outbid/won/lost filters. Closing stays in All. Visible private reads refresh every two seconds, on focus/public revision and after submission. Loading, signed-out, failed read and empty results are distinct; obsolete responses and prior account state are cleared. EN/VI labels and polite confirmed-result announcements preserve keyboard focus; countdown ticks are not live announcements.
 
-Discovery's planned URL phases (`all/upcoming/window/elapsed`), catalog DTOs and opening-price sorts are unchanged. Accounts, watchlists and scheduled bidding are available. Winning is a durable auction result only: checkout, payment and orders remain unavailable, including in the won view. Published schedules/results cannot be edited to replay a demo; prepare new future-scheduled drafts as described in the root README.
+Discovery's planned URL phases (`all/upcoming/window/elapsed`), catalog DTOs and opening-price sorts are unchanged. Accounts, watchlists and scheduled bidding are available. A sold result creates an owner order; won views link to private checkout with simulated payment and stored order history. Published schedules/results cannot be edited to replay a demo; prepare new future-scheduled drafts as described in the root README.
 
 ## Winner checkout (Change 6)
 
-`/account/wins` lists the current owner's unpaid wins. `/account/checkout/<32-lowercase-hex-order-id>` is an exact single-order route, with safe login return and explicit selected-ID dispatch. The existing account namespace serves private wins/order reads and stateless review/atomic simulated confirmation; see `../internal/order/README.md`. Vite uses the same API guard as the embedded binary. `/account/orders` and `/admin/orders` remain unavailable Change 7 history/management previews.
+`/account/wins` lists the current owner's unpaid wins. `/account/checkout/<32-lowercase-hex-order-id>` is an exact single-order route, with safe login return and explicit selected-ID dispatch. The existing account namespace serves private wins/order reads and stateless review/atomic simulated confirmation; see `../internal/order/README.md`. Vite uses the same API guard as the embedded binary. `/account/orders` provides owner history; `/admin/orders` provides capability-authorized fulfillment.
 
 The checkout flow is form → server review → deliberate simulation → stored paid confirmation. EN/VI labels cover loading, empty, signed-out, missing, field validation, pending, unknown, unavailable and paid states. Both simulation methods state that no money is charged, including for non-demo lots. No card/bank inputs exist. Item/fee components retain their catalog limit; the separate order formatter accepts their exact combined maximum of 2,000,000,000,000 USD cents.
 
 Private reads/mutations are bound to owner/order and lifecycle tokens. Navigation, logout, account switch and page restoration abort obsolete work and suppress late responses. Language changes preserve the active owned form. Edits discard the previous review/intent. Confirmation disables competing edits/submits; unknown outcomes require stored-order recovery before deliberate same-intent retry. Reload reads durable state and clears unsent personal values; login/reconnect never replays payment. Contact/address/request intent stays out of URLs, browser storage and logs. Paid orders show their stored contact/fulfillment, exact amounts, receipt and time without pay controls. Unpaid wins omit paid orders on the next read. General order history and delivery tracking remain future work.
 
 Current measured acceptance and any missing actual-browser zoom/reduced-motion checks are in the [Change 6 archive report](../openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/REPORT.md); earlier Change 4/5 archive limitations remain unchanged.
+
+## Order history and operator fulfillment API
+
+Buyer routes `/account/orders` and exact `/account/orders/<32 lowercase hex>` load session-owned history/detail. Paid checkout stays read-only and links to the same history record. Summaries omit contact/address/receipts; detail includes original snapshot, exact USD amounts, stored contact/receipt and the shared fulfillment timeline. Logout/account changes/page restoration suppress obsolete private responses. EN/VI labels preserve authored text.
+
+Operator `/admin/orders?status=all&method=all&view=<id>` uses the existing Go document gate and independent capability APIs. Commerce admin roles alone authorize nothing here. Document `view` is not forwarded to collection filtering. Invalid filters/selection have reset recovery; missing, empty, access and service failure remain distinct.
+
+| API | Authorization | Contract |
+| --- | --- | --- |
+| GET `/api/account/orders` | owner session | `{data: Summary[]}`; no query/owner selection |
+| GET `/api/account/orders/:id` | owner session | existing checkout Order plus fulfillment/timeline |
+| GET `/api/admin/orders?status=preparing&method=shipping` | capability cookie | minimal summaries, filters combined with AND |
+| GET `/api/admin/orders/:id` | capability cookie | operational snapshot/contact/address/receipt/timeline |
+| POST `/api/admin/orders/:id/transition` | capability + admin boundary | strict `{expected_version,next_status,shipment?}`, confirmed detail |
+
+Absent status/method means `all`. Status accepts `all|awaiting_payment|paid|preparing|shipped|ready_for_pickup|completed`; method accepts `all|shipping|pickup|unselected`. Duplicate/unknown fields and invalid values fail with 422. Summaries sort by original result-recording time descending, then ID ascending. Unpaid method and total are null. Payment state stays paid at every later fulfillment stage.
+
+Use the same browser origin (including Vite's `/api` proxy), `Content-Type: application/json`, and `X-AuctionLab-Admin: 1` for transitions. At most 8 KiB; financial/identity/contact fields are unsupported. Example preparation body: `{"expected_version":1,"next_status":"preparing"}`. At version 2 ship with `{"expected_version":2,"next_status":"shipped","shipment":{"carrier":"Demo carrier","tracking_reference":"DEMO-01"}}`. Carrier/reference are trimmed, control-free, 1–120/1–200 Unicode code points, rendered as text and immutable after shipment. Pickup uses ready_for_pickup then completed without shipment fields. No carrier service is contacted.
+
+Errors are no-store JSON: 400 body, 401 access, 403 origin/header, 404 missing, 409 stale/invalid transition, 415 media type, 422 fields/filters, 503 unavailable/commit_unknown. The workspace disables duplicate pending actions, retains valid unsaved shipping text across language changes, and requires successful durable reload after conflict/unknown outcome before a deliberate action. Gate recovery never replays a mutation. See `internal/order/README.md` for full projection and payment/fulfillment invariants.

@@ -10,7 +10,7 @@ import AdminPage from '@/routes/admin-preview/AdminPage'
 
 const titles: Record<Page, SiteKey> = {
   home: 'homeTitle', auctions: 'auctions', auctionDetail: 'auctionDetail', lots: 'lots', lotDetail: 'lotDetail',
-  account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', wins: 'wins', checkout: 'checkout', orders: 'orders',
+  account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', wins: 'wins', checkout: 'checkout', orders: 'orders', orderDetail: 'orders',
   admin: 'admin', adminAuctions: 'adminAuctions', adminLots: 'adminLots', adminOrders: 'adminOrders', notFound: 'notFound',
 }
 

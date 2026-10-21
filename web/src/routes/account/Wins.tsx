@@ -48,7 +48,7 @@ export default function Wins({ owner }: { owner: string }) {
           ))}
         </ul>
       )}
-      <p>{o("history")}</p>
+      <p><a href={"/account/orders"}>{o("history")}</a></p>
     </section>
   );
 }

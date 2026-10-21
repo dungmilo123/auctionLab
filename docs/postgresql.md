@@ -38,7 +38,7 @@ Replace the angle-bracket placeholders privately. `DATABASE_URL` is required; `D
 
 The pool permits eight connections, two idle, with a five-minute idle lifetime. A dedicated connection holds game ownership and executes game mutations. Connection/transaction deadlines default to five seconds. Catalog transactions take their own schema advisory lock. Public aggregates use read-only Repeatable Read snapshots. PostgreSQL durable defaults remain enabled.
 
-`GET /api/health` probes current pool/schema/writer readiness with a one-second deadline. It returns 200 with `status: "ok"`, `database: "postgresql"`, `ready: true`, `schema_version: 4`; failure returns 503, `status: "unavailable"`, `ready: false`. There is no `wal` field. Configuration and API errors do not echo connection strings, passwords, or row values.
+`GET /api/health` probes current pool/schema/writer readiness with a one-second deadline. It returns 200 with `status: "ok"`, `database: "postgresql"`, `ready: true`, `schema_version: 5`; failure returns 503, `status: "unavailable"`, `ready: false`. There is no `wal` field. Configuration and API errors do not echo connection strings, passwords, or row values.
 
 `make build` always builds the frontend first. The committed `web/dist/.gitkeep` allows Go builds on a clean checkout. Node is not required to run the resulting app. `make dev-web` alone needs the matching Go account API; public discovery needs the matching Go API, and catalog management needs authorized API access.
 
@@ -46,9 +46,9 @@ The shared `internal/testpg` fixture requires `TEST_DATABASE_URL`, generates a u
 
 PostgreSQL migration versions are independent of SQLite source version 4. The ledger and DDL commit together; newer ledgers are refused. Migration does not reinterpret old game balances or JSON.
 
-Migration 2 (`002_accounts_and_watchlists.sql`) adds `commerce_accounts`, digest-only `commerce_sessions`, owner/lot-keyed `commerce_watchlist`, and `commerce_account_seed_runs`. Migration 1 stays immutable. Existing game identities, amounts, revisions, catalog publication, and the admin capability stay unchanged; no accounts are inferred from players. Health reports the supported ledger version (currently 4). Migration and ledger changes are atomic, including upgrades from populated version 1. Test targets above require an explicit disposable PostgreSQL database.
+Migration 2 (`002_accounts_and_watchlists.sql`) adds `commerce_accounts`, digest-only `commerce_sessions`, owner/lot-keyed `commerce_watchlist`, and `commerce_account_seed_runs`. Migration 1 stays immutable. Existing game identities, amounts, revisions, catalog publication, and the admin capability stay unchanged; no accounts are inferred from players. Health reports the supported ledger version (currently 5). Migration and ledger changes are atomic, including upgrades from populated version 1. Test targets above require an explicit disposable PostgreSQL database.
 
-Before upgrading, stop the sole writer and back up the application schema with your PostgreSQL backup tooling. Restart a schema-4-compatible build to migrate. For rollback, keep the service stopped and use a compatible build or explicitly restore the pre-upgrade backup; restoring that snapshot loses all later changes, including bids/results and account/watchlist changes. Schema-2 binaries refuse schema 3; never lower the ledger to run an older binary. There is no automatic table deletion or down-migration. A first offline SQLite import refuses any target containing commerce rows, including account seed markers, auction/bid/result rows and orders/simulated receipts; it never converts legacy players into accounts.
+Before upgrading, stop the sole writer and back up the application schema with your PostgreSQL backup tooling. Restart a schema-5-compatible build to migrate. For rollback, keep the service stopped and use a compatible build or explicitly restore the pre-upgrade backup; restoring that snapshot loses all later changes, including bids/results and account/watchlist changes. Schema-2 binaries refuse schema 3; never lower the ledger to run an older binary. There is no automatic table deletion or down-migration. A first offline SQLite import refuses any target containing commerce rows, including account seed markers, auction/bid/result rows and orders/simulated receipts; it never converts legacy players into accounts.
 
 ## Explicit demo account provisioning
 
@@ -74,4 +74,49 @@ Migration 4 (`004_winner_checkout.sql`) adds `commerce_orders` and `commerce_dem
 
 Normal startup subsequently drains missing sold-result orders before HTTP readiness; background reconciliation uses the same bounded pass. New sold closure commits result/order atomically. For historical adoption, `closes_at` and `recorded_at` preserve the original result, while `created_at` is the adoption time. Existing order IDs/snapshots/paid selections/receipts are never rewritten by reconciliation. Offline import and account/catalog seed modes return before adoption. The SQLite importer treats both purchase tables as occupied; it never merges purchase data or changes legacy units.
 
-Before upgrading, stop the sole writer and take a recoverable schema-3 backup. Start the schema-4 build and verify `/api/health` reports version 4 and readiness. Older binaries refuse schema 4. Prefer roll-forward fixes after purchases exist. A restore requires the writer stopped and an explicit decision accepting loss of post-backup bids, accounts and simulated purchase data; never lower the ledger or delete purchase tables to run an old binary. No destructive down migration or automatic reset is provided. Checkout and closure use the leased writer, bounded deadlines and commit-before-success; lost leases fail readiness and are never reacquired by stale memory. Unknown confirmation commits require authenticated durable readback.
+Before upgrading, stop the sole writer and take a recoverable schema-3 backup. Start the schema-5 build and verify `/api/health` reports version 5 and readiness. Schema-3 binaries refuse schema 4; schema-4 binaries refuse schema 5. Prefer roll-forward fixes after purchases exist. A restore requires the writer stopped and an explicit decision accepting loss of post-backup bids, accounts and simulated purchase data; never lower the ledger or delete purchase tables to run an old binary. No destructive down migration or automatic reset is provided. Checkout and closure use the leased writer, bounded deadlines and commit-before-success; lost leases fail readiness and are never reacquired by stale memory. Unknown confirmation commits require authenticated durable readback.
+
+## Fulfillment upgrade to schema 5
+
+Stop the sole writer and back up the schema-4 database before starting this build. For example, with connection credentials supplied privately through normal PostgreSQL environment/service configuration:
+
+```sh
+pg_dump --format=custom --schema="$DATABASE_SCHEMA" --file=auctionlab-before-schema5.dump "$DATABASE_URL"
+make build
+./bin/auctionlab
+```
+
+Migration 5 adds fulfillment progress/events, minimal history/filter indexes and empty disposable-environment metadata. Migrations 1–4 are unchanged. Existing paid orders receive exactly paid/version 1 at their original receipt time and selected method; unpaid orders receive no stored progress. No later event/order/payment or demo marker is invented. Inconsistent historic purchases fail the entire migration and retain ledger version 4. Confirm `/api/health` reports ready/schema_version 5 and compare historical receipts before operations. Normal startup still adopts missing historical sold orders before HTTP readiness.
+
+Prefer roll-forward correction. Older binaries refuse version 5. To roll back, stop the writer, restore the pre-upgrade backup into an explicitly selected compatible target and use its matching binary. Restoration loses every post-backup bid, account, purchase, receipt and fulfillment update. Never lower the ledger, edit old migrations or run an old binary against schema 5.
+
+## Disposable full-demo preparation, status and reset
+
+Choose a new dedicated `auctionlab_demo_<lowercase_suffix>` schema. These modes use required DATABASE_URL and the explicit `--demo-schema` only; DATABASE_SCHEMA/default auctionlab never selects the maintenance target. Do not use operational data here: every application record later placed in this tool-marked schema is disposable, including manually authored records and completed purchases.
+
+Supply `DEMO_BIDDER_ONE_PASSWORD`, `DEMO_BIDDER_TWO_PASSWORD`, `DEMO_ADMIN_PASSWORD` privately, using the normal 12–128-character policy. No defaults or password flags exist. With the schema writer stopped:
+
+```sh
+./bin/auctionlab --prepare-demo --demo-schema auctionlab_demo_rehearsal --seed-at 2026-10-21T00:00:00Z
+./bin/auctionlab --demo-status --demo-schema auctionlab_demo_rehearsal
+DATABASE_SCHEMA=auctionlab_demo_rehearsal ./bin/auctionlab
+```
+
+Preparation accepts only unused known targets and seeds 18 labeled draft lots, three events and three demo accounts atomically with a marker/generation. A first failed seed may leave an empty migrated schema. Repeating preparation on a marked target reports already_prepared with its original generation/reference, without reading passwords, rewriting credentials or rebasing dates. Unmarked populated targets, import markers, unexpected objects/dependencies and active writers are refused. Status takes a read-only transaction, initializes nothing, and returns only target/format/generation/seed reference/preparation time. Missing/unmarked targets fail without writes.
+
+Schedules retain +24/+48/+72 hour openings, first close +1 hour and 60-second staggering. Through `/admin/auctions`, deliberately edit **draft** future times for a short run, review/publish, then use two separately signed-in bidders to bid. Wait for server closure, open the winning owner's checkout, confirm simulated shipping or pickup, and advance through `/admin/orders` using the capability. Compare `/account/orders/<id>` with the operator timeline. No maintenance command publishes, bids, chooses winners, pays or fulfills.
+
+After completing the rehearsal, stop the writer, back up any rehearsal data worth retaining, supply the three new passwords, then explicitly reset and restart:
+
+```sh
+./bin/auctionlab --demo-status --demo-schema auctionlab_demo_rehearsal
+./bin/auctionlab --reset-demo --demo-schema auctionlab_demo_rehearsal --confirm-demo-schema auctionlab_demo_rehearsal --seed-at 2026-10-22T00:00:00Z
+./bin/auctionlab --demo-status --demo-schema auctionlab_demo_rehearsal
+DATABASE_SCHEMA=auctionlab_demo_rehearsal ./bin/auctionlab
+```
+
+Reset requires the exact prefix, matching stored marker, exact confirmation and exclusive writer lease. It clears/reseeds in one transaction using an explicit schema-qualified allowlist, without CASCADE, dropping the schema or restarting identities/sequences. Fresh account IDs invalidate old sessions. A failure before commit preserves the previous generation/data; a lost response is unknown. Inspect status and compare the committed generation/reference before another deliberate reset. Never automatically reset again.
+
+Erased tables: commerce_order_fulfillment_events, commerce_order_fulfillment, commerce_demo_payments, commerce_orders, commerce_auction_results, commerce_bids, commerce_lot_auctions, commerce_watchlist, commerce_sessions, commerce_accounts, commerce_account_seed_runs, catalog_lot_images, catalog_event_lots, catalog_lots, catalog_events, catalog_seed_runs, auction_runtime, sealed_bids, bids, events, game, players, items, and empty sqlite_import_runs. Preserve schema_migrations, server_config (capability), catalog_categories and demo_environments (fresh generation). Other schemas and local media are never deleted. Cross-schema references or unknown tables/views/routines/triggers cause refusal/rollback. An actual SQLite import completion marker is always refused.
+
+Demo modes are mutually exclusive with import/verify/account-seed/catalog-seed/tunnel options and return before HTTP/game/auction/tunnel startup. Normal startup and retained game reset never clear commerce or rebase published schedules. Use ordinary standalone seed modes when their narrower repeat-safe scope is intended.

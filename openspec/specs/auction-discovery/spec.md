@@ -116,7 +116,7 @@ Public pages SHALL distinguish loading, empty catalog, no matches, missing recor
 - **AND** retry reloads public data, preserves discovery selections, and only a valid successful response produces results
 
 ### Requirement: Accessible bilingual discovery without transactions
-Discovery SHALL follow the existing design system at mobile and desktop widths, support keyboard use, 200 percent text zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored. Demo records SHALL retain a visible demo label. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout SHALL link through owner-authenticated order reads; order history and fulfillment SHALL remain unavailable previews.
+Discovery SHALL follow the existing design system at mobile and desktop widths, support keyboard use, 200 percent text zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored. Demo records SHALL retain a visible demo label. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout, order history and fulfillment detail SHALL link through owner-authenticated reads; public discovery SHALL expose no private purchase or shipping data. Notices SHALL identify payment and fulfillment as simulated and keep analytics/recommendations as future work.
 
 #### Scenario: Mobile and language switch
 - **WHEN** a visitor browses at 320 or 375 CSS pixels, changes EN/VI, or enlarges text to 200 percent
@@ -130,7 +130,7 @@ Discovery SHALL follow the existing design system at mobile and desktop widths, 
 
 #### Scenario: Winner continues from the public lot
 - **WHEN** an authenticated winner views a sold lot with confirmed owned participation
-- **THEN** a link leads to that owner's checkout or paid confirmation without placing purchase details into the public lot response
+- **THEN** links lead to that owner's checkout/confirmation and order history/detail without placing purchase or fulfillment details into the public lot response
 - **AND** anonymous/losing visitors see only the public result and public discovery remains usable if checkout is unavailable
 
 ### Requirement: Separate execution data from discovery selections

@@ -217,7 +217,7 @@ func TestWinnerMigrationFourUpgradeAndRollback(t *testing.T) {
 				}
 			}
 			var ok bool
-			e = s.DB.QueryRow(`SELECT (SELECT max(version)=4 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT value='fixture' FROM server_config) AND (SELECT count(*)=0 FROM commerce_orders) AND (SELECT count(*)=0 FROM commerce_demo_payments)`).Scan(&ok)
+			e = s.DB.QueryRow(`SELECT (SELECT max(version)=5 FROM schema_migrations) AND (SELECT revision=42 FROM game) AND (SELECT value='fixture' FROM server_config) AND (SELECT count(*)=0 FROM commerce_orders) AND (SELECT count(*)=0 FROM commerce_demo_payments)`).Scan(&ok)
 			if e != nil || !ok {
 				t.Fatal(ok, e)
 			}

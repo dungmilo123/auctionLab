@@ -1,3 +1,4 @@
+import { isProgress, type Progress } from "./fulfillment";
 import { AccountError } from "./account";
 import { validInstant } from "./public-catalog";
 import { MAX_CATALOG_MONEY } from "@/lib/catalog-money";
@@ -23,6 +24,7 @@ export type Total = {
   total_minor: number;
 };
 export type Order = {
+ fulfillment?: Progress;
   id: string;
   owner_id: string;
   winning_bid_id: number;
@@ -186,6 +188,7 @@ export function isOrder(
     )
   )
     return false;
+  if (v.fulfillment !== undefined && !isProgress(v.fulfillment, v as Order)) return false;
   if (v.state === "awaiting_payment")
     return v.selection === null && v.total === null && v.receipt === null;
   if (

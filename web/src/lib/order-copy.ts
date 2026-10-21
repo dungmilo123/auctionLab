@@ -89,8 +89,8 @@ export const ORDER_COPY = {
     vi: "Mã yêu cầu này đã được chấp nhận với thông tin khác. Tải đơn đã lưu.",
   },
   history: {
-    en: "Order history and delivery tracking are planned for Change 7.",
-    vi: "Lịch sử đơn hàng và theo dõi giao hàng sẽ có trong Change 7.",
+    en: "View your orders and simulated delivery timeline.",
+    vi: "Xem đơn hàng và tiến độ nhận hàng mô phỏng.",
   },
   demo: { en: "Demo record", vi: "Dữ liệu minh họa" },
   viewPaid: { en: "View payment confirmation", vi: "Xem xác nhận thanh toán" },

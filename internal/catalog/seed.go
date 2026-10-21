@@ -14,7 +14,14 @@ var seedData []byte
 func number(n int64) *int64 { return &n }
 func (s *Service) Seed(ctx context.Context, at time.Time) (string, error) {
 	status := "seeded"
-	err := s.Repo.Write(ctx, func(tx Tx) error {
+	err := s.Repo.Write(ctx, func(tx Tx) error { var e error; status, e = s.SeedTx(tx, at); return e })
+	return status, err
+}
+
+// SeedTx participates in the caller transaction; it never acquires writer ownership.
+func (s *Service) SeedTx(tx Tx, at time.Time) (string, error) {
+	status := "seeded"
+	err := func() error {
 		applied, err := tx.Seeded(1)
 		if err != nil {
 			return err
@@ -86,6 +93,6 @@ func (s *Service) Seed(ctx context.Context, at time.Time) (string, error) {
 			}
 		}
 		return tx.MarkSeed(1, reference)
-	})
+	}()
 	return status, err
 }

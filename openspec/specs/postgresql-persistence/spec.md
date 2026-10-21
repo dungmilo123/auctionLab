@@ -20,7 +20,7 @@ Normal server and catalog seed modes SHALL use PostgreSQL 18 through required `D
 - **AND** neither database credentials nor a fallback SQLite database is exposed or created
 
 ### Requirement: Versioned PostgreSQL schema
-PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. Fresh and upgraded schemas SHALL support retained game, catalog, accounts, sessions, watchlists, commerce lot auctions, accepted bids, immutable results, winner orders and simulated payment receipts. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
+PostgreSQL migrations SHALL have their own ordered version ledger and serialize concurrent schema changes. Fresh and upgraded schemas SHALL support retained game, catalog, accounts, sessions, watchlists, commerce lot auctions, accepted bids, immutable results, winner orders, simulated payment receipts, fulfillment progress/history and disposable-demo environment metadata. Repeated migration SHALL be safe; a failed step SHALL NOT be recorded as applied, and a newer-than-supported schema SHALL be refused. SQLite source versions SHALL NOT become PostgreSQL migration versions.
 
 #### Scenario: Fresh and repeated migration
 - **WHEN** schema initialization runs against a fresh PostgreSQL application schema and runs again
@@ -38,13 +38,13 @@ PostgreSQL migrations SHALL have their own ordered version ledger and serialize 
 - **AND** no accounts or watchlist entries are inferred from legacy players or created automatically
 
 #### Scenario: Upgrade schema 2 for bidding
-- **WHEN** a version-2 database applies bidding migration 3 and checkout migration 4 and migration runs again
+- **WHEN** a version-2 database applies bidding migration 3, checkout migration 4 and fulfillment migration 5 and migration runs again
 - **THEN** new commerce auction storage exists once, previous migrations remain unchanged, and accounts/sessions/watchlists/catalog/game/admin capability are preserved
-- **AND** migration alone creates no bids or results and readiness reports supported schema version 4
+- **AND** migration alone creates no bids or results and readiness reports supported schema version 5
 
 #### Scenario: Upgrade schema 3 for checkout
-- **WHEN** a version-3 database applies migration 4 and migration runs again
-- **THEN** orders/payment storage and constraints exist exactly once, readiness reports supported version 4, and migrations 1–3 remain unchanged
+- **WHEN** a version-3 database applies migrations 4–5 and migration runs again
+- **THEN** orders/payment storage and constraints exist exactly once, readiness reports supported version 5, and migrations 1–3 remain unchanged
 - **AND** existing accounts, sessions, watchlists, published terms, accepted bids, auction results, admin capability and game data/revisions are preserved
 - **AND** migration alone creates no order or payment; normal startup subsequently adopts existing sold results
 
@@ -52,6 +52,16 @@ PostgreSQL migrations SHALL have their own ordered version ledger and serialize 
 - **WHEN** migration 4 fails before commit
 - **THEN** the ledger remains at version 3 without partially installed checkout tables
 - **AND** previously committed application data remains intact for correction and retry
+
+#### Scenario: Upgrade schema 4 for fulfillment
+- **WHEN** a populated version-4 schema applies migration 5 and migration runs again
+- **THEN** fulfillment storage and indexes exist once, each paid order starts at paid progress using its original receipt time, and unpaid orders have no invented fulfillment
+- **AND** migrations 1–4, order IDs/snapshots/selections/totals/receipts, accounts, sessions, catalog, bids/results, game data and capability are preserved; health reports supported schema version 5
+
+#### Scenario: Fulfillment migration fails
+- **WHEN** migration 5 or its historical paid-progress initialization fails before commit
+- **THEN** the ledger remains at version 4 without partial fulfillment structures or backfilled records
+- **AND** existing purchase records remain intact for correction and retry
 
 ### Requirement: Explicit read-only SQLite import
 An operator-only import mode SHALL accept a consistent SQLite snapshot at source schema version 4 and copy all retained application tables into an initialized but otherwise unused PostgreSQL application schema. Source access SHALL be read-only, and import SHALL not run an engine, start HTTP/tunnel services, seed demo records, or execute auction settlement. Other source versions SHALL be rejected with preparation guidance.
@@ -155,7 +165,7 @@ The app SHALL retain a no-CGO binary containing the frontend, while requiring a 
 - **AND** post-cutover PostgreSQL data is preserved separately and any discarded writes are disclosed
 
 ### Requirement: Real PostgreSQL acceptance
-Database-backed repository, game, hub, server, migration, publication, account, watchlist, timed bidding, closure and auction recovery checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
+Database-backed repository, game, hub, server, migration, publication, account, watchlist, timed bidding, closure, auction recovery, order history, fulfillment and demo-maintenance checks SHALL run against isolated real PostgreSQL schemas. Test and load harnesses SHALL use explicit disposable targets, clean up only their own resources, and fail clearly when required PostgreSQL is unavailable. SQLite import fixtures SHALL remain limited to source-compatibility tests.
 
 #### Scenario: Required database suite
 - **WHEN** full verification runs with an isolated PostgreSQL test service
@@ -166,6 +176,11 @@ Database-backed repository, game, hub, server, migration, publication, account, 
 - **WHEN** account/watchlist checks register two users, save independently, revoke a session, and reopen the same owned test schema
 - **THEN** account identity and each watchlist persist, valid unexpired sessions still resolve, and revoked sessions remain invalid
 - **AND** fixture cleanup touches only schemas created by that run
+
+#### Scenario: Purchase operations and isolated reset
+- **WHEN** acceptance exercises concurrent transitions, payment/fulfillment failure recovery, restart and demo reset on owned disposable schemas
+- **THEN** purchase invariants and owner/operator access remain correct using real PostgreSQL
+- **AND** tests prove refused operational targets and unchanged other-schema records rather than using SQLite or skipping missing fixtures
 
 ### Requirement: Account writes respect database ownership and commit boundaries
 Account/session/watchlist writes and account provisioning SHALL honor the existing schema writer lease and database timeouts. Lost ownership SHALL fail closed without reacquiring a writer for stale process state. Failure or uncertain commit SHALL NOT be reported as confirmed success, and account mutations SHALL NOT change game revisions or publication state.
@@ -198,7 +213,7 @@ Commerce bid acceptance, initialization and terminal results SHALL honor the sch
 - **AND** catalog publication, commerce identities, watchlists and game monetary units remain independent
 
 ### Requirement: Checkout ownership and commit safety
-Order creation, result adoption and simulated confirmation SHALL honor the schema writer lease, operation timeouts and commit-before-success boundary. Lost ownership SHALL fail closed without reacquisition. Orders/receipts SHALL survive restart and retained game resets without changing catalog publication, auction results or game monetary units/revisions.
+Order creation, result adoption, simulated confirmation and fulfillment transitions SHALL honor the schema writer lease, operation timeouts and commit-before-success boundary. Lost ownership SHALL fail closed without reacquisition. Orders/receipts/fulfillment history SHALL survive restart and retained game resets without changing catalog publication, auction results or game monetary units/revisions.
 
 #### Scenario: Failed or uncertain checkout commit
 - **WHEN** result/order creation or payment confirmation fails or cannot establish commit
@@ -207,13 +222,18 @@ Order creation, result adoption and simulated confirmation SHALL honor the schem
 
 #### Scenario: Reset does not erase purchases
 - **WHEN** the retained classroom game is reset or the server restarts
-- **THEN** orders, immutable snapshots and simulated receipts remain intact
+- **THEN** orders, immutable snapshots, simulated receipts and fulfillment progress/history remain intact
 - **AND** restarted reconciliation creates no duplicate order or payment
 
+#### Scenario: Fulfillment commit and lease loss
+- **WHEN** fulfillment fails before commit, has an unknown commit, or loses writer ownership
+- **THEN** no partial history/status is reported as successful and durable detail reads support reconciliation
+- **AND** the stale process stops successful writes and does not reacquire the writer lease
+
 ### Requirement: Import occupancy includes purchase records
-The read-only SQLite importer SHALL treat order and simulated-payment records as target occupancy. Import SHALL NOT overwrite or merge purchase data, adopt winners, create accounts, or run payment simulation.
+The read-only SQLite importer SHALL treat order, simulated-payment, fulfillment and disposable-demo environment records as target occupancy. Import SHALL NOT overwrite or merge purchase data, adopt winners, create accounts, or run payment simulation.
 
 #### Scenario: Import into an occupied purchase schema
-- **WHEN** the operator supplies an initialized target containing an order or simulated-payment record
+- **WHEN** the operator supplies an initialized target containing an order, simulated-payment, fulfillment or disposable-demo environment record
 - **THEN** import refuses the target without changing source or destination records
 - **AND** diagnostics disclose no connection credentials or checkout contact/address data

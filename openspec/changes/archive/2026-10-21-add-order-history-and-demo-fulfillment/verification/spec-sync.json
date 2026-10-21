@@ -1,0 +1,103 @@
+[
+  {
+    "capability": "auction-discovery",
+    "requirements_synced": [
+      "Accessible bilingual discovery without transactions"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "bidder-accounts",
+    "requirements_synced": [
+      "Bidder and admin authorization boundary"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "catalog-administration",
+    "requirements_synced": [
+      "Honest management and development boundaries"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "demo-fulfillment",
+    "requirements_synced": [
+      "Dedicated operator order access",
+      "Filterable operator order workspace",
+      "Method-specific forward progression",
+      "Manual simulated shipment information",
+      "Atomic versioned fulfillment transitions",
+      "Protected transition request boundary",
+      "Durable ordered fulfillment timeline",
+      "Accessible operator fulfillment controls"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "demo-payments",
+    "requirements_synced": [
+      "Atomic one-payment transition",
+      "Durable private simulation confirmation"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "demo-rehearsal",
+    "requirements_synced": [
+      "Explicit disposable demo preparation",
+      "Explicit bounded demo reset",
+      "Atomic documented reset write scope",
+      "Fresh workflow remains deliberate",
+      "Read-only rehearsal generation inspection",
+      "Maintenance isolation and operator guidance"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "order-history",
+    "requirements_synced": [
+      "Owned order history collection",
+      "Owner-only history access",
+      "Stored purchase detail and timeline",
+      "Accessible private history navigation"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "postgresql-persistence",
+    "requirements_synced": [
+      "Versioned PostgreSQL schema",
+      "Real PostgreSQL acceptance",
+      "Checkout ownership and commit safety",
+      "Import occupancy includes purchase records"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "website-navigation",
+    "requirements_synced": [
+      "Explicit website destinations",
+      "Direct URL loading",
+      "Honest preview boundaries"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  },
+  {
+    "capability": "winner-checkout",
+    "requirements_synced": [
+      "Private unpaid wins and order reads"
+    ],
+    "purpose_and_unmentioned_requirements_preserved": true,
+    "nothing_left_to_apply": true
+  }
+]
