@@ -1,3 +1,5 @@
+import { BookOpen, Calendar, CheckCircle2, Save } from 'lucide-react'
+import { Icon } from '@/components/site/Icon'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { LotImage } from '@/components/site/Presentation'
@@ -47,11 +49,11 @@ export default function EventEditor({ initial, lots, reload }: { initial: Auctio
   const available = lots.filter(lot => lot.state === 'draft' && (!lot.event_id || lot.event_id === record.id) && !ids.includes(lot.id))
   return <div className="catalog-form stack" aria-busy={pending}>
     <div className="catalog-meta"><span className="status">{c(record.state)}</span></div>
-    {immutable && <p>{c('publishedNote')}</p>}{error && <ErrorPanel error={error} reload={reload} />}{saved && <p className="catalog-success" role="status">{c('saved')}</p>}{published && <p className="catalog-success" role="status">{c('publishedSuccess')}</p>}{(dirty || membersDirty) && <p>{c('unsaved')}</p>}
-    <form className="stack" onSubmit={submit}><fieldset disabled={immutable || pending} className="stack"><legend>{c('content')}</legend><div className="catalog-grid">{simple('title')}{simple('slug')}</div>{simple('theme')}{simple('description', true)}<p>{c('mediaHelp')}</p><div className="catalog-grid">{simple('cover_path')}{simple('cover_alt')}</div><div className="catalog-cover"><LotImage src={content.cover_path} alt={content.cover_alt} /></div>
+    {immutable && <p>{c('publishedNote')}</p>}{error && <ErrorPanel error={error} reload={reload} />}{saved && <p className="catalog-success" role="status"><Icon icon={CheckCircle2} /> {c('saved')}</p>}{published && <p className="catalog-success" role="status"><Icon icon={CheckCircle2} /> {c('publishedSuccess')}</p>}{(dirty || membersDirty) && <p>{c('unsaved')}</p>}
+    <form className="stack" onSubmit={submit}><fieldset disabled={immutable || pending} className="stack"><legend><Icon icon={BookOpen} /> {c('content')}</legend><div className="catalog-grid">{simple('title')}{simple('slug')}</div>{simple('theme')}{simple('description', true)}<p>{c('mediaHelp')}</p><div className="catalog-grid">{simple('cover_path')}{simple('cover_alt')}</div><div className="catalog-cover"><LotImage src={content.cover_path} alt={content.cover_alt} /></div>
       {simple('admin_notes', true)}</fieldset>
-      <fieldset disabled={immutable || pending} className="stack"><legend>{c('schedule')}</legend><p>{c('timezone')}: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong></p><p>{c('scheduleNote')}</p><div className="catalog-grid">{(['opens_at', 'first_closes_at', 'close_interval_ms'] as const).map(key => <Control key={key} name={key} label={c(key)} type={key === 'close_interval_ms' ? 'text' : 'datetime-local'} value={timing[key]} onChange={value => { setTiming(old => ({ ...old, [key]: value })); setDirty(true); setSaved(false); setPreview(undefined) }} error={fieldError(key)} />)}</div></fieldset>
-      {!immutable && <Button type="submit" disabled={pending || blocked}>{pending ? c('saving') : c('save')}</Button>}
+      <fieldset disabled={immutable || pending} className="stack"><legend><Icon icon={Calendar} /> {c('schedule')}</legend><p>{c('timezone')}: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong></p><p>{c('scheduleNote')}</p><div className="catalog-grid">{(['opens_at', 'first_closes_at', 'close_interval_ms'] as const).map(key => <Control key={key} name={key} label={c(key)} type={key === 'close_interval_ms' ? 'text' : 'datetime-local'} value={timing[key]} onChange={value => { setTiming(old => ({ ...old, [key]: value })); setDirty(true); setSaved(false); setPreview(undefined) }} error={fieldError(key)} />)}</div></fieldset>
+      {!immutable && <Button type="submit" disabled={pending || blocked}><Icon icon={Save} />{pending ? c('saving') : c('save')}</Button>}
     </form>
     <section className="stack" id="catalog-lot_ids"><h2>{c('membership')}</h2><fieldset disabled={immutable || pending || blocked} className="stack"><legend className="sr-only">{c('membership')}</legend><ol className="catalog-ordered">{ids.map((id, index) => {
       const lot = lots.find(value => value.id === id)

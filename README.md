@@ -79,3 +79,15 @@ that schema's documented rehearsal state, including observations/coverage, and
 invalidates its old sessions. It preserves capability/config, migrations,
 categories, external media and other schemas. See [schema-6 operations and reset
 scope](docs/postgresql.md). Earlier archived accessibility gaps remain open.
+
+### Website presentation
+
+Change 9 refines Collected Stories with local object studies, collection-led
+navigation, image inspection and focused account/order workspaces. Buyer labels
+use natural payment/delivery vocabulary; payments and fulfillment still use the
+existing local simulation, without actual charges or external payment/carrier
+services. Provenance remains stored metadata and dedicated analytics definitions
+remain available. The bounded legacy-seed display adapter changes only matching
+stock wording in the interface, never stored publications or purchase snapshots.
+See `web/README.md` and the [Change 9 archive report](openspec/changes/archive/2026-10-23-polish-auction-website-experience/verification/REPORT.md)
+for interactions, media provenance, acceptance evidence and validation limits.

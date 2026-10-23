@@ -1,0 +1,14 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "deferredModuleFailureLocalized": true,
+    "deliberateReloadRecovered": true,
+    "writes": 0
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "deferredModuleFailureLocalized": true,
+    "deliberateReloadRecovered": true,
+    "writes": 0
+  }
+]

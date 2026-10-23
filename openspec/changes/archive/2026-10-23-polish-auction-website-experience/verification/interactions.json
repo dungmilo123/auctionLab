@@ -1,0 +1,26 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "languageAndGalleryPreserved": true,
+    "focusRestored": true,
+    "extraViews": 0,
+    "initialLotViews": 1,
+    "initialWatchlistReads": 1,
+    "commerceWritesDuringSelection": 0,
+    "runtimeReducedMotion": true,
+    "mobileSearchAndFilters": true,
+    "errors": []
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "languageAndGalleryPreserved": true,
+    "focusRestored": true,
+    "extraViews": 0,
+    "initialLotViews": 1,
+    "initialWatchlistReads": 1,
+    "commerceWritesDuringSelection": 0,
+    "runtimeReducedMotion": true,
+    "mobileSearchAndFilters": true,
+    "errors": []
+  }
+]

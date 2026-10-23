@@ -1,0 +1,32 @@
+cd web && npm run build
+
+> web@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 2472 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                0.68 kB │ gzip:   0.41 kB
+dist/assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2    5.24 kB
+dist/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2     5.31 kB
+dist/assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2     5.83 kB
+dist/assets/noto-serif-vietnamese-600-normal-BqcqYJsL.woff2    5.99 kB
+dist/assets/noto-sans-latin-400-normal-BTkUljjl.woff2         13.12 kB
+dist/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2         13.49 kB
+dist/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2        14.40 kB
+dist/assets/noto-serif-latin-600-normal-BiuDA9L7.woff2        15.31 kB
+dist/assets/index-AKrxCxBZ.css                                42.92 kB │ gzip:   9.56 kB
+dist/assets/AccountPage-COuZzKi4.js                           18.81 kB │ gzip:   5.40 kB
+dist/assets/OrderHistory-D09Vdn0b.js                          19.96 kB │ gzip:   6.87 kB
+dist/assets/AdminPage-pODfZY6X.js                             43.50 kB │ gzip:  12.97 kB
+dist/assets/index-BRyX0tSq.js                                552.69 kB │ gzip: 181.88 kB
+
+✓ built in 255ms
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+CGO_ENABLED=0 go build -o bin/auctionlab ./cmd/server

@@ -143,10 +143,10 @@ body {
   margin: 0; background: #F6F1E8; color: #24211E; line-height: 1.5;
   font-family: system-ui, sans-serif; overflow-wrap: anywhere;
 }
-main { max-width: 720px; margin: 0 auto; padding: 48px 16px; }
+main { max-width: 600px; margin: 0 auto; padding: clamp(32px, 10vh, 96px) 16px; }
 form { display: flex; flex-direction: column; gap: 16px; background: #FFFFFF;
-  border: 1px solid #D8CDBD; padding: 24px; }
-h1 { margin: 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 400; line-height: 1.15; }
+  border: 1px solid #D8CDBD; border-top: 4px solid #722F37; padding: clamp(20px, 5vw, 40px); }
+h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(2rem, 6vw, 3rem); font-weight: 400; letter-spacing: -0.035em; line-height: 1.15; }
 p { margin: 0; font-size: 0.875rem; }
 .vi { color: #625A52; }
 label { font-weight: 600; }

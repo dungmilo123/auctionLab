@@ -1,0 +1,48 @@
+go test ./...
+ok  	auctionlab	0.002s
+ok  	auctionlab/cmd/server	2.591s
+ok  	auctionlab/internal/account	(cached)
+?   	auctionlab/internal/analytics	[no test files]
+ok  	auctionlab/internal/api	(cached)
+ok  	auctionlab/internal/auction	(cached)
+ok  	auctionlab/internal/catalog	(cached)
+ok  	auctionlab/internal/game	(cached)
+ok  	auctionlab/internal/hub	(cached)
+ok  	auctionlab/internal/interaction	(cached)
+ok  	auctionlab/internal/netinfo	(cached)
+ok  	auctionlab/internal/order	(cached)
+ok  	auctionlab/internal/recommendation	(cached)
+?   	auctionlab/internal/sqliteimport	[no test files]
+ok  	auctionlab/internal/store	(cached)
+ok  	auctionlab/internal/testpg	(cached)
+ok  	auctionlab/internal/tunnel	(cached)
+?   	auctionlab/openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/verification/legacy-fixture	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-20-enable-timed-auction-bidding/verification/prepare	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/audit	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/prepare	[no test files]
+?   	auctionlab/openspec/changes/archive/2026-10-22-add-auction-analytics-and-recommendations/verification	[no test files]
+?   	auctionlab/openspec/changes/polish-auction-website-experience/verification	[no test files]
+?   	auctionlab/scripts/dbfixture	[no test files]
+ok  	auctionlab/scripts/loadtest	(cached)
+cd web && npm run test
+
+> web@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.0 /home/milo/workspace/project/auctionLab/web
+
+
+ Test Files  37 passed (37)
+      Tests  560 passed (560)
+   Start at  15:31:00
+   Duration  665ms (transform 77%, import 13%, tests 8%, worker 2%)
+
+  Transform  transforming modules took 5.70s · 77% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+cd web && npm run lint
+
+> web@0.0.0 lint
+> oxlint

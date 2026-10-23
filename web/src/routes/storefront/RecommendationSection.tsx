@@ -70,7 +70,6 @@ function Recommendations({
   return (
     <section className="stack recommendations" aria-label={i("suggestions")}>
       <h2>{i("suggestions")}</h2>
-      <p>{i("rules")}</p>
       <p className="muted">
         {i(privateReady ? "privateLabel" : "publicFallback")}
       </p>

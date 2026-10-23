@@ -1,0 +1,32 @@
+[
+  {
+    "route": "/account/login",
+    "state": "signed-out",
+    "width": 375
+  },
+  {
+    "route": "/account/register",
+    "state": "signed-out",
+    "width": 375
+  },
+  {
+    "route": "/account/watchlist",
+    "state": "signed-out",
+    "width": 375
+  },
+  {
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture",
+    "width": 375
+  },
+  {
+    "state": "long-title",
+    "source": "explicit intercepted presentation fixture",
+    "width": 375
+  },
+  {
+    "state": "missing-image",
+    "source": "explicit intercepted presentation fixture",
+    "width": 375
+  }
+]

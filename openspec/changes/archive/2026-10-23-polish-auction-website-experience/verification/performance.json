@@ -1,0 +1,1498 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "cold": [
+      {
+        "path": "/@vite/client",
+        "transfer_bytes": 211069,
+        "encoded_bytes": 210769,
+        "duration_ms": 9
+      },
+      {
+        "path": "/src/main.tsx",
+        "transfer_bytes": 1961,
+        "encoded_bytes": 1661,
+        "duration_ms": 8.799999999813735
+      },
+      {
+        "path": "/@react-refresh",
+        "transfer_bytes": 112194,
+        "encoded_bytes": 111894,
+        "duration_ms": 10.399999999441206
+      },
+      {
+        "path": "/node_modules/.vite/deps/react.js",
+        "transfer_bytes": 135638,
+        "encoded_bytes": 135338,
+        "duration_ms": 3.1000000005587935
+      },
+      {
+        "path": "/src/index.css",
+        "transfer_bytes": 56431,
+        "encoded_bytes": 56131,
+        "duration_ms": 18.299999999813735
+      },
+      {
+        "path": "/node_modules/.vite/deps/react-dom_client.js",
+        "transfer_bytes": 3132538,
+        "encoded_bytes": 3132238,
+        "duration_ms": 24.799999999813735
+      },
+      {
+        "path": "/src/App.tsx",
+        "transfer_bytes": 10977,
+        "encoded_bytes": 10677,
+        "duration_ms": 18.299999999813735
+      },
+      {
+        "path": "/node_modules/.vite/deps/react_jsx-dev-runtime.js",
+        "transfer_bytes": 36059,
+        "encoded_bytes": 35759,
+        "duration_ms": 18.5
+      },
+      {
+        "path": "/node_modules/vite/dist/client/env.mjs",
+        "transfer_bytes": 3778,
+        "encoded_bytes": 3478,
+        "duration_ms": 16.799999999813735
+      },
+      {
+        "path": "/node_modules/.vite/deps/rolldown-runtime-DC62tzP2.js",
+        "transfer_bytes": 8124,
+        "encoded_bytes": 7824,
+        "duration_ms": 15.099999999627471
+      },
+      {
+        "path": "/src/lib/route.ts",
+        "transfer_bytes": 6608,
+        "encoded_bytes": 6308,
+        "duration_ms": 5.1000000005587935
+      },
+      {
+        "path": "/src/lib/site-copy.ts",
+        "transfer_bytes": 27324,
+        "encoded_bytes": 27024,
+        "duration_ms": 5.2000000001862645
+      },
+      {
+        "path": "/src/lib/i18n.ts",
+        "transfer_bytes": 87071,
+        "encoded_bytes": 86771,
+        "duration_ms": 5.7999999998137355
+      },
+      {
+        "path": "/src/layouts/SiteLayout.tsx",
+        "transfer_bytes": 31371,
+        "encoded_bytes": 31071,
+        "duration_ms": 5.5
+      },
+      {
+        "path": "/src/routes/storefront/StorefrontPage.tsx",
+        "transfer_bytes": 6763,
+        "encoded_bytes": 6463,
+        "duration_ms": 5.699999999254942
+      },
+      {
+        "path": "/src/account/WatchlistProvider.tsx",
+        "transfer_bytes": 6527,
+        "encoded_bytes": 6227,
+        "duration_ms": 6.7999999998137355
+      },
+      {
+        "path": "/src/account/AccountProvider.tsx",
+        "transfer_bytes": 6546,
+        "encoded_bytes": 6246,
+        "duration_ms": 7.599999999627471
+      },
+      {
+        "path": "/src/components/site/PageBoundary.tsx",
+        "transfer_bytes": 5331,
+        "encoded_bytes": 5031,
+        "duration_ms": 7.699999999254942
+      },
+      {
+        "path": "/node_modules/.vite/deps/motion_react-m.js",
+        "transfer_bytes": 44041,
+        "encoded_bytes": 43741,
+        "duration_ms": 15.799999999813735
+      },
+      {
+        "path": "/node_modules/.vite/deps/lucide-react.js",
+        "transfer_bytes": 5073001,
+        "encoded_bytes": 5072701,
+        "duration_ms": 37.39999999944121
+      },
+      {
+        "path": "/src/components/site/Icon.tsx",
+        "transfer_bytes": 2977,
+        "encoded_bytes": 2677,
+        "duration_ms": 24.5
+      },
+      {
+        "path": "/src/components/site/LanguageMenu.tsx",
+        "transfer_bytes": 9707,
+        "encoded_bytes": 9407,
+        "duration_ms": 25.09999999962747
+      },
+      {
+        "path": "/node_modules/.vite/deps/motion_react.js",
+        "transfer_bytes": 1794502,
+        "encoded_bytes": 1794202,
+        "duration_ms": 33.09999999962747
+      },
+      {
+        "path": "/src/components/site/motion.tsx",
+        "transfer_bytes": 6475,
+        "encoded_bytes": 6175,
+        "duration_ms": 25.100000000558794
+      },
+      {
+        "path": "/src/routes/storefront/HomePage.tsx",
+        "transfer_bytes": 21352,
+        "encoded_bytes": 21052,
+        "duration_ms": 25.299999999813735
+      },
+      {
+        "path": "/src/routes/storefront/AuctionIndexPage.tsx",
+        "transfer_bytes": 11794,
+        "encoded_bytes": 11494,
+        "duration_ms": 28.299999999813735
+      },
+      {
+        "path": "/src/routes/storefront/AuctionDetailPage.tsx",
+        "transfer_bytes": 10924,
+        "encoded_bytes": 10624,
+        "duration_ms": 28.899999999441206
+      },
+      {
+        "path": "/src/routes/storefront/LotIndexPage.tsx",
+        "transfer_bytes": 15098,
+        "encoded_bytes": 14798,
+        "duration_ms": 29
+      },
+      {
+        "path": "/src/routes/storefront/LotDetailPage.tsx",
+        "transfer_bytes": 20846,
+        "encoded_bytes": 20546,
+        "duration_ms": 29
+      },
+      {
+        "path": "/src/account/watchlist-state.ts",
+        "transfer_bytes": 10399,
+        "encoded_bytes": 10099,
+        "duration_ms": 29
+      },
+      {
+        "path": "/src/account/state.ts",
+        "transfer_bytes": 4981,
+        "encoded_bytes": 4681,
+        "duration_ms": 29.40000000037253
+      },
+      {
+        "path": "/node_modules/.vite/deps/react-dom.js",
+        "transfer_bytes": 51286,
+        "encoded_bytes": 50986,
+        "duration_ms": 20
+      },
+      {
+        "path": "/node_modules/.vite/deps/motion-C6Uwt115.js",
+        "transfer_bytes": 406052,
+        "encoded_bytes": 405752,
+        "duration_ms": 20.200000000186265
+      },
+      {
+        "path": "/node_modules/.vite/deps/radix-ui.js",
+        "transfer_bytes": 2026041,
+        "encoded_bytes": 2025741,
+        "duration_ms": 27.700000000186265
+      },
+      {
+        "path": "/src/routes/storefront/RecommendationSection.tsx",
+        "transfer_bytes": 16591,
+        "encoded_bytes": 16291,
+        "duration_ms": 20.59999999962747
+      },
+      {
+        "path": "/src/components/site/Presentation.tsx",
+        "transfer_bytes": 19509,
+        "encoded_bytes": 19209,
+        "duration_ms": 20.59999999962747
+      },
+      {
+        "path": "/src/lib/discovery-links.ts",
+        "transfer_bytes": 951,
+        "encoded_bytes": 651,
+        "duration_ms": 20.40000000037253
+      },
+      {
+        "path": "/src/lib/seed-display.ts",
+        "transfer_bytes": 14217,
+        "encoded_bytes": 13917,
+        "duration_ms": 20.600000000558794
+      },
+      {
+        "path": "/src/lib/discovery-copy.ts",
+        "transfer_bytes": 13968,
+        "encoded_bytes": 13668,
+        "duration_ms": 20.59999999962747
+      },
+      {
+        "path": "/src/lib/discovery.ts",
+        "transfer_bytes": 11659,
+        "encoded_bytes": 11359,
+        "duration_ms": 22.200000000186265
+      },
+      {
+        "path": "/src/routes/storefront/loads.ts",
+        "transfer_bytes": 2565,
+        "encoded_bytes": 2265,
+        "duration_ms": 22.5
+      },
+      {
+        "path": "/src/routes/storefront/usePublicPage.ts",
+        "transfer_bytes": 7373,
+        "encoded_bytes": 7073,
+        "duration_ms": 22.600000000558794
+      },
+      {
+        "path": "/src/routes/storefront/DiscoveryPresentation.tsx",
+        "transfer_bytes": 38518,
+        "encoded_bytes": 38218,
+        "duration_ms": 22.59999999962747
+      },
+      {
+        "path": "/src/api/public-catalog.ts",
+        "transfer_bytes": 13183,
+        "encoded_bytes": 12883,
+        "duration_ms": 19.59999999962747
+      },
+      {
+        "path": "/src/components/site/Disclosure.tsx",
+        "transfer_bytes": 7701,
+        "encoded_bytes": 7401,
+        "duration_ms": 20.700000000186265
+      },
+      {
+        "path": "/src/lib/lot-observation.ts",
+        "transfer_bytes": 2932,
+        "encoded_bytes": 2632,
+        "duration_ms": 20.40000000037253
+      },
+      {
+        "path": "/src/lib/catalog-money.ts",
+        "transfer_bytes": 3449,
+        "encoded_bytes": 3149,
+        "duration_ms": 20.5
+      },
+      {
+        "path": "/src/routes/account/WatchControl.tsx",
+        "transfer_bytes": 10833,
+        "encoded_bytes": 10533,
+        "duration_ms": 20.600000000558794
+      },
+      {
+        "path": "/src/routes/storefront/AuctionPanel.tsx",
+        "transfer_bytes": 44478,
+        "encoded_bytes": 44178,
+        "duration_ms": 20.600000000558794
+      },
+      {
+        "path": "/src/api/account.ts",
+        "transfer_bytes": 11817,
+        "encoded_bytes": 11517,
+        "duration_ms": 21.800000000745058
+      },
+      {
+        "path": "/node_modules/.vite/deps/react_jsx-runtime.js",
+        "transfer_bytes": 37771,
+        "encoded_bytes": 37471,
+        "duration_ms": 12.099999999627471
+      },
+      {
+        "path": "/src/api/insights.ts",
+        "transfer_bytes": 22231,
+        "encoded_bytes": 21931,
+        "duration_ms": 4.5
+      },
+      {
+        "path": "/src/routes/account/usePrivateRead.ts",
+        "transfer_bytes": 4795,
+        "encoded_bytes": 4495,
+        "duration_ms": 4.5
+      },
+      {
+        "path": "/src/lib/insights-copy.ts",
+        "transfer_bytes": 21276,
+        "encoded_bytes": 20976,
+        "duration_ms": 4.3999999994412065
+      },
+      {
+        "path": "/src/components/ui/input.tsx",
+        "transfer_bytes": 3473,
+        "encoded_bytes": 3173,
+        "duration_ms": 4.900000000372529
+      },
+      {
+        "path": "/src/components/ui/label.tsx",
+        "transfer_bytes": 3679,
+        "encoded_bytes": 3379,
+        "duration_ms": 5.599999999627471
+      },
+      {
+        "path": "/src/api/catalog.ts",
+        "transfer_bytes": 13038,
+        "encoded_bytes": 12738,
+        "duration_ms": 5.7000000001862645
+      },
+      {
+        "path": "/src/lib/catalog-schedule.ts",
+        "transfer_bytes": 5381,
+        "encoded_bytes": 5081,
+        "duration_ms": 5.2000000001862645
+      },
+      {
+        "path": "/src/lib/account-copy.ts",
+        "transfer_bytes": 15419,
+        "encoded_bytes": 15119,
+        "duration_ms": 4
+      },
+      {
+        "path": "/src/lib/account-return.ts",
+        "transfer_bytes": 4020,
+        "encoded_bytes": 3720,
+        "duration_ms": 4.400000000372529
+      },
+      {
+        "path": "/src/api/auction.ts",
+        "transfer_bytes": 29590,
+        "encoded_bytes": 29290,
+        "duration_ms": 4.599999999627471
+      },
+      {
+        "path": "/src/auction/feed.ts",
+        "transfer_bytes": 15101,
+        "encoded_bytes": 14801,
+        "duration_ms": 5
+      },
+      {
+        "path": "/src/auction/eligibility.ts",
+        "transfer_bytes": 3027,
+        "encoded_bytes": 2727,
+        "duration_ms": 5.099999999627471
+      },
+      {
+        "path": "/src/auction/useParticipation.ts",
+        "transfer_bytes": 7841,
+        "encoded_bytes": 7541,
+        "duration_ms": 5.7000000001862645
+      },
+      {
+        "path": "/src/lib/auction-copy.ts",
+        "transfer_bytes": 15695,
+        "encoded_bytes": 15395,
+        "duration_ms": 5.7000000001862645
+      },
+      {
+        "path": "/src/lib/order-copy.ts",
+        "transfer_bytes": 13886,
+        "encoded_bytes": 13586,
+        "duration_ms": 5.7000000001862645
+      },
+      {
+        "path": "/src/routes/account/AccountStatus.tsx",
+        "transfer_bytes": 7259,
+        "encoded_bytes": 6959,
+        "duration_ms": 5
+      },
+      {
+        "path": "/node_modules/.vite/deps/cn.js",
+        "transfer_bytes": 140375,
+        "encoded_bytes": 140075,
+        "duration_ms": 4.199999999254942
+      },
+      {
+        "path": "/api/catalog/events",
+        "transfer_bytes": 0,
+        "encoded_bytes": 0,
+        "duration_ms": 37.40000000037253
+      },
+      {
+        "path": "/api/catalog/categories",
+        "transfer_bytes": 0,
+        "encoded_bytes": 0,
+        "duration_ms": 37.10000000055879
+      },
+      {
+        "path": "/api/account",
+        "transfer_bytes": 0,
+        "encoded_bytes": 0,
+        "duration_ms": 36.299999999813735
+      },
+      {
+        "path": "/api/catalog/events",
+        "transfer_bytes": 30431,
+        "encoded_bytes": 30131,
+        "duration_ms": 4.7000000001862645
+      },
+      {
+        "path": "/api/catalog/categories",
+        "transfer_bytes": 923,
+        "encoded_bytes": 623,
+        "duration_ms": 4.6000000005587935
+      },
+      {
+        "path": "/api/account",
+        "transfer_bytes": 337,
+        "encoded_bytes": 37,
+        "duration_ms": 7.400000000372529
+      },
+      {
+        "path": "/src/assets/fonts/noto-serif-latin-400-normal.woff2",
+        "transfer_bytes": 14700,
+        "encoded_bytes": 14400,
+        "duration_ms": 24.299999999813735
+      },
+      {
+        "path": "/src/assets/fonts/noto-sans-latin-400-normal.woff2",
+        "transfer_bytes": 13420,
+        "encoded_bytes": 13120,
+        "duration_ms": 21.600000000558794
+      },
+      {
+        "path": "/src/assets/fonts/noto-sans-latin-600-normal.woff2",
+        "transfer_bytes": 13796,
+        "encoded_bytes": 13496,
+        "duration_ms": 21.399999999441206
+      },
+      {
+        "path": "/favicon.svg",
+        "transfer_bytes": 498,
+        "encoded_bytes": 198,
+        "duration_ms": 1.900000000372529
+      },
+      {
+        "path": "/api/catalog/recommendations",
+        "transfer_bytes": 0,
+        "encoded_bytes": 0,
+        "duration_ms": 14.700000000186265
+      },
+      {
+        "path": "/api/catalog/recommendations",
+        "transfer_bytes": 2802,
+        "encoded_bytes": 2502,
+        "duration_ms": 6.8999999994412065
+      },
+      {
+        "path": "/site-assets/catalog/event-3.svg",
+        "transfer_bytes": 6796,
+        "encoded_bytes": 6496,
+        "duration_ms": 3.2999999998137355
+      },
+      {
+        "path": "/site-assets/catalog/lot-17.svg",
+        "transfer_bytes": 3825,
+        "encoded_bytes": 3525,
+        "duration_ms": 1.5
+      }
+    ],
+    "heroAnimations": [
+      {
+        "duration": 500,
+        "delay": 150
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 80
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      }
+    ],
+    "restingAnimations": 0,
+    "layoutShift": 0.000044512939453125,
+    "panelDuration": "0.24s",
+    "throttle": {
+      "latency_ms": 150,
+      "download_bytes_s": 200000,
+      "upload_bytes_s": 100000,
+      "cpu": 4
+    },
+    "galleryAction_ms": 74,
+    "galleryTraceWithScreenshot_ms": 109,
+    "traceViewport": {
+      "width": 375,
+      "height": 900
+    },
+    "runtime": {
+      "animation": "none",
+      "transform": "none"
+    },
+    "external": 0,
+    "sockets": 0,
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/"
+      },
+      {
+        "method": "GET",
+        "path": "/@vite/client"
+      },
+      {
+        "method": "GET",
+        "path": "/src/main.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/@react-refresh"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react-dom_client.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/index.css"
+      },
+      {
+        "method": "GET",
+        "path": "/src/App.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react_jsx-dev-runtime.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/vite/dist/client/env.mjs"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/rolldown-runtime-DC62tzP2.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/i18n.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/route.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/site-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/layouts/SiteLayout.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/StorefrontPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/WatchlistProvider.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/AccountProvider.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/PageBoundary.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/lucide-react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion_react-m.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion_react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Icon.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/LanguageMenu.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/motion.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/HomePage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionIndexPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionDetailPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/LotIndexPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/LotDetailPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/watchlist-state.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/state.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react-dom.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion-C6Uwt115.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/radix-ui.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/RecommendationSection.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Presentation.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/seed-display.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery-links.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/usePublicPage.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/loads.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/DiscoveryPresentation.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/public-catalog.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Disclosure.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/lot-observation.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/WatchControl.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionPanel.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/catalog-money.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/account.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react_jsx-runtime.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/insights.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/insights-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/usePrivateRead.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/ui/input.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/ui/label.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/catalog.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/catalog-schedule.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/account-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/account-return.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/auction.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/feed.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/eligibility.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/useParticipation.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/auction-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/order-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/AccountStatus.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/cn.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/events"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/events"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-serif-latin-400-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-sans-latin-400-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-sans-latin-600-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/favicon.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/event-3.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-17.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-sans-vietnamese-400-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/lots/folding-travel-camera"
+      },
+      {
+        "method": "GET",
+        "path": "/@vite/client"
+      },
+      {
+        "method": "GET",
+        "path": "/src/main.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/@react-refresh"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/vite/dist/client/env.mjs"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react-dom_client.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/index.css"
+      },
+      {
+        "method": "GET",
+        "path": "/src/App.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react_jsx-dev-runtime.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/rolldown-runtime-DC62tzP2.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react-dom.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/i18n.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/route.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/site-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/layouts/SiteLayout.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/StorefrontPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/WatchlistProvider.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/AccountProvider.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/PageBoundary.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/lucide-react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion_react-m.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion_react.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Icon.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/LanguageMenu.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/motion.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/motion-C6Uwt115.js"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/react_jsx-runtime.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/HomePage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionIndexPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionDetailPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/LotIndexPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/LotDetailPage.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/watchlist-state.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/account/state.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/radix-ui.js"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/RecommendationSection.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Presentation.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/seed-display.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery-links.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/discovery.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/usePublicPage.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/loads.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/DiscoveryPresentation.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/public-catalog.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/site/Disclosure.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/lot-observation.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/WatchControl.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/storefront/AuctionPanel.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/catalog-money.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/account.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/insights.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/insights-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/usePrivateRead.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/ui/input.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/components/ui/label.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/catalog.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/catalog-schedule.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/account-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/account-return.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/api/auction.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/feed.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/eligibility.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/auction/useParticipation.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/auction-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/lib/order-copy.ts"
+      },
+      {
+        "method": "GET",
+        "path": "/src/routes/account/AccountStatus.tsx"
+      },
+      {
+        "method": "GET",
+        "path": "/node_modules/.vite/deps/cn.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/lots/folding-travel-camera"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/lots/folding-travel-camera"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-sans-latin-400-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-serif-latin-400-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/src/assets/fonts/noto-sans-latin-600-normal.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/favicon.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auctions/lots/demo-lot-01"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "POST",
+        "path": "/api/catalog/lot-views"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auctions/lots/demo-lot-01"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-01.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-01-detail.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auctions/lots/demo-lot-01/stream"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-17.svg"
+      }
+    ]
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "cold": [
+      {
+        "path": "/assets/index-BRyX0tSq.js",
+        "transfer_bytes": 552992,
+        "encoded_bytes": 552692,
+        "duration_ms": 6.7999999998137355
+      },
+      {
+        "path": "/assets/index-AKrxCxBZ.css",
+        "transfer_bytes": 43221,
+        "encoded_bytes": 42921,
+        "duration_ms": 5.400000000372529
+      },
+      {
+        "path": "/api/catalog/events",
+        "transfer_bytes": 30431,
+        "encoded_bytes": 30131,
+        "duration_ms": 2.800000000745058
+      },
+      {
+        "path": "/api/catalog/categories",
+        "transfer_bytes": 923,
+        "encoded_bytes": 623,
+        "duration_ms": 2.5
+      },
+      {
+        "path": "/api/account",
+        "transfer_bytes": 337,
+        "encoded_bytes": 37,
+        "duration_ms": 5.099999999627471
+      },
+      {
+        "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+        "transfer_bytes": 14700,
+        "encoded_bytes": 14400,
+        "duration_ms": 7.400000000372529
+      },
+      {
+        "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+        "transfer_bytes": 13420,
+        "encoded_bytes": 13120,
+        "duration_ms": 6.6000000005587935
+      },
+      {
+        "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+        "transfer_bytes": 13796,
+        "encoded_bytes": 13496,
+        "duration_ms": 6.900000000372529
+      },
+      {
+        "path": "/favicon.svg",
+        "transfer_bytes": 498,
+        "encoded_bytes": 198,
+        "duration_ms": 0.8000000007450581
+      },
+      {
+        "path": "/api/catalog/recommendations",
+        "transfer_bytes": 2802,
+        "encoded_bytes": 2502,
+        "duration_ms": 3
+      },
+      {
+        "path": "/site-assets/catalog/event-3.svg",
+        "transfer_bytes": 6796,
+        "encoded_bytes": 6496,
+        "duration_ms": 0.8000000007450581
+      },
+      {
+        "path": "/site-assets/catalog/lot-17.svg",
+        "transfer_bytes": 3825,
+        "encoded_bytes": 3525,
+        "duration_ms": 0.6999999992549419
+      }
+    ],
+    "heroAnimations": [
+      {
+        "duration": 500,
+        "delay": 150
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 80
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      },
+      {
+        "duration": 500,
+        "delay": 0
+      }
+    ],
+    "restingAnimations": 0,
+    "layoutShift": 0.0012255340576171874,
+    "panelDuration": "0.24s",
+    "throttle": {
+      "latency_ms": 150,
+      "download_bytes_s": 200000,
+      "upload_bytes_s": 100000,
+      "cpu": 4
+    },
+    "galleryAction_ms": 38,
+    "galleryTraceWithScreenshot_ms": 71,
+    "traceViewport": {
+      "width": 375,
+      "height": 900
+    },
+    "runtime": {
+      "animation": "none",
+      "transform": "none"
+    },
+    "external": 0,
+    "sockets": 0,
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/index-BRyX0tSq.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/index-AKrxCxBZ.css"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/events"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/favicon.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/event-3.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-17.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/lots/folding-travel-camera"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/index-BRyX0tSq.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/index-AKrxCxBZ.css"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/lots/folding-travel-camera"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/categories"
+      },
+      {
+        "method": "GET",
+        "path": "/api/account"
+      },
+      {
+        "method": "GET",
+        "path": "/favicon.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auctions/lots/demo-lot-01"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      },
+      {
+        "method": "POST",
+        "path": "/api/catalog/lot-views"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-01.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/site-assets/catalog/lot-01-detail.svg"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auctions/lots/demo-lot-01/stream"
+      },
+      {
+        "method": "GET",
+        "path": "/api/catalog/recommendations"
+      }
+    ]
+  }
+]

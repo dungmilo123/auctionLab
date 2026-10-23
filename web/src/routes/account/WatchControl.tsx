@@ -1,33 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { accountAPI, AccountError } from '@/api/account'
+import { Heart, CircleHelp } from 'lucide-react'
+import { Icon } from '@/components/site/Icon'
 import { useAccount } from '@/account/AccountProvider'
-import { useAccountCopy, accountErrorKey } from '@/lib/account-copy'
+import { useWatchlist, useMembershipState } from '@/account/WatchlistProvider'
+import type { WatchlistStore } from '@/account/watchlist-state'
+import type { PublicLot } from '@/api/catalog'
+import { useAccountCopy } from '@/lib/account-copy'
 import { authURL } from '@/lib/account-return'
-import { usePrivateRead } from './usePrivateRead'
-function SignedInWatch({ id }: { id: string }) {
-  const { a } = useAccountCopy(); const { store } = useAccount()
-  const load = useCallback((signal: AbortSignal) => accountAPI.membership(id, undefined, signal), [id])
-  const { state, setState, retry } = usePrivateRead(load); const [pending, setPending] = useState(false); const [message, setMessage] = useState<'saved' | 'removed' | null>(null)
-  const alive = useRef(true); useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
-  async function mutate() {
-    if (pending || state.status !== 'success') return; setPending(true); setMessage(null)
-    try { const saved = await accountAPI.membership(id, !state.data); if (alive.current) { setState({ status: 'success', data: saved }); setMessage(saved ? 'saved' : 'removed') } }
-    catch (e) { if (alive.current) { const error = e instanceof AccountError ? e : new AccountError('unavailable'); if (error.status === 401) store.signedOut(); else setState({ status: 'error', error }) } }
-    finally { if (alive.current) setPending(false) }
-  }
-  return <div className="stack-small">
-    {state.status === 'success' ? <button className="site-button site-button-outline" disabled={pending} onClick={() => void mutate()}>{a(pending ? 'pending' : state.data ? 'removeLot' : 'saveLot')}</button>
-      : state.status === 'loading' ? <p role="status">{a('watchLoading')}</p>
-        : <><p role="alert">{a(accountErrorKey(state.error.code))}</p><button className="site-button site-button-outline" onClick={() => { setMessage(null); retry() }}>{a('reload')}</button></>}
-    <p role="status">{message ? a(message) : ''}</p>
-  </div>
+function ConfirmedControl({ store, lot, compact }: { store: WatchlistStore; lot: PublicLot; compact: boolean }) {
+  const state = useMembershipState(store), { a } = useAccountCopy()
+  const known = state.status === 'ready', saved = known && !!state.value?.lots.some(l => l.id === lot.id), pending = state.pending.has(lot.id)
+  const label = a(state.status === 'error' ? 'reload' : !known ? 'watchLoading' : pending ? 'pending' : saved ? 'removeLot' : 'saveLot')
+  return <button type="button" className={`site-button site-button-outline ${saved ? 'save-confirmed' : ''}`} aria-label={`${label}: ${lot.title}`} aria-pressed={known ? saved : undefined} disabled={state.status === 'loading' || pending} onClick={() => { if (state.status === 'error') void store.load(); else void store.toggle(lot) }}>
+    <Icon icon={known ? Heart : CircleHelp} />{!compact && label}
+  </button>
 }
-export default function WatchControl({ id, target }: { id: string; target: string }) {
-  const { state, store } = useAccount(); const { a } = useAccountCopy()
-  return <section className="empty-state stack-small" aria-label={a('watchlist')}>
-    <h2>{a('watchlist')}</h2><p>{a('watchHelp')}</p>
-    {state.status === 'checking' ? <p role="status">{a('checking')}</p> : state.status === 'signed-out' ? <a className="site-button site-button-outline" href={authURL('login', target)}>{a('loginSave')}</a>
-      : state.status === 'unavailable' ? <><p role="status">{a('recovery')}</p><button className="site-button" onClick={() => void store.revalidate()}>{a('retry')}</button></>
-        : <SignedInWatch key={`${state.profile.id}:${id}`} id={id} />}
-  </section>
+export default function WatchControl({ lot, target, compact = false }: { lot: PublicLot; target: string; compact?: boolean }) {
+  const { state, store: account } = useAccount(), store = useWatchlist(), { a } = useAccountCopy()
+  const content = state.status === 'signed-in' && store ? <ConfirmedControl store={store} lot={lot} compact={compact} />
+    : state.status === 'signed-out' ? <a className="site-button site-button-outline" href={authURL('login', target)} aria-label={`${a('loginSave')}: ${lot.title}`}><Icon icon={Heart} />{!compact && a('loginSave')}</a>
+      : <button type="button" className="site-button site-button-outline" disabled={state.status === 'checking'} aria-label={`${a(state.status === 'checking' ? 'checking' : 'recovery')}: ${lot.title}`} onClick={() => void account.revalidate()}><Icon icon={CircleHelp} />{!compact && a(state.status === 'checking' ? 'checking' : 'retry')}</button>
+  return <div className={compact ? 'card-save' : 'watch-action'}>{content}</div>
 }

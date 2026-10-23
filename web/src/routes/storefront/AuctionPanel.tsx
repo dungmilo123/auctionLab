@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type FormEvent } from 'react'
 import { auctionAPI, AuctionError, type AuctionBid, type AuctionResponse, type Intent } from '@/api/auction'
 import { AuctionFeed } from '@/auction/feed'
 import { mayBid } from '@/auction/eligibility'
@@ -49,11 +49,11 @@ function BidForm({ id, response, now, stale, accept, refresh }: { id:string;resp
       <p id={`bid-help-${id}`}>{b('help')}</p>
       <button className="site-button site-button-primary" type="submit" aria-disabled={!eligible}>{b(sending?'sending':'submit')}</button>
     </form>
-    <p id={`bid-message-${id}`} role="status" aria-live="polite">{message?b(message):''}</p>
+    <p className={message==='accepted'?'confirmed-feedback':undefined} id={`bid-message-${id}`} role="status" aria-live="polite">{message?b(message):''}</p>
     {intent&&!sending&&<div className="stack-small"><p>{b('unknown')}</p><div className="actions"><button className="site-button" type="button" onClick={retry}>{b('reconcile')}</button><button className="site-button" type="button" onClick={()=>void send(intent)}>{b('sameRetry')}</button></div></div>}
   </div>
 }
-export default function AuctionPanel({ id,target }:{id:string;target:string}){
+export default function AuctionPanel({ id,target, beforeBid }:{id:string;target:string;beforeBid?:ReactNode}){
   const {b,lang}=useAuctionCopy();const {state:account}=useAccount();const feed=useMemo(()=>new AuctionFeed(id),[id]);const state=useSyncExternalStore(feed.subscribe,feed.get,feed.get)
   const [older,setOlder]=useState<AuctionBid[]>([]);const [historyPending,setHistoryPending]=useState(false);const [historyError,setHistoryError]=useState(false);const [hasOlder,setHasOlder]=useState<boolean|null>(null)
   const alive=useRef(true);const historyController=useRef<AbortController|null>(null)
@@ -65,11 +65,12 @@ export default function AuctionPanel({ id,target }:{id:string;target:string}){
   }
   return <section className="bid-panel stack" aria-labelledby={`auction-${id}`}>
     <h2 id={`auction-${id}`}>{b('heading')}</h2>
-    {!s?<><p role="status">{b(state.connection==='loading'?'loading':'unavailable')}</p><button type="button" className="site-button" onClick={()=>void feed.refresh()}>{b('retry')}</button></>:<>
+    {!s?<>{beforeBid}<p role="status">{b(state.connection==='loading'?'loading':'unavailable')}</p><button type="button" className="site-button" onClick={()=>void feed.refresh()}>{b('retry')}</button></>:<>
       <p className="status-badge">{b(s.auction_state)}</p>
       <p role="status">{state.stale?b('stale'):state.connection==='reconnecting'?b('reconnecting'):''}</p>
-      <dl className="metadata numeric"><div><dt>{b('openingPrice')}</dt><dd>{formatCatalogMoney(s.starting_price_minor)}</dd></div><div><dt>{b('increment')}</dt><dd>{formatCatalogMoney(s.bid_increment_minor)}</dd></div><div><dt>{b('current')}</dt><dd>{s.current_price_minor===null?b('noBids'):formatCatalogMoney(s.current_price_minor)}</dd></div><div><dt>{b('minimum')}</dt><dd>{s.amount_limit_reached?b('amount_limit_reached'):formatCatalogMoney(s.next_minimum_minor)}</dd></div><div><dt>{b('count')}</dt><dd>{s.bid_count}</dd></div><div><dt>{b('closes')}</dt><dd><time dateTime={new Date(s.closes_at).toISOString()}>{new Intl.DateTimeFormat(lang==='vi'?'vi-VN':'en-US',{dateStyle:'medium',timeStyle:'long'}).format(s.closes_at)}</time></dd></div></dl>
+      <dl className="metadata numeric"><div><dt>{b('openingPrice')}</dt><dd>{formatCatalogMoney(s.starting_price_minor)}</dd></div><div><dt>{b('increment')}</dt><dd>{formatCatalogMoney(s.bid_increment_minor)}</dd></div><div><dt>{b('current')}</dt><dd key={s.current_price_minor ?? 'none'} className="auction-price confirmed-feedback">{s.current_price_minor===null?b('noBids'):formatCatalogMoney(s.current_price_minor)}</dd></div><div><dt>{b('minimum')}</dt><dd>{s.amount_limit_reached?b('amount_limit_reached'):formatCatalogMoney(s.next_minimum_minor)}</dd></div><div><dt>{b('count')}</dt><dd>{s.bid_count}</dd></div><div><dt>{b('closes')}</dt><dd><time dateTime={new Date(s.closes_at).toISOString()}>{new Intl.DateTimeFormat(lang==='vi'?'vi-VN':'en-US',{dateStyle:'medium',timeStyle:'long'}).format(s.closes_at)}</time></dd></div></dl>
       <div aria-live="polite" role="status">{s.result&&<p>{b(s.result.outcome)}{s.result.winner&&` · ${b('winner')}: ${s.result.winner.alias} · ${formatCatalogMoney(s.result.winner.amount_minor)}`}</p>}</div>
+      {beforeBid}
       <AccountStatus target={target}>{account.status==='signed-in'&&<BidForm key={account.profile.id} id={id} response={response} now={state.now} stale={state.stale} accept={feed.accept} refresh={feed.refresh}/>}</AccountStatus>
       <h3>{b('history')}</h3>
       {all.length===0?<p>{b('noBids')}</p>:<ol className="auction-history">{all.map(v=><li key={v.sequence}><span>#{v.sequence} · {v.alias}</span><strong className="numeric">{formatCatalogMoney(v.amount_minor)}</strong><time dateTime={new Date(v.accepted_at).toISOString()}>{new Intl.DateTimeFormat(lang==='vi'?'vi-VN':'en-US',{dateStyle:'short',timeStyle:'medium'}).format(v.accepted_at)}</time></li>)}</ol>}

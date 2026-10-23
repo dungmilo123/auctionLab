@@ -1,0 +1,272 @@
+[
+  {
+    "path": "index.html",
+    "bytes": 687,
+    "gzip_bytes": 415
+  },
+  {
+    "path": "favicon.svg",
+    "bytes": 198,
+    "gzip_bytes": 173
+  },
+  {
+    "path": ".gitkeep",
+    "bytes": 0,
+    "gzip_bytes": 20
+  },
+  {
+    "path": "assets/noto-serif-vietnamese-400-normal-B2Tmka3c.woff2",
+    "bytes": 5240,
+    "gzip_bytes": 5263
+  },
+  {
+    "path": "assets/noto-sans-vietnamese-400-normal-D2wP-Vm-.woff2",
+    "bytes": 5316,
+    "gzip_bytes": 5339
+  },
+  {
+    "path": "assets/noto-serif-latin-400-normal-BV_iYGc9.woff2",
+    "bytes": 14400,
+    "gzip_bytes": 14423
+  },
+  {
+    "path": "assets/noto-sans-latin-400-normal-BTkUljjl.woff2",
+    "bytes": 13120,
+    "gzip_bytes": 13143
+  },
+  {
+    "path": "assets/noto-sans-vietnamese-600-normal-mhyQDSzg.woff2",
+    "bytes": 5832,
+    "gzip_bytes": 5855
+  },
+  {
+    "path": "assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2",
+    "bytes": 13496,
+    "gzip_bytes": 13519
+  },
+  {
+    "path": "assets/index--GKPY4IB.js",
+    "bytes": 441979,
+    "gzip_bytes": 133668
+  },
+  {
+    "path": "assets/index-CJeAWckA.css",
+    "bytes": 36441,
+    "gzip_bytes": 8140
+  },
+  {
+    "path": "assets/noto-serif-vietnamese-600-normal-BqcqYJsL.woff2",
+    "bytes": 5996,
+    "gzip_bytes": 6019
+  },
+  {
+    "path": "assets/noto-serif-latin-600-normal-BiuDA9L7.woff2",
+    "bytes": 15312,
+    "gzip_bytes": 15335
+  },
+  {
+    "path": "site-assets/image-unavailable.svg",
+    "bytes": 294,
+    "gzip_bytes": 220
+  },
+  {
+    "path": "site-assets/catalog/lot-18-detail.svg",
+    "bytes": 838,
+    "gzip_bytes": 487
+  },
+  {
+    "path": "site-assets/catalog/lot-02.svg",
+    "bytes": 797,
+    "gzip_bytes": 447
+  },
+  {
+    "path": "site-assets/catalog/lot-08-detail.svg",
+    "bytes": 788,
+    "gzip_bytes": 480
+  },
+  {
+    "path": "site-assets/catalog/lot-11.svg",
+    "bytes": 683,
+    "gzip_bytes": 450
+  },
+  {
+    "path": "site-assets/catalog/lot-01-detail.svg",
+    "bytes": 824,
+    "gzip_bytes": 471
+  },
+  {
+    "path": "site-assets/catalog/lot-07-detail.svg",
+    "bytes": 795,
+    "gzip_bytes": 485
+  },
+  {
+    "path": "site-assets/catalog/lot-14-detail.svg",
+    "bytes": 833,
+    "gzip_bytes": 465
+  },
+  {
+    "path": "site-assets/catalog/event-3.svg",
+    "bytes": 488,
+    "gzip_bytes": 304
+  },
+  {
+    "path": "site-assets/catalog/lot-05.svg",
+    "bytes": 687,
+    "gzip_bytes": 452
+  },
+  {
+    "path": "site-assets/catalog/lot-13-detail.svg",
+    "bytes": 833,
+    "gzip_bytes": 464
+  },
+  {
+    "path": "site-assets/catalog/lot-15-detail.svg",
+    "bytes": 831,
+    "gzip_bytes": 465
+  },
+  {
+    "path": "site-assets/catalog/lot-06-detail.svg",
+    "bytes": 718,
+    "gzip_bytes": 479
+  },
+  {
+    "path": "site-assets/catalog/lot-16-detail.svg",
+    "bytes": 835,
+    "gzip_bytes": 484
+  },
+  {
+    "path": "site-assets/catalog/lot-12.svg",
+    "bytes": 755,
+    "gzip_bytes": 455
+  },
+  {
+    "path": "site-assets/catalog/lot-17-detail.svg",
+    "bytes": 833,
+    "gzip_bytes": 481
+  },
+  {
+    "path": "site-assets/catalog/lot-13.svg",
+    "bytes": 803,
+    "gzip_bytes": 436
+  },
+  {
+    "path": "site-assets/catalog/lot-14.svg",
+    "bytes": 803,
+    "gzip_bytes": 438
+  },
+  {
+    "path": "site-assets/catalog/lot-11-detail.svg",
+    "bytes": 713,
+    "gzip_bytes": 476
+  },
+  {
+    "path": "site-assets/catalog/lot-10.svg",
+    "bytes": 681,
+    "gzip_bytes": 449
+  },
+  {
+    "path": "site-assets/catalog/lot-05-detail.svg",
+    "bytes": 717,
+    "gzip_bytes": 478
+  },
+  {
+    "path": "site-assets/catalog/event-2.svg",
+    "bytes": 482,
+    "gzip_bytes": 303
+  },
+  {
+    "path": "site-assets/catalog/event-1.svg",
+    "bytes": 482,
+    "gzip_bytes": 302
+  },
+  {
+    "path": "site-assets/catalog/lot-12-detail.svg",
+    "bytes": 785,
+    "gzip_bytes": 481
+  },
+  {
+    "path": "site-assets/catalog/lot-16.svg",
+    "bytes": 805,
+    "gzip_bytes": 456
+  },
+  {
+    "path": "site-assets/catalog/lot-03.svg",
+    "bytes": 798,
+    "gzip_bytes": 447
+  },
+  {
+    "path": "site-assets/catalog/lot-08.svg",
+    "bytes": 758,
+    "gzip_bytes": 456
+  },
+  {
+    "path": "site-assets/catalog/lot-01.svg",
+    "bytes": 794,
+    "gzip_bytes": 441
+  },
+  {
+    "path": "site-assets/catalog/lot-04-detail.svg",
+    "bytes": 825,
+    "gzip_bytes": 473
+  },
+  {
+    "path": "site-assets/catalog/lot-15.svg",
+    "bytes": 801,
+    "gzip_bytes": 437
+  },
+  {
+    "path": "site-assets/catalog/README.md",
+    "bytes": 727,
+    "gzip_bytes": 448
+  },
+  {
+    "path": "site-assets/catalog/lot-04.svg",
+    "bytes": 795,
+    "gzip_bytes": 444
+  },
+  {
+    "path": "site-assets/catalog/lot-18.svg",
+    "bytes": 808,
+    "gzip_bytes": 460
+  },
+  {
+    "path": "site-assets/catalog/lot-10-detail.svg",
+    "bytes": 711,
+    "gzip_bytes": 475
+  },
+  {
+    "path": "site-assets/catalog/lot-09.svg",
+    "bytes": 684,
+    "gzip_bytes": 451
+  },
+  {
+    "path": "site-assets/catalog/lot-03-detail.svg",
+    "bytes": 828,
+    "gzip_bytes": 476
+  },
+  {
+    "path": "site-assets/catalog/lot-07.svg",
+    "bytes": 765,
+    "gzip_bytes": 459
+  },
+  {
+    "path": "site-assets/catalog/lot-06.svg",
+    "bytes": 688,
+    "gzip_bytes": 452
+  },
+  {
+    "path": "site-assets/catalog/lot-09-detail.svg",
+    "bytes": 714,
+    "gzip_bytes": 477
+  },
+  {
+    "path": "site-assets/catalog/lot-17.svg",
+    "bytes": 803,
+    "gzip_bytes": 454
+  },
+  {
+    "path": "site-assets/catalog/lot-02-detail.svg",
+    "bytes": 827,
+    "gzip_bytes": 474
+  }
+]

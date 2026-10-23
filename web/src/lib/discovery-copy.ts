@@ -1,10 +1,8 @@
 import { useLanguage } from './i18n'
 export const DISCOVERY_COPY = {
+  filters: ['Filters and sorting', 'Bộ lọc và sắp xếp'],
   published: ['Published collection', 'Bộ sưu tập đã công bố'],
-  notice: [
-    'Explore published records, save lots and bid on open auctions. Winners can check out with simulated payment. Order history and simulated fulfillment are available. Private aggregate analytics and rule-based suggestions are available. Trained ML remains future work.',
-    'Khám phá hiện vật đã công bố, lưu hiện vật và đặt giá khi mở đấu giá. Người thắng có thể thanh toán mô phỏng. Lịch sử đơn và nhận hàng mô phỏng đã khả dụng. Phân tích tổng hợp riêng và gợi ý theo quy tắc đã khả dụng. ML đã huấn luyện là hướng mở rộng sau.',
-  ],
+  notice: ['Explore the collection.', 'Khám phá bộ sưu tập.'],
   featured: ['Featured events', 'Phiên nổi bật'],
   nearest: ['Nearest planned closes', 'Hiện vật gần giờ đóng dự kiến'],
   categories: ['Browse by category', 'Khám phá theo danh mục'],
@@ -68,7 +66,7 @@ export const DISCOVERY_COPY = {
   story: ['Supplied story', 'Câu chuyện được cung cấp'],
   brand: ['Brand', 'Thương hiệu'],
   era: ['Era', 'Thời kỳ'],
-  parent: ['View parent event', 'Xem phiên chứa hiện vật'],
+  parent: ['Explore the collection', 'Khám phá bộ sưu tập'],
   fulfillment: ['Delivery and pickup', 'Giao hàng và nhận trực tiếp'],
   shipping: ['Shipping fee', 'Phí giao hàng'],
   pickup: ['Pickup', 'Nhận trực tiếp'],

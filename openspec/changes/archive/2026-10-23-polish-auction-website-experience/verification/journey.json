@@ -1,0 +1,44 @@
+[
+  {
+    "mode": "vite",
+    "orders": [
+      {
+        "id": "04b8ae67beecca2c4d70782d1835c6f9",
+        "type": "shipping",
+        "total_minor": 4250,
+        "receipt_present": true
+      },
+      {
+        "id": "c111a742b3d0fca6456f6ed894659591",
+        "type": "pickup",
+        "total_minor": 2500,
+        "receipt_present": true
+      }
+    ],
+    "confirmation_requests": 2,
+    "external": 0,
+    "sockets": 0,
+    "unknownConfirmationRecovered": true
+  },
+  {
+    "mode": "embedded",
+    "orders": [
+      {
+        "id": "cdd9d8d84422c3eacdbdafac9b98d0b5",
+        "type": "shipping",
+        "total_minor": 4250,
+        "receipt_present": true
+      },
+      {
+        "id": "7a929db24d0f872b6dd7d190a4fcd88f",
+        "type": "pickup",
+        "total_minor": 2500,
+        "receipt_present": true
+      }
+    ],
+    "confirmation_requests": 2,
+    "external": 0,
+    "sockets": 0,
+    "unknownConfirmationRecovered": true
+  }
+]

@@ -1,0 +1,5439 @@
+{
+  "rows": [
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "empty",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "empty",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "vite",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "ready",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/auctions/analog-memories",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/lots/folding-travel-camera",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/bids",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/wins",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/orders/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/lots?edit=demo-lot-06",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/auctions?edit=demo-event-3",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/orders?view=12e5c4460320cca86d7cc9a862e7d7dc",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/admin/analytics",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/missing",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 2,
+      "state": "ready",
+      "actual": {
+        "inner": 640,
+        "scroll": 640,
+        "dpr": 2,
+        "reduced": true
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/login",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/register",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "signed-out",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "empty",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/watchlist",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "empty",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "en",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 320,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 320,
+        "scroll": 320,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 375,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 375,
+        "scroll": 375,
+        "dpr": 1,
+        "reduced": false
+      }
+    },
+    {
+      "mode": "embedded",
+      "route": "/account/checkout/dd1940658e53780f99cc601466ae662e",
+      "lang": "vi",
+      "width": 1280,
+      "chromeZoom": 1,
+      "state": "unpaid",
+      "actual": {
+        "inner": 1280,
+        "scroll": 1280,
+        "dpr": 1,
+        "reduced": false
+      }
+    }
+  ],
+  "errors": [],
+  "external": 0,
+  "sockets": 0
+}

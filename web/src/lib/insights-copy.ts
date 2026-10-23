@@ -70,12 +70,12 @@ export const INSIGHTS_COPY = {
     "Gợi ý theo quy tắc · rules-v1 · không phải ML đã huấn luyện",
   ],
   publicFallback: [
-    "Public suggestions. Current account preferences are not being used.",
-    "Gợi ý công khai. Chưa sử dụng sở thích tài khoản hiện tại.",
+    "Explore more from the collection.",
+    "Khám phá thêm trong bộ sưu tập.",
   ],
   privateLabel: [
-    "Suggestions use your current watchlist preferences or this lot’s context. Saved lots are excluded.",
-    "Gợi ý dùng sở thích trong danh sách theo dõi hiện tại hoặc ngữ cảnh hiện vật này. Loại trừ hiện vật đã lưu.",
+    "Objects selected around your interests.",
+    "Hiện vật được chọn theo mối quan tâm của bạn.",
   ],
   accountUnavailable: [
     "Account validation is unavailable. Public suggestions remain available.",
@@ -105,8 +105,8 @@ export const INSIGHTS_COPY = {
     "Thời kỳ mô tả trong danh sách theo dõi",
   ],
   closing_soon: [
-    "Closing soon · public fallback",
-    "Sắp đóng · gợi ý dự phòng công khai",
+    "Closing soon",
+    "Sắp đóng",
   ],
   lots: ["Published lots", "Hiện vật đã công bố"],
   bids: ["Accepted bids", "Lượt đặt giá hợp lệ"],

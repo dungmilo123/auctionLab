@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { Icon } from '@/components/site/Icon';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountError } from "@/api/account";
 import {
@@ -218,7 +220,7 @@ function OrdersWorkspace({
           : "markCompleted";
   return (
     <div className="order-workspace stack">
-      <PageHeading title={f("history")} intro={f("simulation")} />
+      <PageHeading title={f("history")} />
       {!valid ? (
         <section className="empty-state stack">
           <p role="alert">{f("invalidQuery")}</p>
@@ -256,10 +258,11 @@ function OrdersWorkspace({
             onClick={reload}
             disabled={mutation === "pending"}
           >
-            {f("reload")}
+            <Icon icon={RefreshCw} />{f("reload")}
           </button>
           {mutation !== "idle" && mutation !== "review" && (
             <p
+              className={mutation === "saved" ? "confirmed-feedback" : undefined}
               role={
                 mutation === "saved" || mutation === "pending"
                   ? "status"

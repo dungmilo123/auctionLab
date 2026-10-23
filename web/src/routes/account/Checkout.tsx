@@ -1,3 +1,6 @@
+import { displayOrder } from '@/lib/seed-display';
+import { CheckCircle2, ClipboardList, CreditCard, MapPin, User } from 'lucide-react';
+import { Icon } from '@/components/site/Icon';
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { startPrivateRead } from "./usePrivateRead";
 import { CheckoutSession } from "./checkout-session";
@@ -105,7 +108,8 @@ export default function Checkout({
   const { o, lang } = useOrderCopy();
   const { store } = useAccount();
   const [stage, setStage] = useState<Stage>("loading");
-  const [purchase, setPurchase] = useState<Order | null>(null);
+  const [rawPurchase, setPurchase] = useState<Order | null>(null);
+  const purchase = rawPurchase ? displayOrder(rawPurchase) : null;
   const [form, setForm] = useState<Selection>(blank);
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState<AccountError | null>(null);
@@ -249,7 +253,7 @@ export default function Checkout({
   const total =
     purchase?.state === "paid"
       ? purchase.total
-      : (review?.total ??
+      : ((review && rawPurchase ? displayOrder({ ...rawPurchase, total: review.total }).total : null) ??
         purchase?.options.find(
           (t) => t.fulfillment_method === form.fulfillment_method,
         ));
@@ -261,8 +265,7 @@ export default function Checkout({
       className="checkout stack"
       aria-busy={stage === "pending" || stage === "loading"}
     >
-      <p className="preview-notice">{o("simulation")}</p>
-      <h2 ref={heading} tabIndex={-1}>
+      <h2 ref={heading} tabIndex={-1} className={stage === "paid" ? "confirmed-feedback" : undefined}>
         {o(
           stage === "paid"
             ? "paid"
@@ -271,6 +274,7 @@ export default function Checkout({
               : "checkout",
         )}
       </h2>
+      <ol className="checkout-steps" aria-label={o("checkout")}><li aria-current={stage === "edit" || stage === "reviewing" ? "step" : undefined}><Icon icon={ClipboardList} />{o("checkout")}</li><li aria-current={stage === "review" || stage === "pending" || stage === "unknown" ? "step" : undefined}><Icon icon={CreditCard} />{o("reviewTitle")}</li><li aria-current={stage === "paid" ? "step" : undefined}><Icon icon={CheckCircle2} />{o("paid")}</li></ol>
       {stage === "loading" && <p role="status">{o("loading")}</p>}
       {error && (
         <p role="alert">
@@ -302,9 +306,6 @@ export default function Checkout({
               <p>
                 {o("condition")}: {purchase.snapshot.condition}
               </p>
-              {purchase.snapshot.lot_demo && (
-                <p className="status-badge">{o("demo")}</p>
-              )}
               <p>
                 {o("order")}: <span className="numeric">{purchase.id}</span>
               </p>
@@ -313,7 +314,7 @@ export default function Checkout({
           {(stage === "edit" || stage === "reviewing") && (
             <form className="stack" onSubmit={(e) => void inspect(e)}>
               <fieldset className="stack" disabled={stage === "reviewing"}>
-                <legend>{o("checkout")}</legend>
+                <legend><Icon icon={User} /> {o("contactDetails")}</legend>
                 {(["name", "email", "phone"] as const).map((k) => (
                   <Field
                     key={k}
@@ -330,6 +331,8 @@ export default function Checkout({
                     error={error?.fields[`contact.${k}`]}
                   />
                 ))}
+              </fieldset>
+              <fieldset className="stack" disabled={stage === "reviewing"}><legend><Icon icon={MapPin} /> {o("fulfillment")}</legend>
                 <label htmlFor="fulfillment_method">{o("fulfillment")}</label>
                 <select
                   id="fulfillment_method"
@@ -393,6 +396,8 @@ export default function Checkout({
                       error={error?.fields[`shipping_address.${k}`]}
                     />
                   ))}
+              </fieldset>
+              <fieldset className="stack" disabled={stage === "reviewing"}><legend><Icon icon={CreditCard} /> {o("payment")}</legend>
                 <label htmlFor="payment_method">{o("payment")}</label>
                 <select
                   id="payment_method"

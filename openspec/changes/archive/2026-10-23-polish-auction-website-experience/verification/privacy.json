@@ -1,0 +1,20 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "receiptAnimationObserved": true,
+    "privateDOMRemovedBeforeDelayedRead": true,
+    "accountSwitchSuppressedOldReceipt": true,
+    "capabilityLossClearedDetail": true,
+    "obsoleteRecommendationRemoved": true,
+    "recommendationSource": "explicit distinguishable private-response fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "receiptAnimationObserved": true,
+    "privateDOMRemovedBeforeDelayedRead": true,
+    "accountSwitchSuppressedOldReceipt": true,
+    "capabilityLossClearedDetail": true,
+    "obsoleteRecommendationRemoved": true,
+    "recommendationSource": "explicit distinguishable private-response fixture"
+  }
+]

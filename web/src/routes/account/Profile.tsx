@@ -15,7 +15,7 @@ export default function Profile({ profile }: { profile: SafeProfile }) {
     finally { if (alive.current) setPending(false) }
   }
   return <section className="stack account-panel">
-    <p className="eyebrow">{a(profile.role)}{profile.demo && <> · {a('demo')}</>}</p>
+    <p className="eyebrow">{a(profile.role)}</p>
     <label htmlFor="profile-email">{a('email')}</label><input id="profile-email" className="site-input" value={profile.email} readOnly aria-describedby="profile-email-help" /><p id="profile-email-help">{a('identityHelp')}</p>
     <form className="stack" onSubmit={(event: FormEvent) => { event.preventDefault(); void perform(false) }} noValidate>
       <Field id="profile-name" label={a('name')} help={a('nameHelp')} error={error?.fields.display_name ? a('invalid') : undefined} value={name} onChange={e => setName(e.target.value)} autoComplete="nickname" disabled={pending} />

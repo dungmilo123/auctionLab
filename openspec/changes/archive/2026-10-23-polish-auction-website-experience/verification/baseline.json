@@ -1,0 +1,2082 @@
+{
+  "fixture": "auctionlab_demo_change9_32127cdf280b8c94",
+  "rows": [
+    {
+      "route": "/",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 614
+    },
+    {
+      "route": "/auctions",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 487
+    },
+    {
+      "route": "/auctions/analog-memories",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 509
+    },
+    {
+      "route": "/lots",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 507
+    },
+    {
+      "route": "/lots/folding-travel-camera",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 546
+    },
+    {
+      "route": "/account",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 450
+    },
+    {
+      "route": "/account/login",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 467
+    },
+    {
+      "route": "/account/register",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 467
+    },
+    {
+      "route": "/account/watchlist",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 476
+    },
+    {
+      "route": "/account/bids",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 487
+    },
+    {
+      "route": "/account/wins",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 466
+    },
+    {
+      "route": "/account/orders",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 503
+    },
+    {
+      "route": "/account/orders/9ae87bca322ee77501f983464bdbec50",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 503
+    },
+    {
+      "route": "/account/checkout/9ae87bca322ee77501f983464bdbec50",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 509
+    },
+    {
+      "route": "/admin",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 435
+    },
+    {
+      "route": "/admin/lots",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 535
+    },
+    {
+      "route": "/admin/auctions",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 478
+    },
+    {
+      "route": "/admin/orders",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 498
+    },
+    {
+      "route": "/admin/analytics",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 496
+    },
+    {
+      "route": "/missing",
+      "width": 1280,
+      "language": "en",
+      "elapsed_ms": 426
+    },
+    {
+      "route": "/",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 487
+    },
+    {
+      "route": "/auctions",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 452
+    },
+    {
+      "route": "/auctions/analog-memories",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 482
+    },
+    {
+      "route": "/lots",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 483
+    },
+    {
+      "route": "/lots/folding-travel-camera",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 485
+    },
+    {
+      "route": "/account",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 451
+    },
+    {
+      "route": "/account/login",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 463
+    },
+    {
+      "route": "/account/register",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 431
+    },
+    {
+      "route": "/account/watchlist",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 466
+    },
+    {
+      "route": "/account/bids",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 478
+    },
+    {
+      "route": "/account/wins",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 449
+    },
+    {
+      "route": "/account/orders",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 467
+    },
+    {
+      "route": "/account/orders/9ae87bca322ee77501f983464bdbec50",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 477
+    },
+    {
+      "route": "/account/checkout/9ae87bca322ee77501f983464bdbec50",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 476
+    },
+    {
+      "route": "/admin",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 453
+    },
+    {
+      "route": "/admin/lots",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 531
+    },
+    {
+      "route": "/admin/auctions",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 476
+    },
+    {
+      "route": "/admin/orders",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 491
+    },
+    {
+      "route": "/admin/analytics",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 483
+    },
+    {
+      "route": "/missing",
+      "width": 375,
+      "language": "en",
+      "elapsed_ms": 447
+    },
+    {
+      "trace": "gallery selection",
+      "latency_ms": 150,
+      "download_bytes_per_second": 200000,
+      "cpu_slowdown": 4,
+      "action_ms": 68
+    }
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-2.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/auctions"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-2.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/auctions/analog-memories"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events/analog-memories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-03.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-03.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01-detail.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/catalog/lot-views"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/watchlist/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01/stream"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/bids/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/login"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/register"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/watchlist"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/watchlist"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/bids"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/bids"
+    },
+    {
+      "method": "GET",
+      "path": "/account/wins"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/wins"
+    },
+    {
+      "method": "GET",
+      "path": "/account/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/checkout/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/auctions"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/analytics"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/missing"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-2.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/auctions"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-2.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/auctions/analog-memories"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/events/analog-memories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/event-1.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-03.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-03.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01-detail.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/watchlist/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/recommendations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/catalog/lot-views"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01/stream"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/bids/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-04.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/login"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/register"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/watchlist"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/watchlist"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/bids"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/bids"
+    },
+    {
+      "method": "GET",
+      "path": "/account/wins"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/wins"
+    },
+    {
+      "method": "GET",
+      "path": "/account/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/account/checkout/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/orders/9ae87bca322ee77501f983464bdbec50"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/auctions"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/lots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-05.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-02.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/analytics"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/missing"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/admin"
+    },
+    {
+      "method": "GET",
+      "path": "/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index--GKPY4IB.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-CJeAWckA.css"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-400-normal-BTkUljjl.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-sans-latin-600-normal-Dkgu5AE5.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/noto-serif-latin-400-normal-BV_iYGc9.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/lots/folding-travel-camera"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/site-assets/catalog/lot-01-detail.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/catalog/lot-views"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auctions/lots/demo-lot-01/stream"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/recommendations"
+    }
+  ]
+}

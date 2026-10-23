@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import { Dialog } from 'radix-ui'
+import { ArrowLeft, ArrowRight, Clock, Maximize2, X, PackageSearch, CircleAlert } from 'lucide-react'
+import { Icon } from '@/components/site/Icon'
+import WatchControl from '@/routes/account/WatchControl'
+import { displayLot, displayEvent } from '@/lib/seed-display'
 import type {
   Category,
   PublicEvent,
@@ -35,10 +40,6 @@ export function PlannedBadge({
   const p = phase(open, close, now)
   return <span className={`status planned-${p}`}>{d(p)}</span>
 }
-export function Demo({ demo }: { demo: boolean }) {
-  const { d } = useDiscoveryCopy()
-  return demo ? <span className="demo-marker">{d('demo')}</span> : null
-}
 export function Times({
   open,
   close,
@@ -68,7 +69,7 @@ export function Times({
   )
 }
 export function PublicLotCard({
-  lot,
+  lot: rawLot,
   categories,
   now,
   showCategory = true,
@@ -78,12 +79,13 @@ export function PublicLotCard({
   now: number
   showCategory?: boolean
 }) {
-  const { d } = useDiscoveryCopy()
+  const { d, lang } = useDiscoveryCopy()
+  const lot = displayLot(rawLot)
   return (
     <article className="lot-card">
-      <LotImage src={lot.images[0]?.path} alt={lot.images[0]?.alt ?? ''} />
+      <a className="card-image-link" href={lotURL(lot.slug)} tabIndex={-1} aria-hidden="true"><LotImage src={lot.images[0]?.path} alt={lot.images[0]?.alt ?? ''} /></a>
+      <WatchControl lot={rawLot} target={lotURL(lot.slug)} compact />
       <div className="lot-body stack-small">
-        <Demo demo={lot.demo} />
         <h3>
           <a href={lotURL(lot.slug)}>{lot.title}</a>
         </h3>
@@ -94,17 +96,17 @@ export function PublicLotCard({
         <p className="numeric">
           {d('opening')}: {formatCatalogMoney(lot.starting_price_minor)}
         </p>
-        <Times open={lot.opens_at} close={lot.closes_at} />
+        <p className="card-time numeric"><Icon icon={Clock} size={16} /><span>{d('closes')}: {lot.closes_at === null ? d('unknown') : scheduleText(lot.closes_at, lang)}</span></p>
       </div>
     </article>
   )
 }
-export function EventCard({ event, now }: { event: PublicEvent; now: number }) {
+export function EventCard({ event: rawEvent, now }: { event: PublicEvent; now: number }) {
+  const event = displayEvent(rawEvent), { lang, d } = useDiscoveryCopy()
   return (
-    <article className="lot-card">
-      <LotImage src={event.cover_path} alt={event.cover_alt} />
+    <article className="lot-card event-card">
+      <a className="card-image-link" href={eventURL(event.slug)} tabIndex={-1} aria-hidden="true"><LotImage src={event.cover_path} alt={event.cover_alt} /></a>
       <div className="lot-body stack-small">
-        <Demo demo={event.demo} />
         <h3>
           <a href={eventURL(event.slug)}>{event.title}</a>
         </h3>
@@ -114,7 +116,7 @@ export function EventCard({ event, now }: { event: PublicEvent; now: number }) {
           close={event.planned_end}
           now={now}
         />
-        <Times open={event.opens_at} close={event.planned_end} event />
+        <p className="card-time numeric"><Icon icon={Clock} size={16} /><span>{d('opens')}: {event.opens_at === null ? d('unknown') : scheduleText(event.opens_at, lang)}</span></p>
       </div>
     </article>
   )
@@ -144,6 +146,7 @@ export function DataState({
       className="empty-state stack"
       role={kind === 'loading' ? 'status' : undefined}
     >
+      <Icon icon={kind === 'error' ? CircleAlert : PackageSearch} size={28} />
       <h2>{d(title)}</h2>
       {kind !== 'loading' && (
         <>
@@ -183,25 +186,24 @@ export function DataState({
   )
 }
 export function Gallery({ images }: { images: PublicLot['images'] }) {
-  const { d } = useDiscoveryCopy()
+  const { d, lang } = useDiscoveryCopy()
   const [selected, setSelected] = useState(0)
-  const current = images[selected]
-  return (
-    <section className="stack-small" aria-label={d('gallery')}>
-      <LotImage src={current?.path} alt={current?.alt ?? ''} />
-      <div className="gallery-thumbnails">
-        {images.map((image, i) => (
-          <button
-            key={`${i}-${image.path}`}
-            type="button"
-            aria-label={`${d('image')} ${i + 1}: ${image.alt}`}
-            aria-pressed={i === selected}
-            onClick={() => setSelected(i)}
-          >
-            <LotImage src={image.path} alt={image.alt} />
-          </button>
-        ))}
-      </div>
-    </section>
-  )
+  const current = images[selected] ?? images[0]
+  const text = { inspect: lang === 'vi' ? 'Xem ảnh lớn' : 'Inspect image', close: lang === 'vi' ? 'Đóng' : 'Close', previous: lang === 'vi' ? 'Ảnh trước' : 'Previous image', next: lang === 'vi' ? 'Ảnh tiếp' : 'Next image' }
+  const move = (offset: number) => setSelected(i => (i + offset + images.length) % images.length)
+  return <section className="stack-small gallery" aria-label={d('gallery')}>
+    <Dialog.Root>
+      <Dialog.Trigger asChild><button className="gallery-open" type="button" aria-label={text.inspect}><LotImage src={current?.path} alt={current?.alt ?? ''} eager /><span className="inspect-label"><Icon icon={Maximize2} size={18} />{text.inspect}</span></button></Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="website-overlay inspection-backdrop" />
+        <Dialog.Content className="website-overlay inspection-dialog" onKeyDown={e => { if (images.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); move(e.key === 'ArrowLeft' ? -1 : 1) } }}>
+          <div className="inspection-toolbar"><Dialog.Title>{d('gallery')}</Dialog.Title><Dialog.Close className="site-button site-button-outline"><Icon icon={X} />{text.close}</Dialog.Close></div>
+          <Dialog.Description className="muted">{d('image')} {selected + 1} / {images.length || 1}</Dialog.Description>
+          <LotImage src={current?.path} alt={current?.alt ?? ''} eager />
+          {images.length > 1 && <div className="inspection-toolbar"><button type="button" className="site-button site-button-outline" onClick={() => move(-1)}><Icon icon={ArrowLeft} />{text.previous}</button><span className="numeric" role="status">{selected + 1} / {images.length}</span><button type="button" className="site-button site-button-outline" onClick={() => move(1)}>{text.next}<Icon icon={ArrowRight} /></button></div>}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+    <div className="gallery-thumbnails">{images.map((image, i) => <button key={`${i}-${image.path}`} type="button" aria-label={`${d('image')} ${i + 1}: ${image.alt}`} aria-pressed={i === selected} onClick={() => setSelected(i)}><LotImage src={image.path} alt={image.alt} /></button>)}</div>
+  </section>
 }

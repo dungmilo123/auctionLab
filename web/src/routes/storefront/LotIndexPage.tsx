@@ -1,3 +1,4 @@
+import Disclosure from '@/components/site/Disclosure'
 import { useSiteCopy } from '@/lib/site-copy'
 import { useDiscoveryCopy } from '@/lib/discovery-copy'
 import { query, selectLots, sorts } from '@/lib/discovery'
@@ -36,6 +37,7 @@ export default function LotIndexPage() {
             defaultValue={selection.q}
           />
         </label>
+        <Disclosure label={d('filters')}>
         <label className="stack-small">
           {d('category')}
           <select
@@ -66,6 +68,7 @@ export default function LotIndexPage() {
             ))}
           </select>
         </label>
+        </Disclosure>
         <button className="site-button site-button-primary" type="submit">
           {d('apply')}
         </button>

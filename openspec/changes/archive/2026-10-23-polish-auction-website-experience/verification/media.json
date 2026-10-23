@@ -1,0 +1,14 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "loaded": 39,
+    "bytes": 183042,
+    "raster": false
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "loaded": 39,
+    "bytes": 183042,
+    "raster": false
+  }
+]

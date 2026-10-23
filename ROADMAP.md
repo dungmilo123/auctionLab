@@ -185,6 +185,12 @@ Dữ liệu demo đề xuất: 15–20 lot trong ba phiên có chủ đề, ví 
 
 **Hoàn thành khi:** chỉ số khớp dữ liệu demo và gợi ý dẫn tới các lot phù hợp. Gợi ý theo quy tắc chưa được gọi là ML.
 
+### Change 9 — `polish-auction-website-experience`
+
+**Trạng thái:** đã triển khai, xác minh và archive ngày 2026-10-23; 47/47 task có bằng chứng trong [báo cáo](openspec/changes/archive/2026-10-23-polish-auction-website-experience/verification/REPORT.md). Đã sync 11 capability specs. Giao diện dùng bộ ảnh vector cục bộ gồm 39 asset, gallery phóng lớn, menu ngôn ngữ, watchlist dùng trạng thái đã xác nhận và chuyển động có reduced motion. Thanh toán/nhận hàng vẫn là mô phỏng nội bộ.
+
+Bằng chứng mới gồm hai hành trình đấu giá → thanh toán → giao/nhận trên Vite và bản nhúng; 388 quan sát route/layout, 176 trạng thái hẹp, 20 ca form/biên nhận ở zoom trình duyệt 200% thực tế cùng reduced motion, kiểm tra quyền riêng tư và phục hồi kết quả chưa rõ. Các giới hạn/checklist archive của Changes 4–7 được giữ nguyên; bằng chứng Change 9 bổ sung coverage hiện tại, không sửa lịch sử nghiệm thu. Chi phí JS và ảnh tăng so với baseline được ghi rõ trong báo cáo.
+
 ### Mở rộng — `introduce-ml-based-lot-recommendations`
 
 Chỉ thực hiện khi còn thời gian hoặc có yêu cầu môn học:

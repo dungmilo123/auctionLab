@@ -1,3 +1,5 @@
+import { BarChart3, SlidersHorizontal } from 'lucide-react';
+import { Icon } from '@/components/site/Icon';
 import { useEffect, useState, useRef } from "react";
 import {
   insightsAPI,
@@ -103,7 +105,7 @@ function AnalyticsWorkspace() {
           </select>
         </label>
         <button className="site-button site-button-primary">
-          {i("apply")}
+          <Icon icon={SlidersHorizontal} />{i("apply")}
         </button>
       </form>
       {!filters ? (
@@ -150,9 +152,10 @@ function AnalyticsWorkspace() {
           {read.value.data.summary.lots === "0" && (
             <p role="status">{i("empty")}</p>
           )}
+          <div className="analytics-section-title"><Icon icon={BarChart3} /><span>{i("analytics")}</span></div>
           <dl className="analytics-summary">
             {metricKeys.map((k) => (
-              <div key={k}>
+              <div key={k} data-metric={k}>
                 <dt>{i(k)}</dt>
                 <dd className="numeric">
                   {metric(read.value.data.summary, k)}

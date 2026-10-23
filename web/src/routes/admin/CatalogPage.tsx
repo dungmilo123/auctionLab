@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import { Icon } from '@/components/site/Icon'
+import { LotImage } from '@/components/site/Presentation'
 import { PageHeading } from '@/components/site/Presentation'
 import { catalogAPI, CatalogError, type AuctionEvent, type Category, type Lot } from '@/api/catalog'
 import { catalogSelection } from '@/lib/catalog-selection'
@@ -33,8 +36,8 @@ export default function CatalogPage({ kind }: { kind: 'lots' | 'events' }) {
       : selection.kind === 'edit' ? kind === 'lots'
         ? loaded.lots.find(record => record.id === selection.id) ? <LotEditor key={`${selection.id}-${reload}`} initial={loaded.lots.find(record => record.id === selection.id)!} categories={loaded.categories} reload={refresh} /> : <ErrorPanel error={new CatalogError('not_found')} />
         : loaded.events.find(record => record.id === selection.id) ? <EventEditor key={`${selection.id}-${reload}`} initial={loaded.events.find(record => record.id === selection.id)!} lots={loaded.lots} reload={refresh} /> : <ErrorPanel error={new CatalogError('not_found')} />
-      : <><a className="site-button site-button-primary" href={`${base}?new=1`}>{c(kind === 'lots' ? 'newLot' : 'newEvent')}</a>
-        {(kind === 'lots' ? loaded.lots : loaded.events).length === 0 ? <p>{c('empty')}</p> : <ul className="catalog-records">{(kind === 'lots' ? loaded.lots : loaded.events).map(record => <li key={record.id} className="catalog-record stack-small"><h2><a href={`${base}?edit=${encodeURIComponent(record.id)}`}>{record.title}</a></h2><p><span className="status">{c(record.state)}</span> {'event_id' in record && <span>{record.event_id ? `${c('assigned')}: ${record.event_id}` : c('unassigned')}</span>}</p><p className="muted">{record.slug}</p></li>)}</ul>}</>}
+      : <><a className="site-button site-button-primary" href={`${base}?new=1`}><Icon icon={Plus} />{c(kind === 'lots' ? 'newLot' : 'newEvent')}</a>
+        {(kind === 'lots' ? loaded.lots : loaded.events).length === 0 ? <p>{c('empty')}</p> : <ul className="catalog-records">{(kind === 'lots' ? loaded.lots : loaded.events).map(record => <li key={record.id} className="catalog-record catalog-list-row"><div className="catalog-list-thumbnail"><LotImage src={'images' in record ? record.images[0]?.path : record.cover_path} alt={'images' in record ? record.images[0]?.alt ?? '' : record.cover_alt} /></div><div className="stack-small"><h2><a href={`${base}?edit=${encodeURIComponent(record.id)}`}>{record.title}</a></h2><p><span className="status">{c(record.state)}</span> {'event_id' in record && <span>{record.event_id ? `${c('assigned')}: ${record.event_id}` : c('unassigned')}</span>}</p><p className="muted">{record.slug}</p></div></li>)}</ul>}</>}
   </>
 }
 function NewRecord({ kind, base }: { kind: 'lots' | 'events'; base: string }) {

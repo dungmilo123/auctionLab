@@ -1,0 +1,23 @@
+[
+  {
+    "path": "/site-assets/catalog/event-1.svg",
+    "baseline_encoded_bytes": 482,
+    "final_body_bytes": 4857,
+    "content_encoding": null,
+    "status": 200
+  },
+  {
+    "path": "/site-assets/catalog/lot-04.svg",
+    "baseline_encoded_bytes": 795,
+    "final_body_bytes": 2877,
+    "content_encoding": null,
+    "status": 200
+  },
+  {
+    "path": "/site-assets/catalog/event-2.svg",
+    "baseline_encoded_bytes": 482,
+    "final_body_bytes": 14375,
+    "content_encoding": null,
+    "status": 200
+  }
+]

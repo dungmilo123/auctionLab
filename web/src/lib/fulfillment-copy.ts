@@ -4,7 +4,7 @@ export const FULFILLMENT_COPY = {
   detail: { en: "Order details", vi: "Chi tiết đơn hàng" },
   simulation: {
     en: "Simulated payment and fulfillment. Shipment information is entered manually; no delivery service is contacted.",
-    vi: "Thanh toán và nhận hàng mô phỏng. Thông tin vận chuyển được nhập thủ công; không kết nối đơn vị giao hàng.",
+    vi: "Thanh toán và nhận hàng. Thông tin vận chuyển được nhập thủ công; không kết nối đơn vị giao hàng.",
   },
   loading: { en: "Loading stored orders…", vi: "Đang tải đơn hàng đã lưu…" },
   empty: { en: "No orders match.", vi: "Không có đơn hàng phù hợp." },
@@ -21,11 +21,11 @@ export const FULFILLMENT_COPY = {
   retry: { en: "Reload stored order", vi: "Tải lại đơn đã lưu" },
   reload: { en: "Reload orders", vi: "Tải lại đơn hàng" },
   awaiting_payment: { en: "Awaiting payment", vi: "Chờ thanh toán" },
-  paid: { en: "Paid (simulated)", vi: "Đã thanh toán mô phỏng" },
+  paid: { en: "Paid", vi: "Đã thanh toán" },
   preparing: { en: "Preparing", vi: "Đang chuẩn bị" },
-  shipped: { en: "Shipped (simulated)", vi: "Đang giao mô phỏng" },
+  shipped: { en: "Shipped", vi: "Đang giao" },
   ready_for_pickup: { en: "Ready for pickup", vi: "Sẵn sàng nhận" },
-  completed: { en: "Completed (simulated)", vi: "Hoàn tất mô phỏng" },
+  completed: { en: "Completed", vi: "Hoàn tất" },
   timeline: { en: "Status timeline", vi: "Lịch sử trạng thái" },
   created: { en: "Order created", vi: "Đã tạo đơn" },
   result: { en: "Auction result recorded", vi: "Đã ghi nhận kết quả đấu giá" },
@@ -55,13 +55,13 @@ export const FULFILLMENT_COPY = {
   },
   startPreparing: { en: "Start preparation", vi: "Bắt đầu chuẩn bị" },
   markShipped: {
-    en: "Confirm simulated shipment",
-    vi: "Xác nhận giao hàng mô phỏng",
+    en: "Confirm shipment",
+    vi: "Xác nhận giao hàng",
   },
   markReady: { en: "Mark ready for pickup", vi: "Xác nhận sẵn sàng nhận" },
   markCompleted: {
-    en: "Confirm simulated completion",
-    vi: "Xác nhận hoàn tất mô phỏng",
+    en: "Confirm completion",
+    vi: "Xác nhận hoàn tất",
   },
   review: { en: "Review shipment", vi: "Kiểm tra thông tin giao hàng" },
   reviewHint: {
@@ -95,7 +95,7 @@ export const FULFILLMENT_COPY = {
   contact: { en: "Submitted contact", vi: "Liên hệ đã gửi" },
   instructions: { en: "Published instructions", vi: "Hướng dẫn đã công bố" },
   order: { en: "Order", vi: "Đơn hàng" },
-  receiptID: { en: "Simulated receipt", vi: "Biên nhận mô phỏng" },
+  receiptID: { en: "Receipt", vi: "Biên nhận" },
   fee: { en: "Fulfillment fee", vi: "Phí nhận hàng" },
 } as const;
 export type FulfillmentKey = keyof typeof FULFILLMENT_COPY;

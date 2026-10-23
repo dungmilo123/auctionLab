@@ -1,3 +1,4 @@
+import { displayEvent } from '@/lib/seed-display'
 import { useCallback } from 'react'
 import { publicCatalog } from '@/api/public-catalog'
 import { LotImage } from '@/components/site/Presentation'
@@ -6,7 +7,6 @@ import { usePublicPage } from './usePublicPage'
 import { withCategories } from './loads'
 import {
   DataState,
-  Demo,
   PlannedBadge,
   Times,
   PublicLotCard,
@@ -28,14 +28,14 @@ export default function AuctionDetailPage({ slug }: { slug: string }) {
         index="/auctions"
       />
     )
-  const { record: event, categories } = state.response.data
+  const { record, categories } = state.response.data
+  const event = displayEvent(record)
   return (
     <article className="stack">
-      <Demo demo={event.demo} />
       <h1>{event.title}</h1>
       <p className="lede">{event.theme}</p>
       <div className="detail-grid">
-        <LotImage src={event.cover_path} alt={event.cover_alt} />
+        <LotImage src={event.cover_path} alt={event.cover_alt} eager />
         <div className="stack">
           <p className="editorial-text">{event.description}</p>
           <PlannedBadge

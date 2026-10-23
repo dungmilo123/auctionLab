@@ -1,0 +1,242 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "checkout-field-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "checkout-field-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "paid-receipt",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "paid-receipt",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "admin-shipping-input",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "admin-shipping-input",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "auth-login-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "auth-login-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "auth-register-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "name": "auth-register-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "checkout-field-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "checkout-field-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "paid-receipt",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "paid-receipt",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "admin-shipping-input",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "admin-shipping-input",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "auth-login-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "auth-login-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "auth-register-error",
+    "lang": "en",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "name": "auth-register-error",
+    "lang": "vi",
+    "chromeZoom": 2,
+    "actual": {
+      "inner": 640,
+      "scroll": 640,
+      "dpr": 2,
+      "reduce": true
+    }
+  }
+]

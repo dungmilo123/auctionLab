@@ -1,0 +1,22 @@
+[
+  {
+    "mode": "vite",
+    "chromeZoom": 2,
+    "reducedMotion": true,
+    "carrierCodePoints": 120,
+    "trackingCodePoints": 200,
+    "conflictReadback": true,
+    "validationPreservedFields": true,
+    "unknownRecoveredWithoutReplay": true
+  },
+  {
+    "mode": "embedded",
+    "chromeZoom": 2,
+    "reducedMotion": true,
+    "carrierCodePoints": 120,
+    "trackingCodePoints": 200,
+    "conflictReadback": true,
+    "validationPreservedFields": true,
+    "unknownRecoveredWithoutReplay": true
+  }
+]

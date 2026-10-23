@@ -46,7 +46,7 @@ Catalog money SHALL use currency `USD` and nonnegative integer cents in explicit
 - **AND** old game budgets and the game currency configuration remain untouched
 
 ### Requirement: Local catalog media
-Catalog image references SHALL use application-origin paths under `/images/` or `/site-assets/catalog/`, without traversal, query strings, fragments, or external URLs. Publication SHALL require readable image files and nonempty alternative text for each referenced image, including the event cover. Seed media SHALL be bundled and have recorded source/license information. Missing images after publication SHALL retain an accessible local fallback.
+Catalog image references SHALL use application-origin paths under `/images/` or `/site-assets/catalog/`, without traversal, query strings, fragments, or external URLs. Publication SHALL require readable image files and nonempty alternative text for each referenced image, including the event cover. Seed media SHALL be bundled and have recorded source/license and authored/generated status. Bundled catalog media SHALL omit visible demo/preview lettering. Missing images after publication SHALL retain an accessible local fallback.
 
 #### Scenario: Local gallery and cover
 - **WHEN** an operator publishes an event whose cover and lot gallery paths resolve to local supported image files
@@ -57,6 +57,11 @@ Catalog image references SHALL use application-origin paths under `/images/` or 
 - **WHEN** an image reference is external, escapes an allowed namespace, or names a missing file at publication
 - **THEN** the invalid reference is rejected or publication reports the missing image
 - **AND** the server does not fetch remote media or publish a partially valid event
+
+#### Scenario: Presentation asset upgrade
+- **WHEN** bundled catalog art is upgraded for the polished website
+- **THEN** existing application-origin references continue to resolve, visible art has no demo/illustration banner and the object identity matches its catalog content
+- **AND** asset manifests retain source, rights and authored/generated status without rewriting published records or purchase snapshots
 
 ### Requirement: Public catalog projections
 Public catalog list and slug-detail reads SHALL expose only published events and their published lots using an explicit public field set. That set SHALL include descriptions, media, fulfillment terms/fees, currency, opening price, increment, event membership/order, and planned opening/closing times. It SHALL exclude drafts, admin notes, internal version/seed metadata, credentials, and all legacy game secrets or player data.
@@ -90,12 +95,12 @@ Saved categories, lot content, assignment/order, publication state, and event sc
 - **AND** the import preserves existing game rows, their original monetary units, and the stored admin capability
 
 ### Requirement: Explicit repeat-safe demo content
-An explicit demo seed operation SHALL create 18 labeled demonstration lots across three events named Analog Memories, Objects of Time, and The Listening Room. It SHALL use all five categories, local media, and valid content/pricing/fulfillment. It SHALL establish dates once from a supplied reference time, remain repeat-safe without overwriting edits, and never run on ordinary startup.
+An explicit demo seed operation SHALL create 18 provenance-marked demonstration lots across three events named Analog Memories, Objects of Time, and The Listening Room. Provenance SHALL remain stored metadata, not mandatory storefront labeling. It SHALL use all five categories, local media, and valid content/pricing/fulfillment. It SHALL establish dates once from a supplied reference time, remain repeat-safe without overwriting edits, and never run on ordinary startup.
 
 #### Scenario: Seed a demo database
 - **WHEN** the seed operation runs against an empty catalog with a reference time
-- **THEN** it creates three complete draft events with six distinct lots each and persists their schedules
-- **AND** an operator can review and publish an event using the normal validation flow
+- **THEN** it creates three complete draft events with six distinct lots each and persists their schedules and provenance flags
+- **AND** an operator can review and publish an event using the normal validation flow without requiring a buyer-facing demo badge
 
 #### Scenario: Repeat seed or restart
 - **WHEN** an operator edits a seed record, reruns the seed operation, or restarts the server
@@ -124,3 +129,16 @@ Successful public category, event and lot list/detail responses SHALL include `m
 - **WHEN** public catalog reads encounter a missing/draft slug, storage failure, or records containing private notes
 - **THEN** draft and missing slugs retain identical not-found responses, failures retain sanitized error envelopes, and public data exclude private fields and game secrets
 - **AND** response time does not authorize private reads or alter the existing admin capability checks
+
+### Requirement: Bounded legacy seed presentation
+Known project seed boilerplate SHALL have a presentation-only product-language equivalent when provenance, media identity and exact original field value match. Equivalent wording SHALL preserve unknown condition/provenance and fulfillment meaning. Custom/authored fields, prices, schedules and stored purchase terms SHALL remain unchanged. New seed content SHALL use the same natural wording while retaining provenance metadata.
+
+#### Scenario: Existing seed and owner snapshot
+- **WHEN** a recognized historical seed lot or its owned purchase snapshot contains the original stock description, condition, image alt or delivery instructions
+- **THEN** the interface presents its defined neutral equivalent without demonstration wording or an invented history, assessment or collection address
+- **AND** raw API/storage values, fees, eligibility and the immutable purchase snapshot remain unchanged
+
+#### Scenario: Edited or unrelated content
+- **WHEN** a seeded field was edited, provenance is absent, media identity is unrecognized or an ordinary listing happens to contain a matching word
+- **THEN** the authored field is rendered as supplied without generic search-and-replace or invented translation
+- **AND** seeding again does not overwrite that content or create duplicates

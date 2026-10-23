@@ -51,10 +51,10 @@ Vite serves the admin document publicly; every catalog data request independentl
 
 ## Presentation components
 
-Tokens live in `src/index.css`: ivory `#F6F1E8`, charcoal `#24211E`, burgundy `#722F37`, olive status accents, decorative brass. Headings use local Noto Serif 400/600 and Georgia fallback; body uses Noto Sans 400/600 and system-ui fallback. Type roles are 14/16/20/28px with 36–56px fluid hero, 1.5 body / 1.15 heading leading. Prices/times use `.numeric` tabular numerals. Spacing is 4/8/12/16/24/32/48/64px. Controls use 1px borders, 4px radius, 44px minimum targets, visible focus with an ivory gap, and readable disabled/error states. No hard offset shadows. Reduced motion disables nonessential transitions. Grid: 1 column below 640px, 2 at 640px, 3 at 1024px; content max 1200px with 16/24/32px gutters.
+Tokens live in `src/index.css`: ivory `#F6F1E8`, charcoal `#24211E`, burgundy `#722F37`, olive status accents, decorative brass. Headings use local Noto Serif 400/600 and Georgia fallback; body uses Noto Sans 400/600 and system-ui fallback. Type roles are 14/16/18/24/32/48/64px with fluid headings, 1.5 body / 1.15 heading leading. Prices/times use `.numeric` tabular numerals. Spacing is 4/8/12/16/24/32/48/64px. Controls use 1px borders, 4px radius, 44px minimum targets, visible focus with an ivory gap, and readable disabled/error states. No hard offset shadows. Reduced motion disables nonessential transitions. Grid: 1 column below 640px, 2 at 640px, 3 at 1024px; content max 1400px with 16/24/32px gutters.
 
 - `components/ui/`: existing `Button` (default/outline/secondary/ghost/destructive/link; `asChild` for a real link), `Input`, `Label`, and `Card` family use the shared tokens. Use `type="button"` for UI actions. Never use an anchor as a disabled button.
-- `components/site/Presentation.tsx`: `LotCard({title, metadata, status, image?, href})` has one primary detail link; `StatusBadge({status})` accepts upcoming/live/ended/sold/unavailable and always includes text; `LotImage({src?, alt})` handles failures with a local fallback plus translated caption; `PreviewNotice`, `PageHeading({title, intro?})`, `UnavailableState({title, children})` are shared presentation components.
+- `components/site/Presentation.tsx`: `LotCard({title, metadata, status, image?, href})` has one primary detail link; `StatusBadge({status})` accepts upcoming/live/ended/sold/unavailable and always includes text; `LotImage({src?, alt})` handles failures with a local fallback plus translated caption; `PageHeading({title, intro?})`, `UnavailableState({title, children})` are shared presentation components.
 - `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Discovery forms submit native GET requests. Catalog controls use the same design tokens and associations, without frontend credential inputs.
 - `fixtures/site.ts`: three illustrative objects, independent of game wire types and API clients. A long title exercises wrapping. These retained fixtures are not mounted by public discovery.
 - `lib/site-copy.ts`: typed EN/VI website dictionary and `useSiteCopy()` integrate with the existing language provider and `auctionlab.lang` preference. Retained previews can use `t('imageAlt', {object: title})`; published galleries/cards use authored alternative text. React escapes output. Game copy and its fixed-count tests remain unchanged. App updates document title/language for each route and language.
@@ -148,7 +148,7 @@ For legacy data, follow [offline import, verify, backup/restore and rollback](..
 
 ## Published discovery
 
-`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, demo markers, gallery selection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account and order views retain notices distinguishing working accounts/watchlists/bidding/private checkout with simulated payment from future order history and fulfillment. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
+`routes/storefront/` has separate home, event index/detail and lot index/detail pages. `usePublicPage` owns cancellable loading, retries, obsolete-result guards and visibility-resume refresh. `DiscoveryPresentation` supplies published cards, explicit planned-phase badges, bounded seed presentation, gallery selection/inspection and loading/empty/no-results/not-found/unavailable/error recovery. `lib/discovery-copy.ts` supplies EN/VI interface copy; authored records are not translated. Account and order views use task-specific product language, confirmed watchlist state and owner-only checkout/history/fulfillment navigation. Publication is required: explicit seeding alone leaves discovery empty, and the UI never substitutes fixtures.
 
 `api/public-catalog.ts` performs only anonymous GET requests with `credentials: 'omit'`, no admin headers and `cache: 'no-store'`. It validates envelopes, public record shape and server time. It never calls private APIs. The primary response's time sample plus monotonic elapsed time drives presentation, independently of the device wall clock. Visible pages tick once per second; resuming a hidden tab reloads public records and a failed refresh shows retry. Absolute planned dates identify the viewer timezone. Upcoming means before opening; within planned window includes opening and excludes close; elapsed includes close. Events use planned end; lots use individual closes. Missing/inconsistent timing is unavailable. These phases do not determine execution or results.
 
@@ -199,9 +199,9 @@ Discovery's planned URL phases (`all/upcoming/window/elapsed`), catalog DTOs and
 
 `/account/wins` lists the current owner's unpaid wins. `/account/checkout/<32-lowercase-hex-order-id>` is an exact single-order route, with safe login return and explicit selected-ID dispatch. The existing account namespace serves private wins/order reads and stateless review/atomic simulated confirmation; see `../internal/order/README.md`. Vite uses the same API guard as the embedded binary. `/account/orders` provides owner history; `/admin/orders` provides capability-authorized fulfillment.
 
-The checkout flow is form → server review → deliberate simulation → stored paid confirmation. EN/VI labels cover loading, empty, signed-out, missing, field validation, pending, unknown, unavailable and paid states. Both simulation methods state that no money is charged, including for non-demo lots. No card/bank inputs exist. Item/fee components retain their catalog limit; the separate order formatter accepts their exact combined maximum of 2,000,000,000,000 USD cents.
+The checkout flow is grouped contact/fulfillment/payment form → server review → deliberate confirmation → stored paid receipt. EN/VI labels cover loading, empty, signed-out, missing, field validation, pending, unknown, unavailable and paid states. Buyers see Card/Bank transfer without simulation banners. Processing still uses local simulated methods and never charges money. No card/bank inputs exist. Item/fee components retain their catalog limit; the separate order formatter accepts their exact combined maximum of 2,000,000,000,000 USD cents.
 
-Private reads/mutations are bound to owner/order and lifecycle tokens. Navigation, logout, account switch and page restoration abort obsolete work and suppress late responses. Language changes preserve the active owned form. Edits discard the previous review/intent. Confirmation disables competing edits/submits; unknown outcomes require stored-order recovery before deliberate same-intent retry. Reload reads durable state and clears unsent personal values; login/reconnect never replays payment. Contact/address/request intent stays out of URLs, browser storage and logs. Paid orders show their stored contact/fulfillment, exact amounts, receipt and time without pay controls. Unpaid wins omit paid orders on the next read. General order history and delivery tracking remain future work.
+Private reads/mutations are bound to owner/order and lifecycle tokens. Navigation, logout, account switch and page restoration abort obsolete work and suppress late responses. Language changes preserve the active owned form. Edits discard the previous review/intent. Confirmation disables competing edits/submits; unknown outcomes require stored-order recovery before deliberate same-intent retry. Reload reads durable state and clears unsent personal values; login/reconnect never replays payment. Contact/address/request intent stays out of URLs, browser storage and logs. Paid orders show their stored contact/fulfillment, exact amounts, receipt and time without pay controls. Unpaid wins omit paid orders on the next read. Owner history and manually managed fulfillment use the endpoints below.
 
 Current measured acceptance and any missing actual-browser zoom/reduced-motion checks are in the [Change 6 archive report](../openspec/changes/archive/2026-10-21-add-winner-checkout-and-demo-payment/verification/REPORT.md); earlier Change 4/5 archive limitations remain unchanged.
 
@@ -241,8 +241,8 @@ and honest observed/backfilled/snapshot coverage. Refresh is explicit, not SSE.
 Home and lot detail independently load `/api/catalog/recommendations` without
 cookies. Validated owners may replace that public fallback using
 `/api/account/recommendations` through the existing account namespace. Source
-context takes precedence over watchlist feature sets. Reasons, demo markers and
-native stored-slug links use existing public cards. Checking/unavailable identity
+context takes precedence over watchlist feature sets. Concise reasons, confirmed save controls and
+native stored-slug links use shared public cards. Checking/unavailable identity
 is labeled public fallback; account recovery stays separate. A private failure
 clears private cards and offers retry while public suggestions remain usable.
 Source/identity changes remount the suggestion state, abort independent reads
@@ -256,3 +256,65 @@ has no automatic retry or blocking UI. A new document can create a new view.
 No external SDK, persistent tracking identifier or game socket is introduced.
 See `internal/interaction/README.md` and `internal/recommendation/README.md` for
 request/error boundaries, authored-era limitations and the `rules-v1` baseline.
+
+## Collected Stories presentation (Change 9)
+
+The viewing-room palette remains ivory `#F6F1E8`, charcoal `#24211E`, burgundy
+`#722F37`, olive `#62664D`, brass `#A38355` and white. Local Noto Serif carries
+headings; Noto Sans carries controls/prose. Spacing uses 8/12/16/24/32/48/64 px;
+prices use tabular figures. Image mats, open stories and functional auction/review
+surfaces have distinct hierarchy. Website selectors stay separate from dormant
+game helpers. `Icon` standardizes decorative Lucide SVGs; icon-only controls need
+localized accessible names and 44 px targets. Consequential actions keep labels.
+
+`LanguageMenu` uses native names, Radix keyboard handling, selected radio state,
+Escape and focus return. It reuses the existing language provider/storage key;
+changing language preserves loaded records, image selection and private forms.
+Header search submits a native GET to `/lots?q=...`; discovery filters retain
+existing URL semantics, reset and browser history. Mobile secondary filters and
+navigation disclose supported destinations without inventing routes or badges.
+Gallery inspection shares thumbnail selection with the Radix focus-contained
+image dialog, localized previous/next/close and position. It never records views
+or submits commerce actions; the lot identity alone drives existing observation.
+
+`WebsiteMotion` shares 150 ms micro, 240 ms panel and 650 ms entrance roles with
+cubic-bezier(.22,1,.36,1). It subscribes to runtime reduced-motion changes and
+covers React portals; CSS also includes `.website-overlay`. Only home gets an
+entrance; image/heart/status feedback stays local. No decorative idle loop,
+interpolated price, cross-document router or animation-triggered request exists.
+Private content has no retained animated exits. Identity/access/order invalidation
+continues to remove private DOM and abort/ignore obsolete responses immediately.
+
+`WatchlistProvider` shares one confirmed owner list in memory for each validated
+identity generation. Card/detail/watchlist hearts sit outside links. Pending
+writes suppress duplicates; failures make membership unknown and offer a read
+recovery, without replaying a write. Revalidation/logout discards membership;
+no private cache is persisted. Profile email stays read-only. Checkout groups
+contact, fulfillment and payment before server review/explicit confirmation;
+paid receipts stay read-only. Timelines mark only committed events, and carrier
+and reference remain inert text. No recovery/gateway/carrier service was added.
+
+`seed-display.ts` is an exact-field compatibility adapter, gated by demo
+provenance and recognized local media. Only original stock wording is adapted,
+including matching historical owner snapshots; edited/unrelated text is unchanged.
+Unknown condition and absent provenance stay unknown. It never changes API/storage
+values, fees, schedules, terms or receipts. Future explicit seeds use equivalent
+natural defaults and the original repeat-safe marker. All 39 existing catalog
+URLs contain CC0 project-authored vector object/detail/collection studies; their
+manifest is `public/site-assets/catalog/README.md`. Raster/AI generation: none.
+
+Buyer copy uses Card/Bank transfer, Confirm payment and ordinary shipment labels.
+Processing remains local simulation with the same `demo-card`/`demo-bank-transfer`
+wire IDs: no financial credentials, gateway, actual charge or external tracking.
+Admin analytics keeps cohort provenance, coverage and simulated-value definitions.
+Operator capability authorization, immutable publication and fulfillment version
+checks remain independent of account role. The Go gate stays self-contained,
+bilingual, uncached and capability-based. See the [Change 9 archive report](../openspec/changes/archive/2026-10-23-polish-auction-website-experience/verification/REPORT.md)
+for measured acceptance and validation limits.
+
+Account/admin route modules load on demand within a localized `PageBoundary` and
+`Suspense` loading state. Lazy components are declared at module scope, so language
+changes do not reset forms. Failed module delivery offers a deliberate document
+reload, retaining navigation and replaying no commerce intent. This remains native
+document navigation. Shared motion uses `LazyMotion`/`domAnimation` with the light
+`m` components; no drag/layout feature bundle is needed for these bounded panels.

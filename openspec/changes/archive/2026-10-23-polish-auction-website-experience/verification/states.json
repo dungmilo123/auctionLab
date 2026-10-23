@@ -1,0 +1,1410 @@
+[
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 320,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "en",
+    "width": 375,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 320,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:5173",
+    "lang": "vi",
+    "width": 375,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 320,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "en",
+    "width": 375,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 320,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "home-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "home-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-empty",
+    "state": "empty",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-no-match",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "lots-long-title",
+    "state": "long",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "lot-missing-image",
+    "state": "media",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "lot-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "event-loading",
+    "state": "loading",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "event-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "account-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "watchlist-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "bids-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "wins-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "checkout-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "order-missing",
+    "state": "missing",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "catalog-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "catalog-missing",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "orders-invalid",
+    "state": "none",
+    "source": "native URL"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "analytics-access",
+    "state": "access",
+    "source": "explicit intercepted presentation fixture"
+  },
+  {
+    "base": "http://127.0.0.1:8080",
+    "lang": "vi",
+    "width": 375,
+    "name": "analytics-unavailable",
+    "state": "unavailable",
+    "source": "explicit intercepted presentation fixture"
+  }
+]

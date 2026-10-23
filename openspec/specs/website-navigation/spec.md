@@ -55,7 +55,7 @@ The website SHALL recognize only the routes listed below. Public detail routes S
 - **AND** Go documents remain gated, navigation identifies analytics accessibly, and extra path segments or uppercase route variants remain not-found
 
 ### Requirement: Navigable layout shells
-The storefront SHALL have brand navigation, links to auctions, lots, and account, a main content landmark, and a footer. Account and admin shells SHALL add contextual navigation and a route back to the storefront. Every displayed navigation link SHALL resolve to an implemented foundation destination, identify the current destination accessibly, and remain usable on mobile.
+The storefront SHALL have brand navigation, links to auctions, lots and account, accessible search and watchlist entry points, a main content landmark and a footer. Account and admin shells SHALL add icon-supported contextual navigation and a route back to the storefront. Every navigation link SHALL resolve to an implemented destination, identify the current destination accessibly and remain usable on mobile. Narrow layouts SHALL provide an operable collapsible navigation panel without concealing essential destinations.
 
 #### Scenario: Navigating between website areas
 - **WHEN** a visitor follows storefront links, account section links, or authorized admin section links
@@ -65,6 +65,11 @@ The storefront SHALL have brand navigation, links to auctions, lots, and account
 #### Scenario: Browser navigation semantics
 - **WHEN** a visitor opens a link in a new tab or uses browser Back and Forward after following links
 - **THEN** the browser displays the expected destination and URL without losing navigation availability
+
+#### Scenario: Narrow navigation and search
+- **WHEN** a visitor opens the mobile navigation or header search affordance
+- **THEN** existing destinations remain keyboard reachable and search submits to `/lots` using its existing `q` query
+- **AND** Escape closes an open panel, focus returns to its trigger and no menu action fabricates a badge count or changes authentication
 
 ### Requirement: Direct URL loading
 Recognized website routes SHALL render after direct entry, bookmark navigation, or refresh in the development frontend and embedded Go build. Production admin routes SHALL first pass the existing server gate. Public discovery SHALL load its published selection and URL query or an explicit recovery state. Catalog and order management SHALL load their authorized saved selection or an explicit access/error state; owner history/detail SHALL validate the commerce session and load only owned purchases. Website documents SHALL retain a no-cache policy in the embedded build.
@@ -113,12 +118,12 @@ The Go server SHALL retain the existing key and cookie gate on `/admin` and its 
 - **AND** the operator can subsequently navigate to the admin preview destinations
 
 ### Requirement: Honest preview boundaries
-Public discovery SHALL accurately identify published content, demos, planned schedules, and unavailable transactions. Accounts, watchlists and bid participation SHALL show only server-confirmed identity and owned data. Lot-detail bidding SHALL require current commerce eligibility; owned wins and single-order checkout SHALL support explicitly simulated payment, with owner-only order history and capability-authorized simulated fulfillment available through their private routes. Website pages SHALL avoid game sessions and game WebSockets. Catalog mutation and aggregate analytics SHALL remain capability-authorized. Public related lots and owner-watchlist suggestions SHALL use explainable rules; trained ML remains future work. Optional view recording SHALL remain separate from read-only discovery APIs.
+Website copy SHALL describe the user's task and actual committed state without repeated capability inventories, demo/preview badges, simulation/no-charge disclaimers or future-ML announcements in storefront and buyer flows. This presentation SHALL NOT alter internal demo provenance, simulated payment/fulfillment behavior, server-confirmed eligibility, owner privacy, capability authorization or game isolation. Dedicated operator analytics provenance controls and technical documentation SHALL retain their factual data definitions.
 
 #### Scenario: Exploring the foundation
-- **WHEN** a visitor browses public discovery, account pages, or order history, or activates a preview-only control
-- **THEN** working account/watchlist/bid/checkout/fulfillment actions report only their confirmed result and preview-only controls create no transaction or game connection
-- **AND** published records and labeled demos remain distinguishable, and winning a sold lot produces one awaiting-payment order and never implies payment
+- **WHEN** a visitor browses public discovery, account pages, or order history
+- **THEN** working account/watchlist/bid/checkout/fulfillment actions report only their confirmed result and unavailable actions explain the relevant recovery
+- **AND** winning a sold lot produces one awaiting-payment order and never implies payment, regardless of presentation labels
 
 #### Scenario: Existing game identity in browser storage
 - **WHEN** a browser with a saved game token opens the new storefront or account shell
@@ -126,18 +131,23 @@ Public discovery SHALL accurately identify published content, demos, planned sch
 
 #### Scenario: Working catalog administration
 - **WHEN** an authorized operator saves a lot draft or publishes an auction event
-- **THEN** catalog management reports only the committed catalog operation and explains scheduled commerce bidding, private winner checkout/history with simulated payment and dedicated simulated fulfillment operations
+- **THEN** catalog management reports only the committed operation with concise task-specific feedback
 - **AND** the next successful public discovery read reflects committed publication without creating a game connection, account session, watchlist entry or bid; separate auction execution adopts the published schedule and later creates an order only for a sold result
 
 #### Scenario: Public notices reflect stored data
-- **WHEN** a visitor browses a non-demo published event or lot
-- **THEN** shared notices and footer copy do not describe the record as an imagined object, generic preview, or necessarily an illustration
-- **AND** notices distinguish available accounts/watchlists/scheduled bidding/private checkout/history/simulated fulfillment from the optional future ML extension, describe working private aggregate analytics and rule-based recommendations, identify every payment as simulated, and label demo records when applicable
+- **WHEN** a visitor browses a demo or non-demo published event or lot and continues to checkout or a receipt
+- **THEN** the shared shell and transaction flow omit demonstration badges, simulation/no-charge warnings and implementation-progress or future-ML notices
+- **AND** stored provenance and method values remain unchanged, images describe the content available, and the UI makes no gateway settlement, verified-authenticity or carrier-confirmation claim unsupported by the system
 
 #### Scenario: Account service unavailable during discovery
 - **WHEN** account state cannot be loaded but the published catalog read succeeds
 - **THEN** discovery remains usable and watch controls identify their account-service recovery state
 - **AND** the site does not present service failure as a confirmed signed-out identity or activate bidding
+
+#### Scenario: Operator data provenance
+- **WHEN** an authorized operator filters analytics or inspects metric definitions
+- **THEN** demo/non-demo cohorts, simulated-value definitions and coverage limitations remain available in that operational context
+- **AND** those definitions do not become repeated global announcements or buyer badges
 
 ### Requirement: Retire the old game route surface
 The website SHALL replace the player experience at `/` and the game control room at `/admin`. `/screen` and all its descendants SHALL render the not-found view. Foundation navigation SHALL not expose a legacy player, projector, or control-room route alias. This change SHALL not delete existing game data.
@@ -188,3 +198,16 @@ Authentication links SHALL use a `return_to` destination limited to recognized s
 - **WHEN** a signed-out visitor logs in with a recognized local checkout or unpaid-wins return destination
 - **THEN** the destination reloads and revalidates ownership before showing purchase data
 - **AND** unsent contact/address data is not encoded in the URL or restored across identities and confirmation requires a new deliberate action
+
+### Requirement: Native-name language dropdown
+The shared website language control SHALL show the current native language name with a globe and expansion indicator, and offer English and Tiếng Việt with selected-state feedback. It SHALL support keyboard selection, Escape and focus return, preserve the existing preference and page/query/form state, update document language and submit no commerce action. Country flags SHALL NOT be the sole identifier.
+
+#### Scenario: Switch while editing or filtering
+- **WHEN** a visitor changes language on a filtered index, an active owned checkout or an authorized shipping form
+- **THEN** the interface and accessible names change, the selection persists across navigation and the same query, selected image and valid active form values remain
+- **AND** no document navigation, bid, save, review, payment, fulfillment or view-recording event is caused solely by the language change
+
+#### Scenario: Operate without pointer
+- **WHEN** the visitor opens language selection using the keyboard
+- **THEN** available languages and the selected language are announced and can be chosen without a pointer
+- **AND** cancelling closes it and restores trigger focus without changing language

@@ -7,7 +7,7 @@ Let anonymous visitors discover published vintage auction events and lots, inspe
 ## Requirements
 
 ### Requirement: Published discovery homepage
-The homepage SHALL display the brand introduction, up to three featured published events, up to six lots nearest their future planned close, and links for all catalog categories. Featured events SHALL prioritize the current planned window, then upcoming, then elapsed, with opening-time and slug tie breaks. All record links SHALL use stored slugs. Empty sections SHALL explain their state without sample replacements.
+The homepage SHALL display the brand introduction, up to three featured published events, up to six lots nearest their future planned close, and links for all catalog categories. Featured events SHALL prioritize the current planned window, then upcoming, then elapsed, with opening-time and slug tie breaks. All record links SHALL use stored slugs. Empty sections SHALL explain their state without sample replacements. An image-led focal composition SHALL use the first featured published event's media/content with direct exploration links; an empty catalog SHALL use a restrained brand composition without a fabricated event.
 
 #### Scenario: Discover from home
 - **WHEN** published events span current, upcoming, and elapsed planned windows
@@ -18,6 +18,11 @@ The homepage SHALL display the brand introduction, up to three featured publishe
 - **WHEN** no lot is within its planned window or the entire public catalog is empty
 - **THEN** the applicable homepage section explains that no matching published content is available and offers the auction or lot index
 - **AND** category links lead to `/lots` with the corresponding category filter and no fixture records are substituted
+
+#### Scenario: Focal collection presentation
+- **WHEN** featured published content is available
+- **THEN** the leading event image and story anchor the homepage with clear event and collection links
+- **AND** media failure preserves the focal region and navigation rather than inserting an unrelated object or false live claim
 
 ### Requirement: Event browsing and detail
 The auction index SHALL offer all, upcoming, within-planned-window, and planned-window-elapsed views of published events. Event detail SHALL show the matching event's title, theme, cover, description, planned opening/end, and all its lots in published position order, with lot detail links. Phase groups SHALL use the same ordering as the homepage.
@@ -64,7 +69,7 @@ Discovery selections SHALL be represented by `q`, `category`, `phase`, and `sort
 - **AND** the page does not crash, execute markup, or request private APIs
 
 ### Requirement: Inspectable lot content and gallery
-Lot detail SHALL show the matching published title, category, description, condition, optional brand/era, ordered specifications, supplied story and parent event link. Its gallery SHALL preserve published image order and alternative text, offer keyboard-operable image selection, and use local failure fallbacks. Missing historical fields SHALL be omitted or identified as unknown, without authenticity claims.
+Lot detail SHALL show the matching published title, category, description, condition, optional brand/era, ordered specifications, supplied story and parent event link. Its gallery SHALL preserve published image order and alternative text, offer keyboard-operable image selection and enlarged inspection, and use local failure fallbacks. Missing historical fields SHALL be omitted or identified as unknown, without authenticity claims. Enlarged inspection SHALL support close/previous/next controls, Escape, contained focus and restoration to its opener.
 
 #### Scenario: Inspect all images and details
 - **WHEN** a visitor selects gallery images on a published lot with multiple images and specifications
@@ -75,6 +80,11 @@ Lot detail SHALL show the matching published title, category, description, condi
 - **WHEN** an image file is missing after publication
 - **THEN** its image region presents the local unavailable fallback and readable explanation
 - **AND** the rest of the gallery, content and parent-event navigation remain usable
+
+#### Scenario: Enlarge and return
+- **WHEN** a visitor opens an image for enlarged inspection and moves to another image
+- **THEN** the gallery and enlarged view share the selected image and expose localized control names and image position
+- **AND** closing restores focus without changing lot identity, losing selection, submitting an action or recording another lot view
 
 ### Requirement: Price and fulfillment disclosure
 Lot detail SHALL label the stored USD starting price as an opening price and show its fixed increment. It SHALL disclose condition and every enabled delivery/pickup method, instructions, and shipping fee before the bid control in reading order. Missing amounts SHALL be unavailable, distinct from zero. Current bids, counts, history and results SHALL appear only from the commerce auction service; purchase totals SHALL be available only from owned checkout after a sold result, not invented by public discovery.
@@ -116,16 +126,16 @@ Public pages SHALL distinguish loading, empty catalog, no matches, missing recor
 - **AND** retry reloads public data, preserves discovery selections, and only a valid successful response produces results
 
 ### Requirement: Accessible bilingual discovery without transactions
-Discovery SHALL follow the existing design system at mobile and desktop widths, support keyboard use, 200 percent text zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored. Demo records SHALL retain a visible demo label. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout, order history and fulfillment detail SHALL link through owner-authenticated reads; public discovery SHALL expose no private purchase or shipping data. Notices SHALL identify payment and fulfillment as simulated, describe available rule-based recommendations and keep trained ML as separate future work. Optional first-party view recording SHALL use the separate interaction endpoint without blocking browsing or changing commerce state.
+Discovery SHALL follow the shared design system at mobile and desktop widths, support keyboard use, actual 200-percent browser zoom and reduced motion, and supply EN/VI interface, state and recovery copy. Published editorial content SHALL remain as authored except for the defined bounded legacy seed presentation. Consumer cards/details SHALL omit demo badges, simulation notices and rule-engine/future-ML announcements. Lot-detail bidding SHALL require a current commerce session and confirmed eligibility; anonymous discovery/history SHALL require no account or game session. Winner checkout, order history and fulfillment detail SHALL link through owner-authenticated reads; public discovery SHALL expose no private purchase or shipping data. Optional first-party view recording SHALL use the separate interaction endpoint without blocking browsing or changing commerce state.
 
 #### Scenario: Mobile and language switch
-- **WHEN** a visitor browses at 320 or 375 CSS pixels, changes EN/VI, or enlarges text to 200 percent
+- **WHEN** a visitor browses at 320 or 375 CSS pixels, changes language, or uses actual 200-percent browser zoom
 - **THEN** navigation, query controls, gallery, prices and fulfillment remain readable and usable without page-level horizontal overflow
 - **AND** language changes preserve loaded records and selections, translate interface labels, and update the document language
 
 #### Scenario: Real record versus demo and future bidding
 - **WHEN** a visitor views a stored demo or non-demo lot and attempts the bid control
-- **THEN** only demos are labeled as demonstration content, and the bid panel reports the server-confirmed execution state, offering login or deliberate submission only when eligible
+- **THEN** both use the same product presentation without demonstration badges, and the bid panel reports the server-confirmed execution state, offering login or deliberate submission only when eligible
 - **AND** browsing alone creates no account, watchlist, bid, order or payment mutation, restores no game token and opens no game WebSocket; only deliberate eligible bidding can create a commerce bid and only server closure can create its winner order
 
 #### Scenario: Winner continues from the public lot
@@ -153,3 +163,19 @@ Home and lot detail SHALL load rule-based suggestions independently from existin
 - **WHEN** a visitor loads a published lot or follows a recommendation
 - **THEN** related-lot loading and optional view recording create no account, watch entry, bid, result, order or payment
 - **AND** a failed recommendation or observation request leaves the loaded gallery, fulfillment terms and eligible deliberate bid controls usable
+
+### Requirement: Focused lot auction hierarchy
+Lot detail SHALL emphasize the gallery, title and exact current price or explicit no-bids state, followed by closing time, eligibility and the primary bid action. Opening price, fixed increment, bid minimum and history SHALL remain distinctly labeled. Condition and all fulfillment terms SHALL precede submission in reading order. Sticky treatments SHALL not obscure content, errors or focus.
+
+#### Scenario: Inspect terms before bidding
+- **WHEN** a visitor reads the lot by keyboard or on a narrow screen
+- **THEN** condition, available fulfillment methods, instructions and fees are reachable before the enabled submit control
+- **AND** a fixed or sticky bid treatment does not create another submission path that bypasses those disclosures or current eligibility
+
+### Requirement: Compact responsive discovery controls
+Lot and event indexes SHALL group search, filters, sorting, result counts and reset actions with clear labels. On narrow layouts secondary filters SHALL be expandable while preserving supported native GET query semantics and current selections. Opening or closing filters SHALL not itself navigate or alter results.
+
+#### Scenario: Mobile filter submission
+- **WHEN** a visitor opens filters, chooses supported values and deliberately applies them
+- **THEN** the existing URL/query semantics determine results and survive refresh, new tabs and Back/Forward
+- **AND** no-results preserves selections and offers reset, distinct from loading, empty catalog and service failure

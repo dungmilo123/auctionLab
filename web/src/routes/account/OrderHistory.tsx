@@ -1,10 +1,14 @@
+import { CheckCircle2, CreditCard, MapPin, Package, Truck } from 'lucide-react';
+import { Icon } from '@/components/site/Icon';
+import { LotImage } from '@/components/site/Presentation';
+import { displayOrder, displaySummary } from '@/lib/seed-display';
 import { useCallback } from "react";
 import { historyAPI, type HistoryOrder, type Summary } from "@/api/fulfillment";
 import { useFulfillmentCopy } from "@/lib/fulfillment-copy";
 import { formatOrderMoney } from "@/lib/order-money";
 import { usePrivateRead } from "./usePrivateRead";
 export function OrderSummary({
-  order,
+  order: rawOrder,
   href,
   label,
 }: {
@@ -13,19 +17,13 @@ export function OrderSummary({
   label: string;
 }) {
   const { f } = useFulfillmentCopy();
+  const order = displaySummary(rawOrder);
   return (
     <li className="catalog-record stack-small">
-      <img
-        className="order-history-image"
-        src={order.image.path}
-        alt={order.image.alt}
-      />
+      <LotImage src={order.image.path} alt={order.image.alt} />
       <h2>
         <a href={href}>{order.title}</a>
       </h2>
-      {(order.lot_demo || order.event_demo || order.account_demo) && (
-        <p>{f("demo")}</p>
-      )}
       <p>
         {f(order.status)} · {f(order.method ?? "unselected")}
       </p>
@@ -45,13 +43,14 @@ export function OrderSummary({
   );
 }
 export function OrderInspection({
-  order,
+  order: rawOrder,
   admin = false,
 }: {
   order: HistoryOrder;
   admin?: boolean;
 }) {
   const { f, lang } = useFulfillmentCopy();
+  const order = displayOrder(rawOrder);
   const date = (ms: number) =>
     new Intl.DateTimeFormat(lang === "vi" ? "vi-VN" : "en-US", {
       dateStyle: "medium",
@@ -61,10 +60,6 @@ export function OrderInspection({
   return (
     <section className="order-inspection stack">
       <h2>{order.snapshot.title}</h2>
-      <p>{f("simulation")}</p>
-      {(order.snapshot.lot_demo ||
-        order.snapshot.event_demo ||
-        order.snapshot.account_demo) && <p>{f("demo")}</p>}
       <img
         className="order-history-image"
         src={order.snapshot.image.path}
@@ -139,6 +134,7 @@ export function OrderInspection({
         <ol className="order-timeline">
           {p.timeline.map((e) => (
             <li key={e.version}>
+<Icon icon={e.to_status === "completed" ? CheckCircle2 : e.to_status === "shipped" ? Truck : e.to_status === "ready_for_pickup" ? MapPin : e.to_status === "paid" ? CreditCard : Package} />
               <strong>{e.version === 0 ? f("created") : f(e.to_status)}</strong>
               <p>
                 <time dateTime={new Date(e.occurred_at).toISOString()}>
@@ -202,8 +198,7 @@ export default function OrderHistory({
       </button>
       {Array.isArray(state.data) ? (
         <>
-          <p>{f("simulation")}</p>
-          {state.data.length === 0 ? (
+              {state.data.length === 0 ? (
             <p className="empty-state">{f("empty")}</p>
           ) : (
             <ul className="order-history-list">

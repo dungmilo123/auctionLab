@@ -1,3 +1,4 @@
+import { displayOrder } from '@/lib/seed-display';
 import { useCallback } from "react";
 import { orderAPI } from "@/api/order";
 import { useOrderCopy } from "@/lib/order-copy";
@@ -22,12 +23,11 @@ export default function Wins({ owner }: { owner: string }) {
     );
   return (
     <section className="stack">
-      <p>{o("simulation")}</p>
       {state.data.length === 0 ? (
         <p className="empty-state">{o("empty")}</p>
       ) : (
         <ul className="auction-participation">
-          {state.data.map((v) => (
+          {state.data.map(displayOrder).map((v) => (
             <li className="catalog-record stack-small" key={v.id}>
               <h2>
                 <a href={`/lots/${encodeURIComponent(v.snapshot.slug)}`}>
