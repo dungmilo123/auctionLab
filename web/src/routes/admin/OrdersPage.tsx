@@ -219,16 +219,16 @@ function OrdersWorkspace({
           ? "markReady"
           : "markCompleted";
   return (
-    <div className="order-workspace stack">
+    <div className="flex flex-col gap-6 [&_*]:min-w-0 flex flex-col gap-6">
       <PageHeading title={f("history")} />
       {!valid ? (
-        <section className="empty-state stack">
+        <section className="border border-hairline border-t-ink bg-paper px-6 py-8 flex flex-col gap-6">
           <p role="alert">{f("invalidQuery")}</p>
           <a href="/admin/orders">{f("resetFilters")}</a>
         </section>
       ) : (
         <>
-          <form className="order-filters" action="/admin/orders" method="GET">
+          <form className="flex flex-wrap items-end gap-4 [&>label]:flex [&>label]:flex-[1_1_12rem] [&>label]:flex-col [&>label]:gap-2" action="/admin/orders" method="GET">
             <label>
               {f("status")}
               <select name="status" defaultValue={filters.status}>
@@ -249,12 +249,12 @@ function OrdersWorkspace({
                 ))}
               </select>
             </label>
-            <button className="site-button" type="submit">
+            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5" type="submit">
               {f("filter")}
             </button>
           </form>
           <button
-            className="site-button site-button-outline"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5"
             onClick={reload}
             disabled={mutation === "pending"}
           >
@@ -276,7 +276,7 @@ function OrdersWorkspace({
           {read === "loading" ? (
             <p role="status">{f("loading")}</p>
           ) : read === "access" ? (
-            <section className="empty-state stack">
+            <section className="border border-hairline border-t-ink bg-paper px-6 py-8 flex flex-col gap-6">
               <p role="alert">{f("access")}</p>
               <a href="/admin">{f("gate")}</a>
             </section>
@@ -287,16 +287,16 @@ function OrdersWorkspace({
           ) : (
             <>
               {detail && (
-                <section className="catalog-record stack">
+                <section className="min-w-0 rounded-[2px] border border-hairline bg-paper p-5 flex flex-col gap-6">
                   <OrderInspection order={detail} admin />
                   {(mutation === "unknown" || mutation === "conflict") && (
-                    <button className="site-button" onClick={reload}>
+                    <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5" onClick={reload}>
                       {f("retry")}
                     </button>
                   )}
                   {next && (
                     <form
-                      className="stack"
+                      className="flex flex-col gap-6"
                       onSubmit={(e) => {
                         e.preventDefault();
                         void advance();
@@ -304,7 +304,7 @@ function OrdersWorkspace({
                     >
                       {next === "shipped" && (
                         <fieldset
-                          className="stack"
+                          className="flex flex-col gap-6"
                           disabled={
                             mutation === "pending" ||
                             mutation === "unknown" ||
@@ -315,7 +315,7 @@ function OrdersWorkspace({
                           {(["carrier", "tracking_reference"] as const).map(
                             (key) => (
                               <label
-                                className="stack-small"
+                                className="flex flex-col gap-2.5"
                                 key={key}
                                 htmlFor={`shipment-${key}`}
                               >
@@ -353,7 +353,7 @@ function OrdersWorkspace({
                           )}
                           {mutation === "review" && (
                             <button
-                              className="site-button site-button-outline"
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5"
                               type="button"
                               onClick={() => setMutation("idle")}
                             >
@@ -363,7 +363,7 @@ function OrdersWorkspace({
                         </fieldset>
                       )}
                       <button
-                        className="site-button site-button-primary"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink bg-ink px-[18px] text-paper hover:bg-black"
                         disabled={["pending", "unknown", "conflict"].includes(
                           mutation,
                         )}
@@ -380,9 +380,9 @@ function OrdersWorkspace({
                 </section>
               )}
               {list.length === 0 ? (
-                <p className="empty-state">{f("empty")}</p>
+                <p className="border border-hairline border-t-ink bg-paper px-6 py-8">{f("empty")}</p>
               ) : (
-                <ul className="order-history-list">
+                <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 p-0">
                   {list.map((order) => (
                     <OrderSummary
                       key={order.id}
