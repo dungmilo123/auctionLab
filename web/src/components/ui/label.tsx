@@ -10,8 +10,8 @@ function Label({
     <LabelPrimitive.Root
       data-slot="label"
       className={cn(
-        "site-label",
-        className
+        "mb-2 block font-mono text-[0.6875rem] font-medium tracking-[0.1em] uppercase text-ink",
+        className,
       )}
       {...props}
     />
