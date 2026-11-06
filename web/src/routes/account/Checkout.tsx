@@ -15,6 +15,10 @@ import {
 import { useAccount } from "@/account/AccountProvider";
 import { useOrderCopy, type OrderKey } from "@/lib/order-copy";
 import { formatOrderMoney } from "@/lib/order-money";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 const blankAddress = {
   line1: "",
   line2: "",
@@ -41,7 +45,7 @@ type Stage =
 function Breakdown({ total }: { total: Total }) {
   const { o } = useOrderCopy();
   return (
-    <dl className="metadata numeric">
+    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-4 border-y border-hairline py-4 numeric">
       {(
         [
           "winning_amount_minor",
@@ -50,8 +54,8 @@ function Breakdown({ total }: { total: Total }) {
         ] as const
       ).map((key, i) => (
         <div key={key}>
-          <dt>{o((["item", "fee", "total"] as const)[i]!)}</dt>
-          <dd>{formatOrderMoney(total[key])}</dd>
+          <dt className="mono-label">{o((["item", "fee", "total"] as const)[i]!)}</dt>
+          <dd className="mt-2">{formatOrderMoney(total[key])}</dd>
         </div>
       ))}
     </dl>
@@ -78,9 +82,9 @@ function Field({
 }) {
   const { o } = useOrderCopy();
   return (
-    <div className="stack-small">
-      <label htmlFor={fieldKey}>{o(label)}</label>
-      <input
+    <div className="flex flex-col gap-2.5">
+      <Label htmlFor={fieldKey}>{o(label)}</Label>
+      <Input
         id={fieldKey}
         type={type}
         value={value}
@@ -91,7 +95,7 @@ function Field({
         aria-describedby={error ? `${fieldKey}-error` : undefined}
       />
       {error && (
-        <p id={`${fieldKey}-error`} role="alert">
+        <p id={`${fieldKey}-error`} role="alert" className="text-sm text-destructive">
           {o(error === "required" ? "required" : "invalid")}
         </p>
       )}
@@ -262,10 +266,10 @@ export default function Checkout({
 
   return (
     <section
-      className="checkout stack"
+      className="flex flex-col gap-6"
       aria-busy={stage === "pending" || stage === "loading"}
     >
-      <h2 ref={heading} tabIndex={-1} className={stage === "paid" ? "confirmed-feedback" : undefined}>
+      <h2 ref={heading} tabIndex={-1} className={stage === "paid" ? "motion-safe:animate-[confirmed-feedback_150ms_ease-out]" : undefined}>
         {o(
           stage === "paid"
             ? "paid"
@@ -274,7 +278,7 @@ export default function Checkout({
               : "checkout",
         )}
       </h2>
-      <ol className="checkout-steps" aria-label={o("checkout")}><li aria-current={stage === "edit" || stage === "reviewing" ? "step" : undefined}><Icon icon={ClipboardList} />{o("checkout")}</li><li aria-current={stage === "review" || stage === "pending" || stage === "unknown" ? "step" : undefined}><Icon icon={CreditCard} />{o("reviewTitle")}</li><li aria-current={stage === "paid" ? "step" : undefined}><Icon icon={CheckCircle2} />{o("paid")}</li></ol>
+      <ol className="flex flex-wrap gap-4 text-sm text-muted-foreground" aria-label={o("checkout")}><li className="flex items-center gap-2 border-b-2 border-hairline py-3 aria-[current=step]:border-ink aria-[current=step]:text-ink" aria-current={stage === "edit" || stage === "reviewing" ? "step" : undefined}><Icon icon={ClipboardList} />{o("checkout")}</li><li className="flex items-center gap-2 border-b-2 border-hairline py-3 aria-[current=step]:border-ink aria-[current=step]:text-ink" aria-current={stage === "review" || stage === "pending" || stage === "unknown" ? "step" : undefined}><Icon icon={CreditCard} />{o("reviewTitle")}</li><li className="flex items-center gap-2 border-b-2 border-hairline py-3 aria-[current=step]:border-ink aria-[current=step]:text-ink" aria-current={stage === "paid" ? "step" : undefined}><Icon icon={CheckCircle2} />{o("paid")}</li></ol>
       {stage === "loading" && <p role="status">{o("loading")}</p>}
       {error && (
         <p role="alert">
@@ -290,18 +294,19 @@ export default function Checkout({
         </p>
       )}
       {stage === "error" && error?.status !== 404 && (
-        <button className="site-button" onClick={() => void recover(true)}>
+        <Button variant="outline" className="self-start" onClick={() => void recover(true)}>
           {o("retry")}
-        </button>
+        </Button>
       )}
       {purchase && (
         <>
-          <div className="checkout-snapshot">
+          <div className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] items-start gap-4 max-[420px]:grid-cols-1">
             <img
+              className="h-auto w-full rounded-[2px] max-[420px]:max-w-40"
               src={purchase.snapshot.image.path}
               alt={purchase.snapshot.image.alt}
             />
-            <div>
+            <div className="flex flex-col gap-1.5">
               <h3>{purchase.snapshot.title}</h3>
               <p>
                 {o("condition")}: {purchase.snapshot.condition}
@@ -312,9 +317,9 @@ export default function Checkout({
             </div>
           </div>
           {(stage === "edit" || stage === "reviewing") && (
-            <form className="stack" onSubmit={(e) => void inspect(e)}>
-              <fieldset className="stack" disabled={stage === "reviewing"}>
-                <legend><Icon icon={User} /> {o("contactDetails")}</legend>
+            <form className="flex flex-col gap-6" onSubmit={(e) => void inspect(e)}>
+              <fieldset className="flex min-w-0 flex-col gap-6 border border-hairline p-4" disabled={stage === "reviewing"}>
+                <legend className="px-2 font-display text-xl font-medium tracking-[-0.02em]"><Icon icon={User} /> {o("contactDetails")}</legend>
                 {(["name", "email", "phone"] as const).map((k) => (
                   <Field
                     key={k}
@@ -332,9 +337,9 @@ export default function Checkout({
                   />
                 ))}
               </fieldset>
-              <fieldset className="stack" disabled={stage === "reviewing"}><legend><Icon icon={MapPin} /> {o("fulfillment")}</legend>
-                <label htmlFor="fulfillment_method">{o("fulfillment")}</label>
-                <select
+              <fieldset className="flex min-w-0 flex-col gap-6 border border-hairline p-4" disabled={stage === "reviewing"}><legend className="px-2 font-display text-xl font-medium tracking-[-0.02em]"><Icon icon={MapPin} /> {o("fulfillment")}</legend>
+                <Label htmlFor="fulfillment_method">{o("fulfillment")}</Label>
+                <Select
                   id="fulfillment_method"
                   value={form.fulfillment_method}
                   onChange={(e) =>
@@ -357,7 +362,7 @@ export default function Checkout({
                       {o(t.fulfillment_method)}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {form.fulfillment_method === "shipping" &&
                   (
                     [
@@ -397,9 +402,9 @@ export default function Checkout({
                     />
                   ))}
               </fieldset>
-              <fieldset className="stack" disabled={stage === "reviewing"}><legend><Icon icon={CreditCard} /> {o("payment")}</legend>
-                <label htmlFor="payment_method">{o("payment")}</label>
-                <select
+              <fieldset className="flex min-w-0 flex-col gap-6 border border-hairline p-4" disabled={stage === "reviewing"}><legend className="px-2 font-display text-xl font-medium tracking-[-0.02em]"><Icon icon={CreditCard} /> {o("payment")}</legend>
+                <Label htmlFor="payment_method">{o("payment")}</Label>
+                <Select
                   id="payment_method"
                   value={form.payment_method}
                   onChange={(e) =>
@@ -415,7 +420,7 @@ export default function Checkout({
                       {o(m)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </fieldset>
               {total && (
                 <>
@@ -425,13 +430,13 @@ export default function Checkout({
                   <Breakdown total={total} />
                 </>
               )}
-              <button
-                className="site-button site-button-primary"
+              <Button
+                className="self-start"
                 type="submit"
                 disabled={stage === "reviewing"}
               >
                 {o("review")}
-              </button>
+              </Button>
             </form>
           )}
           {(stage === "review" ||
@@ -440,7 +445,7 @@ export default function Checkout({
             stage === "paid") && (
             <>
               {selection && (
-                <div className="stack-small">
+                <div className="flex flex-col gap-2.5">
                   <h3>
                     {o("fulfillment")}: {o(selection.fulfillment_method)}
                   </h3>
@@ -467,9 +472,9 @@ export default function Checkout({
                 </>
               )}
               {stage === "review" && (
-                <div className="actions">
-                  <button
-                    className="site-button site-button-outline"
+                <div className="flex flex-wrap items-start gap-3">
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setStage("edit");
                       setReview(null);
@@ -477,36 +482,36 @@ export default function Checkout({
                     }}
                   >
                     {o("edit")}
-                  </button>
-                  <button
-                    className="site-button site-button-primary"
+                  </Button>
+                  <Button
                     onClick={() => void confirm()}
                   >
                     {o("confirm")}
-                  </button>
+                  </Button>
                 </div>
               )}
               {stage === "pending" && <p role="status">{o("pending")}</p>}
               {stage === "unknown" && (
                 <>
                   <p role="alert">{o("unknown")}</p>
-                  <button
-                    className="site-button"
+                  <Button
+                    variant="outline"
+                    className="self-start"
                     onClick={() => void recover()}
                   >
                     {o("retry")}
-                  </button>
+                  </Button>
                 </>
               )}
               {stage === "paid" && purchase.receipt && (
-                <dl className="metadata">
+                <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-4 border-y border-hairline py-4">
                   <div>
-                    <dt>{o("receipt")}</dt>
-                    <dd>{purchase.receipt.id}</dd>
+                    <dt className="mono-label">{o("receipt")}</dt>
+                    <dd className="mt-2">{purchase.receipt.id}</dd>
                   </div>
                   <div>
-                    <dt>{o("paidAt")}</dt>
-                    <dd>
+                    <dt className="mono-label">{o("paidAt")}</dt>
+                    <dd className="mt-2">
                       <time
                         dateTime={new Date(
                           purchase.receipt.paid_at,

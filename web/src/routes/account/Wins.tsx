@@ -4,6 +4,7 @@ import { orderAPI } from "@/api/order";
 import { useOrderCopy } from "@/lib/order-copy";
 import { formatOrderMoney } from "@/lib/order-money";
 import { usePrivateRead } from "./usePrivateRead";
+import { Button } from "@/components/ui/button";
 export default function Wins({ owner }: { owner: string }) {
   const { o } = useOrderCopy();
   const load = useCallback(
@@ -14,36 +15,33 @@ export default function Wins({ owner }: { owner: string }) {
   if (state.status === "loading") return <p role="status">{o("loading")}</p>;
   if (state.status === "error")
     return (
-      <section className="empty-state stack">
+      <section className="flex flex-col gap-6 border border-hairline border-t-ink bg-paper px-6 py-8">
         <p role="alert">{o("unavailable")}</p>
-        <button className="site-button" onClick={retry}>
+        <Button variant="outline" className="self-start" onClick={retry}>
           {o("retry")}
-        </button>
+        </Button>
       </section>
     );
   return (
-    <section className="stack">
+    <section className="flex flex-col gap-6">
       {state.data.length === 0 ? (
-        <p className="empty-state">{o("empty")}</p>
+        <p className="border border-hairline border-t-ink bg-paper px-6 py-8 text-muted-foreground">{o("empty")}</p>
       ) : (
-        <ul className="auction-participation">
+        <ul className="grid gap-4">
           {state.data.map(displayOrder).map((v) => (
-            <li className="catalog-record stack-small" key={v.id}>
+            <li className="flex flex-col gap-2.5 border border-hairline bg-paper p-5" key={v.id}>
               <h2>
                 <a href={`/lots/${encodeURIComponent(v.snapshot.slug)}`}>
                   {v.snapshot.title}
                 </a>
               </h2>
               <p>{v.snapshot.condition}</p>
-              <strong className="numeric">
+              <strong className="font-mono text-lg numeric">
                 {formatOrderMoney(v.winning_amount_minor)}
               </strong>
-              <a
-                className="site-button site-button-primary"
-                href={`/account/checkout/${v.id}`}
-              >
-                {o("open")}
-              </a>
+              <Button asChild className="self-start">
+                <a href={`/account/checkout/${v.id}`}>{o("open")}</a>
+              </Button>
             </li>
           ))}
         </ul>
