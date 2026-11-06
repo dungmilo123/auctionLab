@@ -33,7 +33,7 @@ The built binary embeds `web/dist`; Node is not needed at runtime. `dist/.gitkee
 | `/account/checkout/:orderId` | Account | Owned checkout or stored simulated confirmation |
 | `/account/orders` | Account | All owned purchases, minimal summaries |
 | `/account/orders/:orderId` | Account | Owned snapshot, receipt, contact and fulfillment timeline |
-| `/admin` | Admin | Management overview |
+| `/admin` | Admin | Admin dashboard: simulated revenue, closing schedule, fulfillment queue, inventory and recent orders |
 | `/admin/auctions` | Admin | Stored event list, draft editor, schedule/order, preview and publish |
 | `/admin/lots` | Admin | Stored lot list and draft content editor |
 | `/admin/orders` | Admin | Capability-authorized stored orders and simulated fulfillment |
@@ -49,16 +49,17 @@ The frontend 404 is a view: Go document fallback returns HTTP 200 with `Cache-Co
 
 Vite serves the admin document publicly; every catalog data request independently requires the Go API capability. Without it, management shows an explicit access/backend error. The Go origin protects `/admin` and its subtree with the existing admin capability gate. Read the entry link from the server log. A correct key sets the existing HttpOnly, SameSite=Lax, 12-hour capability cookie and redirects to literal `/admin`, removing the key from the URL. Nested navigation/refresh then uses the cookie. Missing capability gets the bilingual gate; a wrong nonempty key returns 401 without echoing it. The gate uses self-contained CSS and system fallbacks. Commerce sign-in and safe return navigation use their independent account APIs and cookie. Account roles never substitute for the catalog capability; that capability never selects a private account.
 
-## Presentation components
+## Presentation system
 
-Tokens live in `src/index.css`: ivory `#F6F1E8`, charcoal `#24211E`, burgundy `#722F37`, olive status accents, decorative brass. Headings use local Noto Serif 400/600 and Georgia fallback; body uses Noto Sans 400/600 and system-ui fallback. Type roles are 14/16/18/24/32/48/64px with fluid headings, 1.5 body / 1.15 heading leading. Prices/times use `.numeric` tabular numerals. Spacing is 4/8/12/16/24/32/48/64px. Controls use 1px borders, 4px radius, 44px minimum targets, visible focus with an ivory gap, and readable disabled/error states. No hard offset shadows. Reduced motion disables nonessential transitions. Grid: 1 column below 640px, 2 at 640px, 3 at 1024px; content max 1400px with 16/24/32px gutters.
+Tailwind CSS v4 is the styling layer. `src/index.css` carries tokens, base typography and three shared utilities — `mono-label`, `numeric`, `board-surface` — and no route-specific classes. Palette: steel `#EAEAE7`, paper `#FBFAF8`, ink `#111111`, hairline `#1111111A`, and four note stocks (mint `#CBE3D6`, butter `#F2E6B9`, blush `#F1D3D9`, lilac `#DAD5EE`). Display type is the neutral grotesk in `--display-stack` (Helvetica Neue → Inter → Noto Sans); body is local Noto Sans 400/600; prices, labels, timers and references use `--mono-stack` (system mono). Noto Serif remains on disk for archived evidence but is no longer declared. Controls are 1px hairlines with 2px corners and 44px minimum targets; reduced motion is honoured in both CSS and `WebsiteMotion`.
 
-- `components/ui/`: existing `Button` (default/outline/secondary/ghost/destructive/link; `asChild` for a real link), `Input`, `Label`, and `Card` family use the shared tokens. Use `type="button"` for UI actions. Never use an anchor as a disabled button.
-- `components/site/Presentation.tsx`: `LotCard({title, metadata, status, image?, href})` has one primary detail link; `StatusBadge({status})` accepts upcoming/live/ended/sold/unavailable and always includes text; `LotImage({src?, alt})` handles failures with a local fallback plus translated caption; `PageHeading({title, intro?})`, `UnavailableState({title, children})` are shared presentation components.
-- `Field({id, label, help, error?, ...inputProps})` associates its label, help, and optional invalid/error text. Example: `<Field id="sample" label="Collection" help="Preview only" error="Example error" defaultValue="" />`. Discovery forms submit native GET requests. Catalog controls use the same design tokens and associations, without frontend credential inputs.
+- `components/ui/`: shadcn-style primitives with `cva` recipes and `cn` (clsx + tailwind-merge): `Button` (default/outline/secondary/ghost/destructive/link; `sm`/`default`/`lg`/`icon`; `asChild` binds a real link), `Input`, `Textarea`, `Select`, `Label`, `Card` family, `Badge` (neutral/live/closing/upcoming/ended/sold, optional dot), `Table` family, `Separator`. The shared field surface lives in `ui/field-styles.ts`. Use `type="button"` for UI actions. Never use an anchor as a disabled button.
+- `components/site/Note.tsx`: the note-stock recipe — `Note` (tone + rotation utilities, hover lift), `NoteMagnet`, `NoteCode`, `NoteLabel`, `NoteStatus`, `NotePrice`, `Countdown`. Note tone is derived from real planned phase (`lib/discovery.ts` → `noteTone`), never from decoration.
+- `components/site/Presentation.tsx`: `StatusBadge`, `LotImage({src?, alt, plain?})` treats the vector studies as line art (grayscale + multiply on note stock; `plain` for inspection), `Field`, `PageHeading`, `UnavailableState`, `PreviewNotice`.
+- `components/site/Disclosure.tsx`: mobile filter disclosure; `md:contents` restores the desktop grid when expanded.
 - `fixtures/site.ts`: three illustrative objects, independent of game wire types and API clients. A long title exercises wrapping. These retained fixtures are not mounted by public discovery.
 - `lib/site-copy.ts`: typed EN/VI website dictionary and `useSiteCopy()` integrate with the existing language provider and `auctionlab.lang` preference. Retained previews can use `t('imageAlt', {object: title})`; published galleries/cards use authored alternative text. React escapes output. Game copy and its fixed-count tests remain unchanged. App updates document title/language for each route and language.
-- `layouts/SiteLayout.tsx`: shared header/footer plus storefront, account, admin shells, all composed with native links.
+- `layouts/SiteLayout.tsx`: sticky steel header, mono navigation, account/admin context rail and footer, all composed with native links.
 
 Asset sources, exact package releases, font metadata/licenses, checksums, and illustration provenance are in `src/assets/README.md`. Fonts/illustrations imported from `src/assets` are fingerprinted (small SVGs may be embedded as local data URLs); the shared fallback is `/site-assets/image-unavailable.svg`. No remote images or styles.
 
@@ -259,12 +260,14 @@ request/error boundaries, authored-era limitations and the `rules-v1` baseline.
 
 ## Collected Stories presentation (Change 9)
 
-The viewing-room palette remains ivory `#F6F1E8`, charcoal `#24211E`, burgundy
-`#722F37`, olive `#62664D`, brass `#A38355` and white. Local Noto Serif carries
-headings; Noto Sans carries controls/prose. Spacing uses 8/12/16/24/32/48/64 px;
-prices use tabular figures. Image mats, open stories and functional auction/review
-surfaces have distinct hierarchy. Website selectors stay separate from dormant
-game helpers. `Icon` standardizes decorative Lucide SVGs; icon-only controls need
+The Change 9 viewing-room palette was superseded by the steel/paper/ink system
+described under [Presentation system](#presentation-system): the ivory, burgundy
+and brass values no longer ship on the mounted website. Local Noto Sans carries
+copy and controls; display type uses the grotesk stack and data uses mono.
+Spacing follows the Tailwind scale; prices and timers use tabular figures. Image
+mats, open stories and functional auction/review surfaces have distinct
+hierarchy. Website selectors stay separate from dormant game helpers. `Icon`
+standardizes decorative Lucide SVGs; icon-only controls need
 localized accessible names and 44 px targets. Consequential actions keep labels.
 
 `LanguageMenu` uses native names, Radix keyboard handling, selected radio state,

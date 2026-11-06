@@ -9,6 +9,7 @@ import {
   DataState,
   PlannedBadge,
   Times,
+  LotGrid,
   PublicLotCard,
 } from './DiscoveryPresentation'
 export default function AuctionDetailPage({ slug }: { slug: string }) {
@@ -31,13 +32,13 @@ export default function AuctionDetailPage({ slug }: { slug: string }) {
   const { record, categories } = state.response.data
   const event = displayEvent(record)
   return (
-    <article className="stack">
+    <article className="flex flex-col gap-6">
       <h1>{event.title}</h1>
-      <p className="lede">{event.theme}</p>
-      <div className="detail-grid">
+      <p className="max-w-[34rem] text-base leading-relaxed text-muted-foreground">{event.theme}</p>
+      <div className="grid items-start gap-8 lg:grid-cols-[1.3fr_1fr]">
         <LotImage src={event.cover_path} alt={event.cover_alt} eager />
-        <div className="stack">
-          <p className="editorial-text">{event.description}</p>
+        <div className="flex flex-col gap-6">
+          <p className="whitespace-pre-wrap">{event.description}</p>
           <PlannedBadge
             open={event.opens_at}
             close={event.planned_end}
@@ -48,7 +49,7 @@ export default function AuctionDetailPage({ slug }: { slug: string }) {
       </div>
       <h2>{d('lots')}</h2>
       {event.lots.length ? (
-        <div className="lot-grid">
+        <LotGrid>
           {[...event.lots]
             .sort((a, b) => a.position - b.position)
             .map((lot) => (
@@ -59,7 +60,7 @@ export default function AuctionDetailPage({ slug }: { slug: string }) {
                 now={now}
               />
             ))}
-        </div>
+        </LotGrid>
       ) : (
         <DataState kind="empty" />
       )}

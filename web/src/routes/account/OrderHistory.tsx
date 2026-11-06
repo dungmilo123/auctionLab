@@ -7,6 +7,7 @@ import { historyAPI, type HistoryOrder, type Summary } from "@/api/fulfillment";
 import { useFulfillmentCopy } from "@/lib/fulfillment-copy";
 import { formatOrderMoney } from "@/lib/order-money";
 import { usePrivateRead } from "./usePrivateRead";
+import { Button } from "@/components/ui/button";
 export function OrderSummary({
   order: rawOrder,
   href,
@@ -19,7 +20,7 @@ export function OrderSummary({
   const { f } = useFulfillmentCopy();
   const order = displaySummary(rawOrder);
   return (
-    <li className="catalog-record stack-small">
+    <li className="flex flex-col gap-2.5 rounded-[2px] border border-hairline bg-paper p-5">
       <LotImage src={order.image.path} alt={order.image.alt} />
       <h2>
         <a href={href}>{order.title}</a>
@@ -27,7 +28,7 @@ export function OrderSummary({
       <p>
         {f(order.status)} · {f(order.method ?? "unselected")}
       </p>
-      <p className="numeric">
+      <p className="font-mono numeric">
         {formatOrderMoney(order.winning_amount_minor)}
         {order.total_minor !== null && (
           <>
@@ -36,9 +37,9 @@ export function OrderSummary({
           </>
         )}
       </p>
-      <a className="site-button site-button-outline" href={href}>
-        {label}
-      </a>
+      <Button asChild variant="outline" className="self-start">
+        <a href={href}>{label}</a>
+      </Button>
     </li>
   );
 }
@@ -58,16 +59,16 @@ export function OrderInspection({
     }).format(ms);
   const p = order.fulfillment;
   return (
-    <section className="order-inspection stack">
+    <section className="flex flex-col gap-6">
       <h2>{order.snapshot.title}</h2>
       <img
-        className="order-history-image"
+        className="block h-48 w-full max-w-80 object-contain"
         src={order.snapshot.image.path}
         alt={order.snapshot.image.alt}
       />
       <p>{order.snapshot.condition}</p>
       <p role="status">{f(p.status)}</p>
-      <dl className="order-facts">
+      <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3 max-[480px]:grid-cols-1 [&>dd]:m-0 [&>dt]:font-semibold">
         <dt>{f("order")}</dt>
         <dd>{order.id}</dd>
         <dt>{f("winning")}</dt>
@@ -119,7 +120,7 @@ export function OrderInspection({
         )}
       </dl>
       {p.shipment && (
-        <section className="stack-small">
+        <section className="flex flex-col gap-2.5">
           <h3>{f("shipped")}</h3>
           <p>
             {f("carrier")}: {p.shipment.carrier}
@@ -129,11 +130,11 @@ export function OrderInspection({
           </p>
         </section>
       )}
-      <section className="stack-small">
+      <section className="flex flex-col gap-2.5">
         <h3>{f("timeline")}</h3>
-        <ol className="order-timeline">
+        <ol className="m-0 list-none p-0">
           {p.timeline.map((e) => (
-            <li key={e.version}>
+            <li key={e.version} className="relative ms-3 border-s border-hairline pb-6 ps-10 [&>svg]:absolute [&>svg]:-start-3 [&>svg]:top-0 [&>svg]:bg-background [&>svg]:text-[#3F4B43]">
 <Icon icon={e.to_status === "completed" ? CheckCircle2 : e.to_status === "shipped" ? Truck : e.to_status === "ready_for_pickup" ? MapPin : e.to_status === "paid" ? CreditCard : Package} />
               <strong>{e.version === 0 ? f("created") : f(e.to_status)}</strong>
               <p>
@@ -152,12 +153,11 @@ export function OrderInspection({
         </ol>
       </section>
       {!admin && (
-        <a
-          className="site-button site-button-outline"
-          href={`/account/checkout/${order.id}`}
-        >
-          {f(order.state === "paid" ? "receipt" : "checkout")}
-        </a>
+        <Button asChild variant="outline" className="self-start">
+          <a href={`/account/checkout/${order.id}`}>
+            {f(order.state === "paid" ? "receipt" : "checkout")}
+          </a>
+        </Button>
       )}
     </section>
   );
@@ -181,27 +181,27 @@ export default function OrderHistory({
   if (state.status === "loading") return <p role="status">{f("loading")}</p>;
   if (state.status === "error")
     return (
-      <section className="empty-state stack">
+      <section className="flex flex-col gap-6 border border-hairline border-t-ink bg-paper px-6 py-8">
         <p role="alert">
           {f(state.error.status === 404 ? "missing" : "unavailable")}
         </p>
-        <button className="site-button" onClick={retry}>
+        <Button variant="outline" className="self-start" onClick={retry}>
           {f("retry")}
-        </button>
+        </Button>
       </section>
     );
   return (
-    <section className="stack">
-      <a href="/account/orders">{f("history")}</a>
-      <button className="site-button site-button-outline" onClick={retry}>
+    <section className="flex flex-col gap-6">
+      <a href="/account/orders" className="self-start">{f("history")}</a>
+      <Button variant="outline" className="self-start" onClick={retry}>
         {f("reload")}
-      </button>
+      </Button>
       {Array.isArray(state.data) ? (
         <>
               {state.data.length === 0 ? (
-            <p className="empty-state">{f("empty")}</p>
+            <p className="border border-hairline border-t-ink bg-paper px-6 py-8 text-muted-foreground">{f("empty")}</p>
           ) : (
-            <ul className="order-history-list">
+            <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 p-0">
               {state.data.map((order) => (
                 <OrderSummary
                   key={order.id}

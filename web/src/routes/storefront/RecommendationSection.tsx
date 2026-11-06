@@ -4,7 +4,8 @@ import { insightsAPI, type Suggestions } from "@/api/insights";
 import { useAccount } from "@/account/AccountProvider";
 import { useInsightsCopy } from "@/lib/insights-copy";
 import { startPrivateRead } from "@/routes/account/usePrivateRead";
-import { PublicLotCard } from "./DiscoveryPresentation";
+import { LotGrid, PublicLotCard } from "./DiscoveryPresentation";
+import { Button } from "@/components/ui/button";
 type Read =
   | { status: "loading" }
   | { status: "error" }
@@ -12,9 +13,11 @@ type Read =
 export default function RecommendationSection({
   source = "",
   categories = [],
+  index,
 }: {
   source?: string;
   categories?: Category[];
+  index?: string;
 }) {
   const { state } = useAccount();
   // Remount immediately on every identity generation, before effects can settle.
@@ -24,15 +27,18 @@ export default function RecommendationSection({
       key={`${source}:${owner}`}
       source={source}
       categories={categories}
+      index={index}
     />
   );
 }
 function Recommendations({
   source,
   categories,
+  index,
 }: {
   source: string;
   categories: Category[];
+  index?: string;
 }) {
   const { state, store } = useAccount(),
     { i } = useInsightsCopy();
@@ -68,28 +74,31 @@ function Recommendations({
     retry((n) => n + 1);
   }
   return (
-    <section className="stack recommendations" aria-label={i("suggestions")}>
-      <h2>{i("suggestions")}</h2>
-      <p className="muted">
+    <section className="flex flex-col gap-6 border-t border-ink pt-3.5" aria-label={i("suggestions")}>
+      <h2 className="flex flex-wrap items-baseline gap-3">
+        {index && <span className="mono-label">{index}</span>}
+        {i("suggestions")}
+      </h2>
+      <p className="text-muted-foreground">
         {i(privateReady ? "privateLabel" : "publicFallback")}
       </p>
       {state.status === "unavailable" && (
         <p role="status">
           {i("accountUnavailable")}{" "}
-          <button
-            className="site-button site-button-outline"
+          <Button
+            variant="outline"
             onClick={() => void store.revalidate()}
           >
             {i("retry")}
-          </button>
+          </Button>
         </p>
       )}
       {signed && priv.status === "error" && (
         <p role="status">
           {i("privateError")}{" "}
-          <button className="site-button site-button-outline" onClick={reload}>
+          <Button variant="outline" onClick={reload}>
             {i("retry")}
-          </button>
+          </Button>
         </p>
       )}
       {selected.status === "loading" ? (
@@ -97,17 +106,17 @@ function Recommendations({
       ) : selected.status === "error" ? (
         <div role="status">
           <p>{i("error")}</p>
-          <button className="site-button site-button-outline" onClick={reload}>
+          <Button variant="outline" onClick={reload}>
             {i("retry")}
-          </button>
+          </Button>
         </div>
       ) : selected.value.data.length === 0 ? (
         <p>{i("noSuggestions")}</p>
       ) : (
-        <div className="lot-grid">
+        <LotGrid>
           {selected.value.data.map(({ lot, reason }) => (
-            <div className="stack-small" key={lot.id}>
-              <p className="recommendation-reason">{i(reason)}</p>
+            <div className="flex flex-col gap-2.5" key={lot.id}>
+              <p className="mono-label text-ink">{i(reason)}</p>
               <PublicLotCard
                 lot={lot}
                 categories={categories}
@@ -115,7 +124,7 @@ function Recommendations({
               />
             </div>
           ))}
-        </div>
+        </LotGrid>
       )}
     </section>
   );

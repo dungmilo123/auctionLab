@@ -75,7 +75,7 @@ function AnalyticsWorkspace() {
       <form
         method="get"
         action="/admin/analytics"
-        className="analytics-controls"
+        className="flex flex-wrap items-end gap-4"
       >
         <label>
           {i("event")}
@@ -104,7 +104,7 @@ function AnalyticsWorkspace() {
             <option value="non-demo">{i("nonDemo")}</option>
           </select>
         </label>
-        <button className="site-button site-button-primary">
+        <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink bg-ink px-[18px] text-paper hover:bg-black">
           <Icon icon={SlidersHorizontal} />{i("apply")}
         </button>
       </form>
@@ -123,7 +123,7 @@ function AnalyticsWorkspace() {
           </p>
           {read.status !== "loading" && (
             <button
-              className="site-button site-button-outline"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5"
               onClick={refresh}
             >
               {i("retry")}
@@ -146,14 +146,14 @@ function AnalyticsWorkspace() {
                   lang,
                 )}
           </p>
-          <button className="site-button site-button-outline" onClick={refresh}>
+          <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5 inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border font-mono text-xs font-medium uppercase tracking-[0.09em] whitespace-normal text-center no-underline transition-colors disabled:pointer-events-none disabled:opacity-45 border-ink/30 bg-transparent px-[18px] text-ink hover:border-ink hover:bg-ink/5" onClick={refresh}>
             {i("refresh")}
           </button>
           {read.value.data.summary.lots === "0" && (
             <p role="status">{i("empty")}</p>
           )}
-          <div className="analytics-section-title"><Icon icon={BarChart3} /><span>{i("analytics")}</span></div>
-          <dl className="analytics-summary">
+          <div className="flex items-center gap-3"><Icon icon={BarChart3} /><span>{i("analytics")}</span></div>
+          <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-5">
             {metricKeys.map((k) => (
               <div key={k} data-metric={k}>
                 <dt>{i(k)}</dt>
@@ -168,12 +168,12 @@ function AnalyticsWorkspace() {
             </div>
           </dl>
           <div
-            className="analytics-table-scroll"
+            className="max-w-full overflow-x-auto border border-hairline"
             role="region"
             aria-label={i("compare")}
             tabIndex={0}
           >
-            <table className="analytics-table">
+            <table className="w-full border-collapse [&_td]:min-w-36 [&_td]:max-w-88 [&_td]:border-b [&_td]:p-3 [&_th]:min-w-36 [&_th]:border-b [&_th]:border-ink [&_th]:p-3 [&_th]:text-start [&_td]:align-top [&_td]:text-start">
               <caption>{i("compare")}</caption>
               <thead>
                 <tr>
@@ -194,7 +194,7 @@ function AnalyticsWorkspace() {
                         {e.title}
                       </a>
                       {e.demo && (
-                        <span className="demo-marker">{i("demo")}</span>
+                        <span className="inline-flex self-start rounded-[2px] border border-hairline px-2 py-1 font-mono text-xs text-muted-foreground">{i("demo")}</span>
                       )}
                     </th>
                     {metricKeys.map((k) => (
@@ -208,11 +208,11 @@ function AnalyticsWorkspace() {
               </tbody>
             </table>
           </div>
-          <section className="stack-small">
+          <section className="flex flex-col gap-2.5">
             <h2>{i("interactions")}</h2>
             <p>{i("observations")}</p>
             {read.value.data.interactions.length ? (
-              <dl className="metadata">
+              <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-4 border-y border-hairline py-4">
                 {read.value.data.interactions.map((n) => (
                   <div key={`${n.kind}:${n.provenance}`}>
                     <dt>
@@ -229,7 +229,7 @@ function AnalyticsWorkspace() {
           </section>
         </>
       )}
-      <section className="stack-small">
+      <section className="flex flex-col gap-2.5">
         <h2>{i("definitions")}</h2>
         <p>{i("cohort")}</p>
         <p>{i("formula")}</p>

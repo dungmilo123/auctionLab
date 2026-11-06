@@ -3,20 +3,23 @@ import { useDiscoveryCopy } from '@/lib/discovery-copy'
 import { orderEvents, phase, phases, query } from '@/lib/discovery'
 import { usePublicPage } from './usePublicPage'
 import { loadEvents } from './loads'
-import { DataState, EventCard } from './DiscoveryPresentation'
-export function PhaseControl({ value }: { value: string }) {
+import { DataState, EventCard, LotGrid } from './DiscoveryPresentation'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
+export function PhaseControl({ value, id = 'phase-filter' }: { value: string; id?: string }) {
   const { d } = useDiscoveryCopy()
   return (
-    <label className="stack-small">
-      {d('phase')}
-      <select className="site-input" name="phase" defaultValue={value}>
+    <div className="flex min-w-0 flex-col gap-2.5">
+      <Label htmlFor={id}>{d('phase')}</Label>
+      <Select id={id} name="phase" defaultValue={value}>
         {phases.map((p) => (
           <option key={p} value={p}>
             {d(p)}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </div>
   )
 }
 export default function AuctionIndexPage() {
@@ -33,14 +36,14 @@ export default function AuctionIndexPage() {
         )
       : []
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-6">
       <h1>{t('auctions')}</h1>
-      <form action="/auctions" method="get" className="discovery-controls">
+      <form action="/auctions" method="get" className="grid gap-4 border-y border-hairline py-6 sm:grid-cols-2 lg:grid-cols-4">
         <PhaseControl value={selection.phase} />
-        <button className="site-button site-button-primary" type="submit">
-          {d('apply')}
-        </button>
-        <a href="/auctions">{d('clear')}</a>
+        <div className="flex min-w-0 flex-wrap items-end gap-3">
+          <Button type="submit">{d('apply')}</Button>
+          <Button asChild variant="link"><a href="/auctions">{d('clear')}</a></Button>
+        </div>
       </form>
       {state.status !== 'success' ? (
         <DataState
@@ -51,15 +54,15 @@ export default function AuctionIndexPage() {
         />
       ) : (
         <>
-          <p>
+          <p className="mono-label">
             {d('count')}: {events.length}
           </p>
           {events.length ? (
-            <div className="lot-grid">
+            <LotGrid>
               {events.map((e) => (
                 <EventCard key={e.id} event={e} now={now} />
               ))}
-            </div>
+            </LotGrid>
           ) : (
             <DataState
               kind={state.response.data.length ? 'noResults' : 'empty'}

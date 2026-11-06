@@ -3,15 +3,106 @@ import * as m from 'motion/react-m'
 import { ArrowUpRight } from 'lucide-react'
 import { Icon } from '@/components/site/Icon'
 import { LotImage } from '@/components/site/Presentation'
+import { Note, NoteCode, NoteMagnet, NotePrice, NoteStatus, Countdown, type NoteTone } from '@/components/site/Note'
+import { Button } from '@/components/ui/button'
 import { useWebsiteReducedMotion, motionEase } from '@/components/site/motion'
-import { displayEvent } from '@/lib/seed-display'
-import { eventURL } from '@/lib/discovery-links'
+import { displayEvent, displayLot } from '@/lib/seed-display'
+import { eventURL, lotURL } from '@/lib/discovery-links'
 import { useSiteCopy } from '@/lib/site-copy'
 import { useDiscoveryCopy } from '@/lib/discovery-copy'
-import { homeSelection } from '@/lib/discovery'
+import { homeSelection, noteTone } from '@/lib/discovery'
+import { formatCatalogMoney } from '@/lib/catalog-money'
+import { scheduleText } from '@/lib/catalog-schedule'
 import { usePublicPage } from './usePublicPage'
 import { loadHome } from './loads'
-import { DataState, EventCard, PublicLotCard } from './DiscoveryPresentation'
+import {
+  DataState,
+  EventCard,
+  LotGrid,
+  PlannedBadge,
+  PublicLotCard,
+} from './DiscoveryPresentation'
+
+type Slot = 'lead' | 'a' | 'b' | 'c'
+type Pin = {
+  tone: NoteTone
+  code: string
+  detail: string
+  title: string
+  href: string
+  image?: string
+  alt: string
+  open: number | null
+  close: number | null
+  price?: string
+  time: string
+}
+
+const slotClass: Record<Slot, string> = {
+  lead: 'col-span-7 row-span-2 max-[900px]:col-span-full max-[900px]:row-auto',
+  a: 'col-start-8 col-span-5 row-start-1 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
+  b: 'col-start-8 col-span-5 row-start-2 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
+  c: 'col-start-1 col-span-4 row-start-3 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
+}
+
+const slotTilt: Record<Slot, string> = {
+  lead: 'rotate-[-1.1deg]',
+  a: 'rotate-[1.5deg]',
+  b: 'rotate-[-0.7deg]',
+  c: 'rotate-[1.9deg]',
+}
+
+function PinnedNote({
+  pin,
+  slot,
+  delay,
+  now,
+}: {
+  pin: Pin
+  slot: Slot
+  delay: number
+  now: number
+}) {
+  const { d } = useDiscoveryCopy()
+  const reduce = useWebsiteReducedMotion()
+  const lead = slot === 'lead'
+  return (
+    <m.div
+      className={`relative z-[1] min-w-0 ${slotClass[slot]}`}
+      initial={{
+        opacity: reduce ? 1 : 0,
+        y: reduce ? 0 : -26,
+        rotate: reduce ? 0 : -3,
+      }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { type: 'spring', stiffness: 190, damping: 22, mass: 0.9, delay }
+      }
+    >
+      <Note tone={pin.tone} className={`h-full ${slotTilt[slot]}`}>
+        <NoteMagnet />
+        <NoteCode left={pin.code} right={pin.detail} />
+        <h3 className={lead ? 'text-[clamp(1.3rem,1.9vw,1.65rem)] leading-[1.1] font-medium tracking-[-0.03em]' : 'text-base leading-snug font-medium'}>
+          <a href={pin.href}>{pin.title}</a>
+        </h3>
+        {pin.image !== undefined && (
+          <a className="block" href={pin.href} tabIndex={-1} aria-hidden="true">
+            <LotImage src={pin.image} alt={pin.alt} eager={lead} />
+          </a>
+        )}
+        <NoteStatus>
+          <PlannedBadge open={pin.open} close={pin.close} now={now} />
+          <Countdown close={pin.close} now={now} />
+        </NoteStatus>
+        {pin.price && <NotePrice label={d('opening')} className="mt-auto">{pin.price}</NotePrice>}
+        <p className="flex items-baseline gap-2 text-[0.8125rem] text-muted-foreground numeric">{pin.time}</p>
+      </Note>
+    </m.div>
+  )
+}
+
 export default function HomePage() {
   const { t } = useSiteCopy()
   const { lang, d } = useDiscoveryCopy()
@@ -20,24 +111,117 @@ export default function HomePage() {
     state.status === 'success'
       ? homeSelection(state.response.data.record, now)
       : null
+  const categories =
+    state.status === 'success' ? state.response.data.categories : []
   const reduce = useWebsiteReducedMotion()
-  const leading = selection?.featured[0] ? displayEvent(selection.featured[0]) : null
+  const lead = selection?.featured[0] ? displayEvent(selection.featured[0]) : null
+  const lots = selection ? selection.nearest.slice(0, 3).map(displayLot) : []
   const entrance = state.status === 'success' && !reduce
-  const enter = (delay: number) => ({ initial: { opacity: entrance ? 0 : 1, y: entrance ? 12 : 0 }, animate: { opacity: 1, y: 0 }, transition: { duration: entrance ? .5 : 0, delay: entrance ? delay : 0, ease: motionEase } })
+  const enter = (delay: number) => ({
+    initial: { opacity: entrance ? 0 : 1, y: entrance ? 12 : 0 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: entrance ? 0.5 : 0, delay: entrance ? delay : 0, ease: motionEase },
+  })
+  const categoryName = (id: string | null) => {
+    const c = categories.find((c) => c.id === id)
+    return c ? (lang === 'vi' ? c.name_vi : c.name_en) : d('unknown')
+  }
+  const leadPin: Pin | null = lead
+    ? {
+        tone: noteTone(lead.opens_at, lead.planned_end, now),
+        code: t('auctionDetail'),
+        detail: lead.theme,
+        title: lead.title,
+        href: eventURL(lead.slug),
+        image: lead.cover_path,
+        alt: lead.cover_alt,
+        open: lead.opens_at,
+        close: lead.planned_end,
+        time: `${d('opens')}: ${
+          lead.opens_at === null ? d('unknown') : scheduleText(lead.opens_at, lang)
+        }`,
+      }
+    : null
+  const lotPins: Pin[] = lots.map((lot) => ({
+    tone: noteTone(lot.opens_at, lot.closes_at, now),
+    code: categoryName(lot.category_id),
+    detail: lot.era ?? '',
+    title: lot.title,
+    href: lotURL(lot.slug),
+    image: lot.images[0]?.path,
+    alt: lot.images[0]?.alt ?? '',
+    open: lot.opens_at,
+    close: lot.closes_at,
+    price: formatCatalogMoney(lot.starting_price_minor),
+    time: `${d('closes')}: ${
+      lot.closes_at === null ? d('unknown') : scheduleText(lot.closes_at, lang)
+    }`,
+  }))
+  const clock = new Date(now)
   return (
-    <div className="stack home-content">
-      <section className="hero" key={state.status === 'success' ? 'published' : 'loading'}>
-        <m.div className="stack" {...enter(0)}>
-          <p className="hero-collection">{t('concept')}</p>
-          <h1>{leading?.title ?? t('tagline')}</h1>
-          <p className="lede">{leading?.description ?? t('intro')}</p>
-          <m.div className="actions" {...enter(.15)}>
-            <a className="site-button site-button-primary" href={leading ? eventURL(leading.slug) : '/lots'}>{leading ? d('parent') : d('allLots')}<Icon icon={ArrowUpRight} /></a>
-            <a className="site-button site-button-link" href="/lots">{d('allLots')}</a>
+    <div className="flex flex-col gap-20">
+      <section
+        className="grid items-start gap-10 pb-18 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-14"
+        key={state.status === 'success' ? 'published' : 'loading'}
+      >
+        <m.div className="flex flex-col gap-2.5" {...enter(0)}>
+          <p className="mono-label tracking-[0.16em] uppercase">{t('concept')}</p>
+          <h1 className="max-w-[11ch] font-display text-[clamp(2.6rem,6vw,5rem)] leading-[0.94] font-medium tracking-[-0.05em]">{lead?.title ?? t('tagline')}</h1>
+          <p className="max-w-[34rem] text-base leading-relaxed text-muted-foreground">{lead?.description ?? t('intro')}</p>
+          <m.div className="flex flex-wrap items-start gap-3 pt-2" {...enter(0.12)}>
+            <Button asChild size="lg">
+              <a href={lead ? eventURL(lead.slug) : '/lots'}>
+                {lead ? d('parent') : d('allLots')}
+                <Icon icon={ArrowUpRight} />
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <a href={lead ? '/lots' : '/auctions'}>
+                {lead ? d('allLots') : d('allEvents')}
+              </a>
+            </Button>
           </m.div>
         </m.div>
-        {leading && <m.figure className="hero-art" {...enter(.08)}><a href={eventURL(leading.slug)}><LotImage src={leading.cover_path} alt={leading.cover_alt} eager /></a><figcaption>{leading.theme}</figcaption></m.figure>}
-        {state.status === 'loading' && <figure className="hero-art" aria-hidden="true"><div className="hero-placeholder" /><figcaption> </figcaption></figure>}
+        <div className="min-w-0">
+          <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-ink pb-2.5">
+            <span className="mono-label">{d('published')}</span>
+            <time
+              className="mono-label numeric"
+              dateTime={clock.toISOString()}
+              aria-hidden="true"
+            >
+              {clock.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+                hour12: false,
+              })}
+            </time>
+          </div>
+          <div className="board-surface grid min-h-[520px] grid-cols-12 content-center gap-3.5 px-[22px] py-[26px] max-[900px]:min-h-0 max-[900px]:grid-cols-1 max-[900px]:gap-5 max-[900px]:px-4 max-[900px]:py-6">
+            {leadPin ? (
+              <>
+                <PinnedNote pin={leadPin} slot="lead" delay={0.06} now={now} />
+                {lotPins.map((pin, i) => (
+                  <PinnedNote
+                    key={pin.href}
+                    pin={pin}
+                    slot={(['a', 'b', 'c'] as const)[i] ?? 'c'}
+                    delay={0.16 + i * 0.08}
+                    now={now}
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="col-span-full grid min-h-[520px] place-items-center p-8 text-center max-[900px]:min-h-[320px]">
+                <p className="mono-label">
+                  {state.status === 'loading' ? d('loading') : d('empty')}
+                </p>
+              </div>
+            )}
+          </div>
+          <p className="mono-label mt-3 flex justify-between gap-4">
+            <span>{d('notice')}</span>
+            <a href="/lots" className="text-ink underline underline-offset-4">{d('allLots')}</a>
+          </p>
+        </div>
       </section>
       {state.status !== 'success' ? (
         <DataState
@@ -47,22 +231,34 @@ export default function HomePage() {
         />
       ) : (
         <>
-          <section className="stack home-section">
-            <h2>{d('featured')}</h2>
+          <section className="flex flex-col gap-6">
+            <h2 className="flex flex-wrap items-baseline gap-3 border-t border-ink pt-3.5">
+              <span className="mono-label">01</span>
+              {d('featured')}
+              <Button asChild variant="link" className="ms-auto">
+                <a href="/auctions">{d('allEvents')}</a>
+              </Button>
+            </h2>
             {selection!.featured.length ? (
-              <div className="lot-grid">
+              <LotGrid>
                 {selection!.featured.map((event) => (
                   <EventCard key={event.id} event={event} now={now} />
                 ))}
-              </div>
+              </LotGrid>
             ) : (
               <DataState kind="empty" index="/auctions" />
             )}
           </section>
-          <section className="stack home-section">
-            <h2>{d('nearest')}</h2>
+          <section className="flex flex-col gap-6">
+            <h2 className="flex flex-wrap items-baseline gap-3 border-t border-ink pt-3.5">
+              <span className="mono-label">02</span>
+              {d('nearest')}
+              <Button asChild variant="link" className="ms-auto">
+                <a href="/lots">{d('allLots')}</a>
+              </Button>
+            </h2>
             {selection!.nearest.length ? (
-              <div className="lot-grid">
+              <LotGrid>
                 {selection!.nearest.map((lot) => (
                   <PublicLotCard
                     key={lot.id}
@@ -71,25 +267,29 @@ export default function HomePage() {
                     now={now}
                   />
                 ))}
-              </div>
+              </LotGrid>
             ) : (
               <DataState
                 kind={state.response.data.record.length ? 'noResults' : 'empty'}
               />
             )}
           </section>
-          <RecommendationSection categories={state.response.data.categories} />
-          <section className="stack home-section">
-            <h2>{d('categories')}</h2>
-            <div className="actions">
+          <RecommendationSection
+            index="03"
+            categories={state.response.data.categories}
+          />
+          <section className="flex flex-col gap-6">
+            <h2 className="flex flex-wrap items-baseline gap-3 border-t border-ink pt-3.5">
+              <span className="mono-label">04</span>
+              {d('categories')}
+            </h2>
+            <div className="flex flex-wrap items-start gap-3">
               {state.response.data.categories.map((c) => (
-                <a
-                  className="site-button site-button-outline"
-                  key={c.id}
-                  href={`/lots?category=${encodeURIComponent(c.slug)}`}
-                >
-                  {lang === 'vi' ? c.name_vi : c.name_en}
-                </a>
+                <Button asChild variant="outline" key={c.id}>
+                  <a href={`/lots?category=${encodeURIComponent(c.slug)}`}>
+                    {lang === 'vi' ? c.name_vi : c.name_en}
+                  </a>
+                </Button>
               ))}
             </div>
           </section>
