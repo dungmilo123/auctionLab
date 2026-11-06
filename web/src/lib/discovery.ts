@@ -8,6 +8,19 @@ export const sorts = [
   'title',
 ] as const
 export type Phase = Exclude<(typeof phases)[number], 'all'> | 'unavailable'
+/** Note stock tone, derived from the same planned phase the badges use. */
+export type NoteTone = 'mint' | 'butter' | 'lilac' | 'paper'
+const DAY = 86_400_000
+export function noteTone(
+  open: number | null,
+  close: number | null,
+  now: number,
+): NoteTone {
+  const p = phase(open, close, now)
+  if (p === 'window')
+    return close !== null && close - now < DAY ? 'butter' : 'mint'
+  return p === 'upcoming' ? 'lilac' : 'paper'
+}
 export function phase(
   open: number | null,
   close: number | null,
