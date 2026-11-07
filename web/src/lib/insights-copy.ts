@@ -147,6 +147,45 @@ export const INSIGHTS_COPY = {
     "Phí giao nhận đã thanh toán (mô phỏng)",
   ],
   simulated_paid_minor: ["Simulated paid total", "Tổng thanh toán mô phỏng"],
+  // Dashboard presentation (charts are views of the same exact aggregates).
+  headline: ["Headline", "Chỉ số chính"],
+  sellThroughShort: ["Sell-through", "Tỷ lệ bán"],
+  winningShort: ["Winning value", "Giá thắng"],
+  bidsShort: ["Accepted bids", "Lượt đặt giá"],
+  biddersShort: ["Distinct bidders", "Người đặt giá"],
+  soldOfTerminal: ["sold of closed lots", "đã bán / đã kết thúc"],
+  includesUnpaid: ["includes unpaid wins", "gồm đơn chưa thanh toán"],
+  notAdditive: ["not additive across events", "không cộng giữa các phiên"],
+  bidsPerLot: ["per published lot", "trên mỗi hiện vật"],
+  outcomes: ["Lot outcomes", "Kết quả hiện vật"],
+  outcomesNote: [
+    "Every published lot is sold, unsold or still pending.",
+    "Mỗi hiện vật đã công bố là đã bán, không bán hoặc đang chờ.",
+  ],
+  bidMix: ["Who is bidding", "Ai đang đặt giá"],
+  bidMixNote: [
+    "Accepted bids split by the bidder account's demo flag.",
+    "Lượt đặt giá hợp lệ chia theo cờ demo của tài khoản.",
+  ],
+  money: ["Where the money is", "Dòng tiền"],
+  moneyNote: [
+    "Winning value splits into paid and unpaid; the simulated paid total adds delivery fees.",
+    "Giá thắng gồm phần đã và chưa thanh toán; tổng thanh toán mô phỏng cộng thêm phí giao nhận.",
+  ],
+  unpaid_winning: ["Unpaid winning value", "Giá thắng chưa thanh toán"],
+  funnel: ["Interaction volume", "Khối lượng tương tác"],
+  funnelNote: [
+    "Totals per stage across all provenances. Stages count different things, so they are volumes, not conversion rates.",
+    "Tổng theo từng bước trên mọi nguồn dữ liệu. Mỗi bước đếm một loại khác nhau nên đây là khối lượng, không phải tỷ lệ chuyển đổi.",
+  ],
+  byEvent: ["Compare events", "So sánh phiên"],
+  byEventNote: [
+    "Pick a measure to rank events; the table holds every exact figure.",
+    "Chọn chỉ số để xếp hạng phiên; bảng giữ mọi số liệu chính xác.",
+  ],
+  chartView: ["Chart", "Biểu đồ"],
+  tableView: ["Table", "Bảng"],
+  share: ["share", "tỷ trọng"],
 } as const;
 export type InsightsKey = keyof typeof INSIGHTS_COPY;
 export function useInsightsCopy() {
