@@ -87,7 +87,7 @@ export function PublicLotCard({
   now: number
   showCategory?: boolean
 }) {
-  const { d } = useDiscoveryCopy()
+  const { lang, d } = useDiscoveryCopy()
   const lot = displayLot(rawLot)
   return (
     <Note tone={noteTone(lot.opens_at, lot.closes_at, now)} className="px-3 pt-3 pb-4.5">
@@ -102,7 +102,7 @@ export function PublicLotCard({
           <PlannedBadge open={lot.opens_at} close={lot.closes_at} now={now} />
           <Countdown close={lot.closes_at} now={now} />
         </NoteStatus>
-        <NotePrice label={d('opening')}>{formatCatalogMoney(lot.starting_price_minor)}</NotePrice>
+        <NotePrice label={d('opening')}>{formatCatalogMoney(lot.starting_price_minor, lang)}</NotePrice>
       </div>
     </Note>
   )

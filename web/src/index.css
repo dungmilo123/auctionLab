@@ -72,6 +72,11 @@
   --note-mint: #CBE3D6; --note-butter: #F2E6B9;
   --note-blush: #F1D3D9; --note-lilac: #DAD5EE;
   --destructive: #A33A31;
+  /* Bidder standing on a lot. Each pair keeps text at ≥ 5:1 contrast (WCAG AA). */
+  --standing-leading: #1E6A43; --standing-leading-bg: #DDF0E4;
+  --standing-outbid: #A33A31;  --standing-outbid-bg: #F7DEDA;
+  --standing-won: #6E520A;     --standing-won-bg: #F6E8B8; --standing-won-edge: #C9A227;
+  --standing-lost: #55554F;    --standing-lost-bg: #E6E6E2;
   --ease-out: cubic-bezier(.22,1,.36,1);
   --note-shadow: 0 1px 1px #1111110F, 0 14px 26px -18px #11111173;
   --note-shadow-lift: 0 2px 2px #11111114, 0 30px 48px -24px #111111A6;

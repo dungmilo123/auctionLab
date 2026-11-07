@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOG_COPY } from './catalog-copy'
 import { catalogSelection } from './catalog-selection'
-import { catalogMoneyInput, formatCatalogMoney, MAX_CATALOG_MONEY, parseCatalogMoney } from './catalog-money'
+import { catalogMoneyInput, formatCatalogMoney, formatDong, MAX_CATALOG_MONEY, parseCatalogMoney, parseDongMoney } from './catalog-money'
 import { localScheduleInput, parseLocalSchedule, parseInterval } from './catalog-schedule'
 describe('catalog preparation helpers', () => {
   it('round trips exact cents independently of legacy whole-unit money', () => {
@@ -9,6 +9,17 @@ describe('catalog preparation helpers', () => {
     expect(formatCatalogMoney(12550)).toBe('$125.50 USD')
     expect(parseCatalogMoney('')).toBe(null)
     for (const value of ['-1', '1.001', '1e3', 'NaN', ' 1', '1.', '10000000000.01']) expect(() => parseCatalogMoney(value)).toThrow()
+  })
+  it('renders and accepts đồng at the fixed 25,000 ₫ display rate', () => {
+    expect(formatCatalogMoney(12550, 'vi')).toBe('3.137.500 ₫')
+    expect(formatCatalogMoney(0, 'vi')).toBe('0 ₫')
+    expect(formatCatalogMoney(null, 'vi')).toBe('—')
+    expect(formatDong(1)).toBe('250 ₫')
+    for (const value of [0, 250, 12550, MAX_CATALOG_MONEY]) expect(parseDongMoney(formatDong(value).replace(' ₫', ''))).toBe(value)
+    expect(parseDongMoney('4350000')).toBe(17400)
+    expect(parseDongMoney('')).toBe(null)
+    for (const value of ['-250', '4.350.000,5', '4,350,000', '3137501', '250000000000250'])
+      expect(() => parseDongMoney(value)).toThrow()
   })
   it('preserves UTC instants through local controls, including milliseconds', () => {
     const value = Date.parse('2030-01-01T12:34:56.123Z')

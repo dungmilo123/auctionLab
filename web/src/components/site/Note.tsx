@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from 'cn'
+import { countdownLabel } from '@/lib/countdown'
 
 /** Note stock tone; the colour always comes from real auction phase data. */
 export type NoteTone = 'mint' | 'butter' | 'lilac' | 'blush' | 'paper'
@@ -101,15 +102,8 @@ export function Countdown({
   className?: string
 }) {
   if (close === null || !Number.isSafeInteger(close)) return null
-  const total = Math.max(0, Math.floor((close - now) / 1000))
-  const closed = total <= 0
-  const clock = (n: number) => String(n).padStart(2, '0')
-  const days = Math.floor(total / 86400)
-  const label = closed
-    ? '00:00:00'
-    : `${days ? `${days}d ` : ''}${clock(Math.floor((total % 86400) / 3600))}:${clock(
-        Math.floor((total % 3600) / 60),
-      )}:${clock(total % 60)}`
+  const closed = close - now < 1000
+  const label = countdownLabel(close, now)
   return (
     <span
       aria-hidden="true"

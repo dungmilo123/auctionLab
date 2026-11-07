@@ -56,3 +56,14 @@ export function formatClock(ms: number): string {
   const seconds = totalSeconds % 60
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
+
+/** Time left as `[Nd ]hh:mm:ss`, floored to whole seconds; `00:00:00` once elapsed. */
+export function countdownLabel(close: number, now: number): string {
+  const total = Math.max(0, Math.floor((close - now) / 1000))
+  if (total <= 0) return '00:00:00'
+  const clock = (n: number) => String(n).padStart(2, '0')
+  const days = Math.floor(total / 86400)
+  return `${days ? `${days}d ` : ''}${clock(Math.floor((total % 86400) / 3600))}:${clock(
+    Math.floor((total % 3600) / 60),
+  )}:${clock(total % 60)}`
+}

@@ -43,7 +43,7 @@ type Stage =
   | "paid"
   | "error";
 function Breakdown({ total }: { total: Total }) {
-  const { o } = useOrderCopy();
+  const { o, lang } = useOrderCopy();
   return (
     <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-4 border-y border-hairline py-4 numeric">
       {(
@@ -55,7 +55,7 @@ function Breakdown({ total }: { total: Total }) {
       ).map((key, i) => (
         <div key={key}>
           <dt className="mono-label">{o((["item", "fee", "total"] as const)[i]!)}</dt>
-          <dd className="mt-2">{formatOrderMoney(total[key])}</dd>
+          <dd className="mt-2">{formatOrderMoney(total[key], lang)}</dd>
         </div>
       ))}
     </dl>

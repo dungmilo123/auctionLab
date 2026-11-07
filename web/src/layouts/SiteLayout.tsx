@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { BarChart3, BookOpen, FlaskConical, Gavel, Heart, Home, Menu, Package, Search, User, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { BarChart3, BookOpen, FlaskConical, Gavel, Heart, Home, Menu, Package, Search, ShoppingBag, User, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import * as m from 'motion/react-m'
 import { AnimatePresence, useIsPresent } from 'motion/react'
@@ -12,17 +12,39 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useSiteCopy, type SiteKey } from '@/lib/site-copy'
 import type { Route } from '@/lib/route'
+import { useAccount } from '@/account/AccountProvider'
+import { orderAPI } from '@/api/order'
 
 type Destination = readonly [href: string, label: SiteKey]
 const primary: Destination[] = [['/auctions', 'auctions'], ['/lots', 'lots']]
 const footer: Destination[] = [...primary, ['/account', 'account']]
 const account: Destination[] = [['/account', 'overview'], ['/account/watchlist', 'watchlist'], ['/account/bids', 'bids'], ['/account/wins', 'wins'], ['/account/orders', 'orders']]
 const admin: Destination[] = [['/admin', 'overview'], ['/admin/auctions', 'auctions'], ['/admin/lots', 'lots'], ['/admin/orders', 'orders'], ['/admin/analytics', 'analytics'], ['/admin/labs', 'labs']]
-const icons: Partial<Record<SiteKey, LucideIcon>> = { overview: Home, auctions: Gavel, lots: BookOpen, account: User, watchlist: Heart, bids: Gavel, wins: Package, orders: Package, analytics: BarChart3, labs: FlaskConical }
+const icons: Partial<Record<SiteKey, LucideIcon>> = { overview: Home, auctions: Gavel, lots: BookOpen, account: User, watchlist: Heart, bids: Gavel, wins: ShoppingBag, orders: Package, analytics: BarChart3, labs: FlaskConical }
 
 function Navigation({ items, path, label, className, icon = false, tone = 'ink' }: { items: Destination[]; path: string; label: SiteKey; className?: string; icon?: boolean; tone?: 'ink' | 'paper' }) {
   const { t } = useSiteCopy()
   return <nav className={cn('flex flex-wrap', className)} aria-label={t(label)}>{items.map(([href, key]) => <a key={href} href={href} aria-current={path === href ? 'page' : undefined} className={cn('inline-flex min-h-11 items-center font-mono text-[0.6875rem] font-medium tracking-[0.12em] uppercase no-underline hover:underline hover:underline-offset-[6px] aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-[6px]', tone === 'paper' ? 'text-paper' : 'text-ink')}>{icon && icons[key] && <Icon icon={icons[key]!} className="me-3" />}{t(key)}</a>)}</nav>
+}
+/** Unpaid wins for the signed-in bidder: the auction cart. Refreshed on navigation and focus; null while unknown. */
+function useCartCount(path: string): number | null {
+  const { state } = useAccount()
+  const owner = state.status === 'signed-in' ? state.profile.id : null
+  const [count, setCount] = useState<{ owner: string; n: number } | null>(null)
+  useEffect(() => {
+    if (!owner) return
+    let controller: AbortController | undefined
+    const load = () => { controller?.abort(); controller = new AbortController(); orderAPI.wins(owner, controller.signal).then(rows => setCount({ owner, n: rows.length }), () => {}) }
+    load(); window.addEventListener('focus', load)
+    return () => { controller?.abort(); window.removeEventListener('focus', load) }
+  }, [owner, path])
+  return owner && count?.owner === owner ? count.n : null
+}
+function CartLink({ path }: { path: string }) {
+  const { t } = useSiteCopy()
+  const count = useCartCount(path)
+  const label = count ? `${t('cart')} (${count})` : t('cart')
+  return <Button asChild variant="ghost" size="icon" className="relative"><a href="/account/wins" aria-label={label} aria-current={path === '/account/wins' ? 'page' : undefined}><Icon icon={ShoppingBag} />{count ? <span aria-hidden="true" className="absolute top-1 right-0.5 grid min-w-[18px] h-[18px] place-items-center rounded-full bg-ink px-1 font-mono text-[0.625rem] leading-none text-paper numeric">{count}</span> : null}</a></Button>
 }
 function HeaderPanel({ children }: { children: ReactNode }) {
   const present = useIsPresent(), reduce = useWebsiteReducedMotion()
@@ -43,6 +65,7 @@ function Shell({ route, children }: { route: Route; children: ReactNode }) {
         <div className="flex items-center gap-0.5">
           <Button ref={search} type="button" variant="ghost" size="icon" aria-label={t('search')} aria-expanded={panel === 'search'} aria-controls="header-search" onClick={() => setPanel(panel === 'search' ? null : 'search')}><Icon icon={Search} /></Button>
           <Button asChild variant="ghost" size="icon" className="hidden md:inline-flex"><a href="/account/watchlist" aria-label={t('watchlist')}><Icon icon={Heart} /></a></Button>
+          <CartLink path={route.path} />
           <Button asChild variant="ghost" size="icon" className="hidden md:inline-flex"><a href="/account" aria-label={t('account')}><Icon icon={User} /></a></Button>
           <LanguageMenu />
           <Button ref={menu} variant="ghost" size="icon" className="md:hidden" type="button" aria-label={lang === 'vi' ? 'Điều hướng' : 'Navigation'} aria-expanded={panel === 'menu'} aria-controls="mobile-navigation" onClick={() => setPanel(panel === 'menu' ? null : 'menu')}><Icon icon={panel === 'menu' ? X : Menu} /></Button>

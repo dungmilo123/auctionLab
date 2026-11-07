@@ -13,7 +13,7 @@ import { withCategories } from './loads'
 import { CategoryName, DataState, Gallery } from './DiscoveryPresentation'
 function Row({ title, open, children }: { title: string; open?: boolean; children: React.ReactNode }) { return <details open={open} className="group border-t border-dashed border-ink/25"><summary className="mono-label flex min-h-11 cursor-pointer items-center justify-between">{title}<span aria-hidden="true" className="group-open:rotate-45 transition-transform">+</span></summary><div className="flex flex-col gap-3 pb-4">{children}</div></details> }
 export default function LotDetailPage({ slug }: { slug: string }) {
-  const { d } = useDiscoveryCopy()
+  const { lang, d } = useDiscoveryCopy()
   const load = useCallback((signal: AbortSignal) => withCategories(publicCatalog.lot(slug, signal), signal), [slug])
   const { state, retry } = usePublicPage(slug, load)
   const observedID = state.status === 'success' ? state.response.data.record.id : null
@@ -35,7 +35,7 @@ export default function LotDetailPage({ slug }: { slug: string }) {
       {lot.specifications.length > 0 && <Row title={d('specs')}><dl className="flex flex-col">{lot.specifications.map((s, i) => <div key={i} className="flex gap-3 border-b border-dashed border-ink/15 py-1.5"><dt>{s.name}</dt><dd className="m-0 ms-auto text-end">{s.value}</dd></div>)}</dl></Row>}
       <Row title={d('condition')}><p className="whitespace-pre-wrap">{lot.condition}</p></Row>
       <Row title={d('fulfillment')}>
-        {f.shipping_enabled ? <><p className="font-mono text-sm numeric">{d('shipping')}: {formatCatalogMoney(f.shipping_fee_minor)}</p><p className="whitespace-pre-wrap">{f.shipping_instructions}</p></> : <p>{d('noShipping')}</p>}
+        {f.shipping_enabled ? <><p className="font-mono text-sm numeric">{d('shipping')}: {formatCatalogMoney(f.shipping_fee_minor, lang)}</p><p className="whitespace-pre-wrap">{f.shipping_instructions}</p></> : <p>{d('noShipping')}</p>}
         {f.pickup_enabled ? <><h3>{d('pickup')}</h3><p className="whitespace-pre-wrap">{f.pickup_instructions}</p></> : <p>{d('noPickup')}</p>}
       </Row>
       {lot.story && <Row title={d('story')}><p className="whitespace-pre-wrap">{lot.story}</p></Row>}

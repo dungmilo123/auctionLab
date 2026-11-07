@@ -13,6 +13,9 @@ it("formats exact checkout cents without widening components", () => {
   expect(formatOrderMoney(14050)).toBe("$140.50 USD");
   expect(formatOrderMoney(MAX_ORDER_TOTAL)).toBe("$20000000000.00 USD");
   expect(formatOrderMoney(MAX_CATALOG_MONEY)).toBe("$10000000000.00 USD");
+  expect(formatOrderMoney(14050, "vi")).toBe("3.512.500 ₫");
+  expect(formatOrderMoney(0, "vi")).toBe("0 ₫");
+  expect(formatOrderMoney(MAX_ORDER_TOTAL, "vi")).toBe("500.000.000.000.000 ₫");
   for (const n of [
     -1,
     1.5,

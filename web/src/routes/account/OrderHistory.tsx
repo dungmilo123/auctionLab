@@ -17,7 +17,7 @@ export function OrderSummary({
   href: string;
   label: string;
 }) {
-  const { f } = useFulfillmentCopy();
+  const { f, lang } = useFulfillmentCopy();
   const order = displaySummary(rawOrder);
   return (
     <li className="flex flex-col gap-2.5 rounded-[2px] border border-hairline bg-paper p-5">
@@ -29,11 +29,11 @@ export function OrderSummary({
         {f(order.status)} · {f(order.method ?? "unselected")}
       </p>
       <p className="font-mono numeric">
-        {formatOrderMoney(order.winning_amount_minor)}
+        {formatOrderMoney(order.winning_amount_minor, lang)}
         {order.total_minor !== null && (
           <>
             {" "}
-            · {f("total")}: {formatOrderMoney(order.total_minor)}
+            · {f("total")}: {formatOrderMoney(order.total_minor, lang)}
           </>
         )}
       </p>
@@ -73,7 +73,7 @@ export function OrderInspection({
         <dd>{order.id}</dd>
         <dt>{f("winning")}</dt>
         <dd className="numeric">
-          {formatOrderMoney(order.winning_amount_minor)}
+          {formatOrderMoney(order.winning_amount_minor, lang)}
         </dd>
         <dt>{f("closed")}</dt>
         <dd>
@@ -86,9 +86,9 @@ export function OrderInspection({
         {order.total && (
           <>
             <dt>{f("fee")}</dt>
-            <dd>{formatOrderMoney(order.total.fulfillment_fee_minor)}</dd>
+            <dd>{formatOrderMoney(order.total.fulfillment_fee_minor, lang)}</dd>
             <dt>{f("total")}</dt>
-            <dd>{formatOrderMoney(order.total.total_minor)}</dd>
+            <dd>{formatOrderMoney(order.total.total_minor, lang)}</dd>
             <dt>{f("instructions")}</dt>
             <dd>{order.total.instructions}</dd>
           </>
