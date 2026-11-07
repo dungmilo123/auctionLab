@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { BarChart3, BookOpen, Gavel, Heart, Home, Menu, Package, Search, User, X } from 'lucide-react'
+import { BarChart3, BookOpen, FlaskConical, Gavel, Heart, Home, Menu, Package, Search, User, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import * as m from 'motion/react-m'
 import { AnimatePresence, useIsPresent } from 'motion/react'
@@ -17,8 +17,8 @@ type Destination = readonly [href: string, label: SiteKey]
 const primary: Destination[] = [['/auctions', 'auctions'], ['/lots', 'lots']]
 const footer: Destination[] = [...primary, ['/account', 'account']]
 const account: Destination[] = [['/account', 'overview'], ['/account/watchlist', 'watchlist'], ['/account/bids', 'bids'], ['/account/wins', 'wins'], ['/account/orders', 'orders']]
-const admin: Destination[] = [['/admin', 'overview'], ['/admin/auctions', 'auctions'], ['/admin/lots', 'lots'], ['/admin/orders', 'orders'], ['/admin/analytics', 'analytics']]
-const icons: Partial<Record<SiteKey, LucideIcon>> = { overview: Home, auctions: Gavel, lots: BookOpen, account: User, watchlist: Heart, bids: Gavel, wins: Package, orders: Package, analytics: BarChart3 }
+const admin: Destination[] = [['/admin', 'overview'], ['/admin/auctions', 'auctions'], ['/admin/lots', 'lots'], ['/admin/orders', 'orders'], ['/admin/analytics', 'analytics'], ['/admin/labs', 'labs']]
+const icons: Partial<Record<SiteKey, LucideIcon>> = { overview: Home, auctions: Gavel, lots: BookOpen, account: User, watchlist: Heart, bids: Gavel, wins: Package, orders: Package, analytics: BarChart3, labs: FlaskConical }
 
 function Navigation({ items, path, label, className, icon = false, tone = 'ink' }: { items: Destination[]; path: string; label: SiteKey; className?: string; icon?: boolean; tone?: 'ink' | 'paper' }) {
   const { t } = useSiteCopy()

@@ -16,6 +16,7 @@ export const SITE_COPY = {
   register: { en: 'Create account', vi: 'Tạo tài khoản' },
   account: { en: 'Account', vi: 'Tài khoản' },
   analytics: {en:'Analytics',vi:'Phân tích'},
+  labs: { en: 'Feature labs', vi: 'Thử nghiệm' },
   admin: { en: 'Administration', vi: 'Quản trị' },
   overview: { en: 'Overview', vi: 'Tổng quan' },
   watchlist: { en: 'Watchlist', vi: 'Danh sách theo dõi' },

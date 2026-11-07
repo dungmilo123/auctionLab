@@ -1,6 +1,6 @@
 export type Page = 'home' | 'auctions' | 'auctionDetail' | 'lots' | 'lotDetail'
   | 'account' | 'login' | 'register' | 'watchlist' | 'bids' | 'wins' | 'checkout' | 'orders' | 'orderDetail'
-  | 'admin' | 'adminAuctions' | 'adminLots' | 'adminOrders' | 'adminAnalytics' | 'notFound'
+  | 'admin' | 'adminAuctions' | 'adminLots' | 'adminOrders' | 'adminAnalytics' | 'adminLabs' | 'notFound'
 export type Layout = 'storefront' | 'account' | 'admin'
 export type Route = { page: Page; layout: Layout; path: string; slug?: string; orderId?: string }
 
@@ -20,6 +20,7 @@ export const SITE_ROUTES = [
   ['/admin/lots', 'adminLots', 'admin'],
   ['/admin/orders', 'adminOrders', 'admin'],
   ['/admin/analytics', 'adminAnalytics', 'admin'],
+  ['/admin/labs', 'adminLabs', 'admin'],
 ] as const satisfies ReadonlyArray<readonly [string, Page, Layout]>
 
 /** Native document links; exactly one trailing slash is accepted. */
