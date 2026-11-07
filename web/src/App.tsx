@@ -13,7 +13,7 @@ const AdminPage = lazy(() => import('@/routes/admin-preview/AdminPage'))
 const titles: Record<Page, SiteKey> = {
   home: 'homeTitle', auctions: 'auctions', auctionDetail: 'auctionDetail', lots: 'lots', lotDetail: 'lotDetail',
   account: 'account', login: 'login', register: 'register', watchlist: 'watchlist', bids: 'bids', wins: 'wins', checkout: 'checkout', orders: 'orders', orderDetail: 'orders',
-  admin: 'admin', adminAuctions: 'adminAuctions', adminLots: 'adminLots', adminOrders: 'adminOrders', adminAnalytics: 'analytics', notFound: 'notFound',
+  admin: 'admin', adminAuctions: 'adminAuctions', adminLots: 'adminLots', adminOrders: 'adminOrders', adminAnalytics: 'analytics', adminLabs: 'labs', notFound: 'notFound',
 }
 
 export default function App() {

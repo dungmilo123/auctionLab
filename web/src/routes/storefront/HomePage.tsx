@@ -38,11 +38,13 @@ type Pin = {
   time: string
 }
 
+// Each note sizes to its own content; the board stacks them in two columns
+// (lead + c on the left, a + b on the right) so no note stretches to match a neighbour.
 const slotClass: Record<Slot, string> = {
-  lead: 'col-span-7 row-span-2 max-[900px]:col-span-full max-[900px]:row-auto',
-  a: 'col-start-8 col-span-5 row-start-1 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
-  b: 'col-start-8 col-span-5 row-start-2 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
-  c: 'col-start-1 col-span-4 row-start-3 max-[900px]:col-span-full max-[900px]:col-start-auto max-[900px]:row-auto',
+  lead: 'w-full',
+  a: 'w-full',
+  b: 'w-full',
+  c: 'w-[78%] self-end max-[900px]:w-full max-[900px]:self-auto',
 }
 
 const slotTilt: Record<Slot, string> = {
@@ -81,7 +83,7 @@ function PinnedNote({
           : { type: 'spring', stiffness: 190, damping: 22, mass: 0.9, delay }
       }
     >
-      <Note tone={pin.tone} className={`h-full ${slotTilt[slot]}`}>
+      <Note tone={pin.tone} className={slotTilt[slot]}>
         <NoteMagnet />
         <NoteCode left={pin.code} right={pin.detail} />
         <h3 className={lead ? 'text-[clamp(1.3rem,1.9vw,1.65rem)] leading-[1.1] font-medium tracking-[-0.03em]' : 'text-base leading-snug font-medium'}>
@@ -152,7 +154,7 @@ export default function HomePage() {
     alt: lot.images[0]?.alt ?? '',
     open: lot.opens_at,
     close: lot.closes_at,
-    price: formatCatalogMoney(lot.starting_price_minor),
+    price: formatCatalogMoney(lot.starting_price_minor, lang),
     time: `${d('closes')}: ${
       lot.closes_at === null ? d('unknown') : scheduleText(lot.closes_at, lang)
     }`,
@@ -195,19 +197,18 @@ export default function HomePage() {
               })}
             </time>
           </div>
-          <div className="board-surface grid min-h-[520px] grid-cols-12 content-center gap-3.5 px-[22px] py-[26px] max-[900px]:min-h-0 max-[900px]:grid-cols-1 max-[900px]:gap-5 max-[900px]:px-4 max-[900px]:py-6">
+          <div className="board-surface grid min-h-[520px] grid-cols-12 items-start gap-5 px-[22px] py-[26px] max-[900px]:min-h-0 max-[900px]:grid-cols-1 max-[900px]:gap-5 max-[900px]:px-4 max-[900px]:py-6">
             {leadPin ? (
               <>
-                <PinnedNote pin={leadPin} slot="lead" delay={0.06} now={now} />
-                {lotPins.map((pin, i) => (
-                  <PinnedNote
-                    key={pin.href}
-                    pin={pin}
-                    slot={(['a', 'b', 'c'] as const)[i] ?? 'c'}
-                    delay={0.16 + i * 0.08}
-                    now={now}
-                  />
-                ))}
+                <div className="col-span-7 flex flex-col items-start gap-6 max-[900px]:col-span-full max-[900px]:gap-5">
+                  <PinnedNote pin={leadPin} slot="lead" delay={0.06} now={now} />
+                  {lotPins[2] && <PinnedNote key={lotPins[2].href} pin={lotPins[2]} slot="c" delay={0.32} now={now} />}
+                </div>
+                <div className="col-span-5 flex flex-col gap-6 pt-8 max-[900px]:col-span-full max-[900px]:gap-5 max-[900px]:pt-0">
+                  {lotPins.slice(0, 2).map((pin, i) => (
+                    <PinnedNote key={pin.href} pin={pin} slot={i === 0 ? 'a' : 'b'} delay={0.16 + i * 0.08} now={now} />
+                  ))}
+                </div>
               </>
             ) : (
               <div className="col-span-full grid min-h-[520px] place-items-center p-8 text-center max-[900px]:min-h-[320px]">

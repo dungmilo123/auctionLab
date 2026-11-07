@@ -1,5 +1,22 @@
 # AuctionLab
 
+## Demonstration
+
+Open the operator link first; both pages sit behind the admin capability gate. In development run `npm run dev` in `web/` (Vite on `:5173`, proxying `/api` to the server on `:8080`).
+
+**Feature labs: `/admin/labs`.** Clickable prototypes of the planned advanced features. They use fixture data and seed catalogue artwork only, and never read or write lots, bids, orders or the database. Tabs follow the roadmap order and can be deep-linked (`#currency`, `#soft-close`, `#proxy`, `#analytics`):
+
+1. **Currency:** multi-currency display. USD cents stay the settlement currency; VND is shown at an operator-set rate and marked "≈". A đồng bid rounds up to the next valid USD increment, and receipts keep the exchange rate from when the order was created.
+2. **Soft close:** anti-sniping. A bid in the final window (1/2/5 min) extends the lot, up to a cap; an extension log and cap meter show each change.
+3. **Proxy bidding:** private maximum bids. The higher maximum leads at one increment over the lower maximum, equal maximums go to the earlier bid, and auto-bids are marked in the public history.
+4. **Analytics v2:** headline cards and a rule-based revenue forecast (open lots at current bid +30–40%, adjustable). Charts cover bids over time, bid timing with the sniping spike highlighted, sell-through by category against the average, and hammer price vs estimate. Each chart lists the backend aggregate it would need.
+
+**Auction analytics: `/admin/analytics`.** The live aggregate dashboard built on shadcn/ui charts: KPI cards, lot outcome, bid mix and money breakdowns, interaction volume, and an event comparison with chart and table views.
+
+The rules behind the prototypes are pure functions in `web/src/lib/labs.ts`, covered by `labs.test.ts`. Designs, data models and sketches are in [advanced feature designs](docs/advanced-features-design.md).
+
+## Overview
+
 Vintage auction catalog and discovery website with a retained classroom-game backend. Go serves an embedded React frontend; PostgreSQL 18 is a required separate service. Published events and lots support public search, category/planned-phase filters, deterministic sorting, galleries and fulfillment disclosures. Commerce accounts support durable sessions, self-profiles and private watchlists. Catalog publication stores immutable configuration; independent timed auctions support manual bids and durable results. Private winner checkout with local simulated payment is available; owner order history and capability-authorized simulated fulfillment are available.
 
 See [PostgreSQL setup and operations](docs/postgresql.md), [catalog/frontend contracts](web/README.md), and [the roadmap](ROADMAP.md). Run `make build` for the frontend-first no-CGO application binary. Database-backed tests require an explicit isolated `TEST_DATABASE_URL`.

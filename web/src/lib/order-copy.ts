@@ -2,6 +2,7 @@ import { useLanguage } from "./i18n";
 export const ORDER_COPY = {
   wins: { en: "Unpaid wins", vi: "Hiện vật thắng chưa thanh toán" },
   checkout: { en: "Winner checkout", vi: "Thanh toán hiện vật thắng" },
+  subtotal: { en: "Subtotal before delivery", vi: "Tạm tính trước phí giao hàng" },
   simulation: {
     en: "Payment simulation only. No money is charged. Do not enter card or bank details.",
     vi: "Chỉ thanh toán. Không thu tiền. Không nhập thông tin thẻ hoặc ngân hàng.",
