@@ -1,110 +1,356 @@
 # AuctionLab
 
-## Demonstration
+**An online auction house for vintage collectibles.** Bidders browse curated
+auction events, save lots to a watchlist and compete in timed auctions. Winners
+check out with a simulated payment and track delivery. Operators publish
+auctions, fulfil orders and review sales analytics.
 
-Open the operator link first; both pages sit behind the admin capability gate. In development run `npm run dev` in `web/` (Vite on `:5173`, proxying `/api` to the server on `:8080`).
+Built with **Go**, **React + TypeScript** and **PostgreSQL 18**, shipped as a
+single binary.
 
-**Feature labs: `/admin/labs`.** Clickable prototypes of the planned advanced features. They use fixture data and seed catalogue artwork only, and never read or write lots, bids, orders or the database. Tabs follow the roadmap order and can be deep-linked (`#currency`, `#soft-close`, `#proxy`, `#analytics`):
+![AuctionLab home page](docs/screenshots/01-home.png)
 
-1. **Currency:** multi-currency display. USD cents stay the settlement currency; VND is shown at an operator-set rate and marked "≈". A đồng bid rounds up to the next valid USD increment, and receipts keep the exchange rate from when the order was created.
-2. **Soft close:** anti-sniping. A bid in the final window (1/2/5 min) extends the lot, up to a cap; an extension log and cap meter show each change.
-3. **Proxy bidding:** private maximum bids. The higher maximum leads at one increment over the lower maximum, equal maximums go to the earlier bid, and auto-bids are marked in the public history.
-4. **Analytics v2:** headline cards and a rule-based revenue forecast (open lots at current bid +30–40%, adjustable). Charts cover bids over time, bid timing with the sniping spike highlighted, sell-through by category against the average, and hammer price vs estimate. Each chart lists the backend aggregate it would need.
+**Jump to:** [What it is](#1-what-is-auctionlab) ·
+[Feature tour](#2-feature-tour) · [Tech stack](#3-tech-stack) ·
+[Architecture](#4-architecture) · [Quick start](#5-quick-start) ·
+[Demo walkthrough](#6-demo-walkthrough-10-minutes) · [Tests](#7-running-tests) ·
+[Further docs](#8-project-structure-and-further-docs) ·
+[Scope](#9-limitations-and-scope)
 
-**Auction analytics: `/admin/analytics`.** The live aggregate dashboard built on shadcn/ui charts: KPI cards, lot outcome, bid mix and money breakdowns, interaction volume, and an event comparison with chart and table views.
+> **Important:** AuctionLab needs a running **PostgreSQL 18** database. It will
+> not start without one. The [quick start](#5-quick-start) shows the fastest way
+> to get one (a single Docker command), and a ready-made demo snapshot fills
+> every page with data.
 
-The rules behind the prototypes are pure functions in `web/src/lib/labs.ts`, covered by `labs.test.ts`. Designs, data models and sketches are in [advanced feature designs](docs/advanced-features-design.md).
+---
 
-## Overview
+## 1. What is AuctionLab?
 
-Vintage auction catalog and discovery website with a retained classroom-game backend. Go serves an embedded React frontend; PostgreSQL 18 is a required separate service. Published events and lots support public search, category/planned-phase filters, deterministic sorting, galleries and fulfillment disclosures. Commerce accounts support durable sessions, self-profiles and private watchlists. Catalog publication stores immutable configuration; independent timed auctions support manual bids and durable results. Private winner checkout with local simulated payment is available; owner order history and capability-authorized simulated fulfillment are available.
+AuctionLab is a complete e-commerce flow built around **timed English
+auctions** (open, ascending bids with a fixed increment):
 
-See [PostgreSQL setup and operations](docs/postgresql.md), [catalog/frontend contracts](web/README.md), and [the roadmap](ROADMAP.md). Run `make build` for the frontend-first no-CGO application binary. Database-backed tests require an explicit isolated `TEST_DATABASE_URL`.
+| Who | What they can do |
+|---|---|
+| **Visitor** | Browse auction events and lots, search, filter and sort, and see suggested lots |
+| **Bidder** (registered account) | Save lots to a watchlist, place bids, see whether they are leading or outbid, pay for won lots and follow their orders |
+| **Operator** (admin) | Create and publish auction events and lots, move orders through shipping or pickup, view analytics |
 
-Implementation and acceptance evidence: [archived change report](openspec/changes/archive/2026-10-19-manage-vintage-lots-and-auction-events/verification/REPORT.md).
+Two things are **simulated** on purpose, because this is a course project:
 
-Public discovery routes: `/`, `/auctions`, `/auctions/:slug`, `/lots`, `/lots/:slug`. Seeded drafts become public only after explicit review/publication. Planned windows describe saved schedules; the separate lot-detail execution panel shows live bidding and confirmed results. Anonymous discovery never restores retained game sessions. See the [discovery acceptance report](openspec/changes/archive/2026-10-19-build-auction-discovery-experience/verification/REPORT.md).
+- **Payment.** "Card" and "bank transfer" are local simulations. No money moves and no card or bank details are collected.
+- **Delivery.** Shipping and pickup statuses are set by the operator by hand. There is no real carrier.
 
-Commerce accounts use independent PostgreSQL sessions and safe self-profiles. Public registration creates bidders; account admin roles do not replace the existing catalog capability gate. See [account API](web/README.md#commerce-account-api) and [identity policy](internal/account/README.md). Session-owned bidding and participation are available; private winner checkout with simulated payment is available; owner history and simulated fulfillment are available. Accounts never reuse game players/tokens or change game revisions.
+Prices are stored in **USD cents** (integers, never floating point). The
+interface is available in **English and Vietnamese**.
 
-For explicit demo accounts, stop the server, supply `DEMO_BIDDER_ONE_PASSWORD`, `DEMO_BIDDER_TWO_PASSWORD`, and `DEMO_ADMIN_PASSWORD` privately, then run `./bin/auctionlab --seed-accounts`. It provisions two demo bidders and an admin transactionally, prints status only and exits. Repeats preserve existing credentials and saved lots without password inputs. Normal boot installs no defaults. See [provisioning](docs/postgresql.md#explicit-demo-account-provisioning) for fixed reserved-domain identifiers and flag boundaries.
+---
 
-[Archived account/watchlist verification](openspec/changes/archive/2026-10-20-add-bidder-accounts-and-watchlists/verification/REPORT.md) records passing implementation checks and the two pending exact-200%-zoom acceptance tasks. See the [archive record](openspec/changes/archive/2026-10-20-add-bidder-accounts-and-watchlists/ARCHIVE.md).
+## 2. Feature tour
 
-### Timed commerce auctions (schema 3)
+### 2.1 Browse auctions and lots
 
-Normal startup activates every previously published immutable schedule before opening the listener. Future lots wait, currently eligible lots open, and expired lots with no accepted commerce bids close unsold at their original deadline (with the actual recording time retained). A 250 ms worker adopts new publications and reconciles independent lots across overlapping events. Maintenance/import/seed commands do not start it. Public catalog schedule filters and opening-price sorts retain their existing meaning.
+Published auction events and their lots are public. Visitors can search by
+title, description, brand or era. They can filter by category and auction
+phase and sort by closing time or price. Each lot has a gallery, condition
+notes, specifications and delivery options.
 
-For a fresh bid-to-win rehearsal, prepare **new drafts** with a future opening and staggered closes, then publish through catalog management. Seeding only prepares drafts and does not invent bids. Never edit or rebase a previously published event to replay a demo. Use two independently signed-in commerce accounts, explicitly submit increasing bids, and inspect the committed sold/unsold result and `/account/bids`. Watching/saving never bids. Sold wins create one owner order; winners can review and confirm a local simulated payment. Owner history and simulated fulfillment are available. See `docs/postgresql.md` for the stopped-writer schema-6 upgrade and backup-based rollback.
+| Auction events | Lot catalogue |
+|---|---|
+| ![Auctions list](docs/screenshots/04-auctions.png) | ![Lots list with filters](docs/screenshots/05-lots.png) |
 
-## Winner checkout and simulated payment (Change 6)
+![Auction event page](docs/screenshots/06-event.png)
 
-Normal commerce closure now commits one `awaiting_payment` order with each sold result. Unsold lots create none. Normal startup also adopts historical sold results missing an order before HTTP readiness, in bounded batches; original closing/result times remain unchanged and the new order creation time records adoption. Migration, import and account/catalog maintenance do not perform adoption or payment. Startup fails if a required snapshot cannot be created; correct the underlying published-data issue through an explicit recovery decision, never fabricate missing terms or silently discard a winner.
+### 2.2 Accounts and watchlist
 
-Winners open **Unpaid wins** at `/account/wins` or follow their won bid/lot participation to `/account/checkout/<orderId>`. The owner reviews frozen lot/fulfillment terms, contact and shipping address (or pickup without an address). Shipping adds the published flat fee; pickup adds zero. Both `demo-card` and `demo-bank-transfer` are local simulations: no money is charged and no card/bank details are collected. Confirmation creates exactly one durable receipt and removes the order from unpaid wins. Its direct checkout URL remains a read-only paid confirmation after refresh/restart. Owner history, admin order operations and simulated fulfillment tracking are available.
+Anyone can register as a bidder. Sessions are stored in the database, and only
+a hash of each session token is kept. Signed-in bidders can save lots to a
+private watchlist.
 
-A timeout or lost response is an **unknown outcome**. Read the stored order first; if still unpaid, deliberately retry the same retained intent. Login/reload/reconnect never confirms automatically. Unsent contact/address values remain only in component memory and clear on identity changes/restoration. See `internal/order/README.md` for limits and API/error contracts.
+| Sign in | Watchlist |
+|---|---|
+| ![Sign-in page](docs/screenshots/09-login.png) | ![Watchlist](docs/screenshots/07-watchlist.png) |
 
-For a new demo run, stop the writer to provision accounts with operator-supplied passwords and seed new draft catalog content, then publish a complete future-scheduled event through the catalog gate. Run two commerce accounts through eligible bidding and wait for closure. Keep terminal results, published schedules and receipts intact; the retained game reset does not reset commerce. Normal startup installs no credentials and never rewinds past schedules. The disposable acceptance preparer under this change's `verification/prepare` uses an explicit fixture clock and refuses operational schemas; it is not an operator reset tool.
+### 2.3 Live timed bidding
 
-## Order history, simulated fulfillment and disposable rehearsal
+Each lot opens and closes on a published schedule. The bidding panel shows the
+current price, the next minimum bid, the fixed increment and a countdown. Every
+bidder sees whether they are **leading** or have been **outbid**. When the lot
+closes, the server records the result once: **sold** to the highest bidder, or
+**unsold** if nobody bid.
 
-Buyers open `/account/orders` and `/account/orders/<orderId>` for stored purchase history, immutable receipts/contact and the shared timeline. Operators use capability-authorized `/admin/orders` with status/method filters. Shipping advances paid → preparing → shipped → completed; pickup advances paid → ready_for_pickup → completed. Shipment text is manual and every delivery/payment is simulated. Paid checkout keeps its original receipt at every later stage.
+| You are leading | You have been outbid |
+|---|---|
+| ![Bidder leading](docs/screenshots/02-lot-bidding-leading.png) | ![Bidder outbid](docs/screenshots/03-lot-bidding-outbid.png) |
 
-For a fresh complete run, supply the three operator password environment inputs, stop any target writer, choose a **new disposable** schema, and run:
+| My bids (filter by leading, outbid, won, lost) | A closed lot with its recorded result |
+|---|---|
+| ![My bids page](docs/screenshots/08-my-bids.png) | ![Sold lot](docs/screenshots/16-lot-sold.png) |
 
-```sh
-./bin/auctionlab --prepare-demo --demo-schema auctionlab_demo_rehearsal --seed-at 2026-10-21T00:00:00Z
-./bin/auctionlab --demo-status --demo-schema auctionlab_demo_rehearsal
-DATABASE_SCHEMA=auctionlab_demo_rehearsal ./bin/auctionlab
+### 2.4 Winner checkout (simulated payment)
+
+When a lot sells, the winner gets an order in **Cart · Unpaid wins**. At
+checkout they enter contact details, choose **shipping** (adds the published
+flat fee) or **pickup** (free), and pick a simulated payment method. They review
+the total, confirm, and receive exactly one receipt.
+
+![Unpaid wins](docs/screenshots/10-unpaid-wins.png)
+
+| 1. Enter details | 2. Review order | 3. Payment confirmed |
+|---|---|---|
+| ![Checkout form](docs/screenshots/11-checkout-form.png) | ![Checkout review](docs/screenshots/12-checkout-review.png) | ![Payment receipt](docs/screenshots/13-payment-receipt.png) |
+
+### 2.5 Order history and delivery tracking
+
+Buyers can see all their orders and each order's timeline:
+paid → preparing → shipped → completed, or paid → ready for pickup → completed.
+
+| Order history | Order detail and timeline |
+|---|---|
+| ![Order history](docs/screenshots/14-order-history.png) | ![Order detail timeline](docs/screenshots/15-order-detail.png) |
+
+### 2.6 Admin: overview and catalogue management
+
+The admin area is protected by a secret **admin link** (see
+[Quick start](#5-quick-start)). Operators create events and lots as **drafts**,
+then **publish** them. Publishing freezes the schedule and prices, so a live
+auction cannot be changed underneath bidders.
+
+![Admin overview](docs/screenshots/22-admin-home.png)
+
+| Auction events | Lots |
+|---|---|
+| ![Admin auction events](docs/screenshots/20-admin-catalog.png) | ![Admin lots](docs/screenshots/21-admin-lots.png) |
+
+![Editing a draft auction event](docs/screenshots/27-admin-event-editor.png)
+
+### 2.7 Admin: orders and fulfilment
+
+Operators filter orders by status and delivery method and advance each one to
+its next stage. Shipped orders get a carrier and tracking reference.
+
+| Order list | Order detail |
+|---|---|
+| ![Admin orders](docs/screenshots/23-admin-orders.png) | ![Admin order detail](docs/screenshots/24-admin-order-detail.png) |
+
+### 2.8 Admin: analytics dashboard
+
+Charts and KPI cards cover bids, bidders, lot outcomes (sold or unsold),
+winning totals and simulated payments. They can be compared across auction
+events. Each metric's definition and its data snapshot time are shown on the
+page.
+
+![Analytics dashboard](docs/screenshots/25-admin-analytics.png)
+
+### 2.9 Recommendations (rule-based)
+
+The home page and each lot page suggest up to six lots. The suggestions come
+from simple, explainable rules: same category, same era, the bidder's watchlist
+preferences, then lots closing soon. This is **not** machine learning.
+
+### 2.10 Feature labs (design prototypes)
+
+`/admin/labs` contains clickable prototypes of planned features: multi-currency
+display (USD / VND), soft-close anti-sniping, proxy (maximum) bidding and
+forecasting analytics. They use built-in sample data and never touch the
+database. Designs are in [docs/advanced-features-design.md](docs/advanced-features-design.md).
+
+![Feature labs](docs/screenshots/26-admin-labs.png)
+
+---
+
+## 3. Tech stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Backend | Go 1.26, standard `net/http` | One small, fast binary with no web framework |
+| Database | PostgreSQL 18 via `pgx/v5` | Transactions keep bids, results, orders and payments consistent |
+| Frontend | React 19, TypeScript, Vite | Typed single-page app with fast builds |
+| UI | Tailwind CSS 4, shadcn/ui, Recharts | Accessible components and analytics charts |
+| Real-time | Server-Sent Events for live auctions (falls back to polling); WebSocket (gorilla/websocket) for the retained classroom game | Prices and leading/outbid status update without reloading |
+| Packaging | Frontend embedded into the Go binary (`CGO_ENABLED=0`) | One file to run; Node is only needed to build |
+
+---
+
+## 4. Architecture
+
+```mermaid
+flowchart LR
+    B[Browser<br/>React SPA] -- HTTPS / JSON --> S
+    subgraph S[Go server — single binary]
+        direction TB
+        API[HTTP API<br/>internal/api] --> CAT[catalog]
+        API --> ACC[account<br/>sessions, watchlist]
+        API --> AUC[auction<br/>bids, closing worker]
+        API --> ORD[order<br/>checkout, fulfilment]
+        API --> ANA[analytics &<br/>recommendation]
+        UI[Embedded frontend<br/>web/dist]
+    end
+    S -- pgx --> DB[(PostgreSQL 18<br/>one schema per environment)]
 ```
 
-Review/edit future draft schedules and publish through catalog management, bid with two accounts, wait for closure, pay as the owner and complete shipping/pickup as the operator. To replay, stop the writer and back up valuable rehearsal data, then explicitly clear/reseed only that marked target and inspect the new generation:
+- **One writer per schema.** The server holds an exclusive lock on its database schema, so two servers can never write the same data.
+- **Commit before publish.** A bid, a closing result or a payment is reported as successful only after the database transaction commits.
+- **Background closing worker.** It checks every 250 ms, opens and closes lots on schedule, and creates the winner's order in the same transaction as the sold result.
+- **Admin capability.** Every admin page and API checks a secret cookie, which is set by opening the admin link. Bidder accounts can never reach the admin area.
+
+| Folder | Contents |
+|---|---|
+| `cmd/server/` | Program entry point, startup and maintenance commands (demo seeding, reset) |
+| `internal/api/` | HTTP handlers and the admin gate |
+| `internal/catalog/` | Auction events, lots, publishing, demo seed data |
+| `internal/account/` | Registration, login, sessions, watchlist |
+| `internal/auction/` | Timed bidding and the closing worker |
+| `internal/order/` | Winner orders, checkout, simulated payment, fulfilment |
+| `internal/analytics/`, `internal/recommendation/`, `internal/interaction/` | Dashboard metrics, rule-based suggestions, page-view tracking |
+| `internal/store/` | PostgreSQL connection, migrations (`001`–`006`) |
+| `internal/game/`, `internal/hub/` | The original classroom auction game (kept, separate from the shop) |
+| `web/src/` | React frontend: `routes/storefront`, `routes/account`, `routes/admin` |
+
+---
+
+## 5. Quick start
+
+### Prerequisites
+
+- **Go 1.26+** and **Node.js 20+** (Node is only needed to build the frontend)
+- **PostgreSQL 18**, including the `psql` and `pg_restore` client tools
+- macOS or Linux with `make`
+
+### Step 1. Start PostgreSQL
+
+If PostgreSQL 18 is already installed, create a database and skip ahead:
 
 ```sh
-./bin/auctionlab --reset-demo --demo-schema auctionlab_demo_rehearsal --confirm-demo-schema auctionlab_demo_rehearsal --seed-at 2026-10-22T00:00:00Z
-./bin/auctionlab --demo-status --demo-schema auctionlab_demo_rehearsal
-DATABASE_SCHEMA=auctionlab_demo_rehearsal ./bin/auctionlab
+createdb auctionlab
 ```
 
-The whole marked schema's rehearsal accounts/sessions, catalog, bids/results, orders/payments/fulfillment and retained game data are erased; migrations, categories and capability configuration remain. Other schemas/media remain untouched. Prefix/marker/exact confirmation and exclusive ownership are required; unmarked populated targets are refused. No automatic publication/payment/reset exists. See [the complete write scope and recovery drill](docs/postgresql.md#disposable-full-demo-preparation-status-and-reset) before using reset. Unknown reset outcomes require status inspection before any retry.
+**Fastest option with Docker:**
 
-Change 7 acceptance: [implementation and evidence report](openspec/changes/archive/2026-10-21-add-order-history-and-demo-fulfillment/verification/REPORT.md) records 39/41 tasks. Exact 200% browser zoom and active reduced-motion acceptance remain open; earlier archive gaps are preserved. Normal main-spec validation passes; strict validation reports length warnings in existing and synced requirement descriptions. The change is archived with both acceptance gaps preserved.
+```sh
+docker run -d --name auctionlab-pg18 \
+  -e POSTGRES_USER=auctionlab -e POSTGRES_PASSWORD=auctionlab -e POSTGRES_DB=auctionlab \
+  -p 127.0.0.1:5432:5432 postgres:18
+```
 
-### Analytics and rule-based discovery
+### Step 2. Point the app at the database
 
-Capability-authorized operators can open `/admin/analytics` to compare lifetime
-published-event participation, committed results and simulated payments. Filters
-are shareable: `?event=all&dataset=demo` (also `all`/`non-demo`). Winning totals
-include unpaid wins; simulated paid totals include delivery. Distinct bidder
-counts cannot be added across events. Definitions, coverage/provenance and
-snapshot time appear on the page; a failed read never becomes successful zeroes.
-See [metric/API definitions](internal/analytics/README.md).
+```sh
+# Local install (replace <you> with your OS user name):
+export DATABASE_URL='postgres://<you>@localhost:5432/auctionlab?sslmode=disable'
 
-Home and lot detail show up to six eligible suggestions from `rules-v1`: category
-and authored-era matches, owner-watchlist preferences after session validation,
-and deterministic closing-soon fallback. These are rules, not trained ML or a
-claim of recommendation effectiveness. Anonymous discovery is independent of
-account availability. Lot detail can emit a bounded anonymous page observation;
-it is not a unique-person count or complete traffic history.
+# Or, if you used the Docker command above:
+export DATABASE_URL='postgres://auctionlab:auctionlab@localhost:5432/auctionlab?sslmode=disable'
+```
 
-Demo drill: publish future drafts → view a lot → save → bid with two independent
-accounts → win → confirm simulated payment → compare summary/event metrics to
-SQL → stop writer → inspect generation → explicitly reset the matching marked
-demo schema → inspect fresh generation → publish and replay. Reset erases only
-that schema's documented rehearsal state, including observations/coverage, and
-invalidates its old sessions. It preserves capability/config, migrations,
-categories, external media and other schemas. See [schema-6 operations and reset
-scope](docs/postgresql.md). Earlier archived accessibility gaps remain open.
+### Step 3. Load the demo data and run (recommended)
 
-### Website presentation
+The repository includes a **pre-played demo snapshot**,
+`demo/auctionlab_demo.dump`. It contains published auctions, real bid history,
+sold and unsold lots, paid and unpaid orders and shipped or picked-up
+deliveries, so every screen above has data immediately.
 
-Change 9 refines Collected Stories with local object studies, collection-led
-navigation, image inspection and focused account/order workspaces. Buyer labels
-use natural payment/delivery vocabulary; payments and fulfillment still use the
-existing local simulation, without actual charges or external payment/carrier
-services. Provenance remains stored metadata and dedicated analytics definitions
-remain available. The bounded legacy-seed display adapter changes only matching
-stock wording in the interface, never stored publications or purchase snapshots.
-See `web/README.md` and the [Change 9 archive report](openspec/changes/archive/2026-10-23-polish-auction-website-experience/verification/REPORT.md)
-for interactions, media provenance, acceptance evidence and validation limits.
+```sh
+make demo-restore   # loads the snapshot into schema auctionlab_demo_submission
+make demo           # builds the app and serves the demo on http://localhost:8080
+```
+
+> **Using Docker without local PostgreSQL tools?** Restore from inside the
+> container instead of running `make demo-restore`:
+>
+> ```sh
+> docker exec -i auctionlab-pg18 pg_restore -U auctionlab -d auctionlab \
+>   --no-owner --no-privileges < demo/auctionlab_demo.dump
+> make demo
+> ```
+
+Then open:
+
+| What | URL |
+|---|---|
+| Storefront | <http://localhost:8080> |
+| Admin area (opens the admin gate) | <http://localhost:8080/admin?k=auctionlab-demo-admin> |
+| Health check | <http://localhost:8080/api/health> |
+
+**Demo accounts.** These passwords exist only in the demo data.
+
+| Role | Email | Password |
+|---|---|---|
+| Bidder 1 (Linh) | `bidder-one@demo.auctionlab.test` | `bidder-one-demo-2026` |
+| Bidder 2 (Minh) | `bidder-two@demo.auctionlab.test` | `bidder-two-demo-2026` |
+| Operator account | `operator@demo.auctionlab.test` | `operator-demo-2026` |
+
+> The admin area is opened by the **admin link** above, not by the operator
+> account. In demo mode the key is fixed to `auctionlab-demo-admin`. In normal
+> mode the server prints a random admin link in its console at startup.
+
+### Other ways to run
+
+| Command | What it does |
+|---|---|
+| `make demo-fresh` | Seeds a **new, empty-history** demo schema (`auctionlab_demo_fresh`) with 3 draft events, 18 lots and the 3 demo accounts, then starts the server. Use this to run an auction from scratch. |
+| `make run` | Builds and runs on the normal `auctionlab` schema (empty on first start) |
+| `make dev` | Development mode: Go API on `:8080` plus the Vite dev server on `:5173` with hot reload |
+| `FORCE=1 make demo-restore` | Replaces the demo snapshot schema with a clean copy |
+
+---
+
+## 6. Demo walkthrough (≈10 minutes)
+
+After `make demo-restore && make demo`:
+
+1. **Browse as a visitor.** Open <http://localhost:8080>, then **Auctions → Objects of Time**. Open a lot and look at the gallery, condition notes and bidding panel.
+2. **Bid as Bidder 1.** Sign in as `bidder-one@…` (person icon, top right). On an *Objects of Time* lot, place a bid at the suggested minimum. The banner turns green: **You are leading**.
+3. **Outbid as Bidder 2.** In a private or second browser window, sign in as `bidder-two@…` and bid on the same lot. Bidder 1's window updates live to **You have been outbid**.
+4. **See a finished auction.** *Analog Memories* has already closed. Open a sold lot to see the result, and *Leather travel album* to see an unsold lot with no bids.
+5. **Pay for a win.** As Bidder 1, open the **cart icon (Unpaid wins)**. *Ceramic picture frame* is waiting. Check out with shipping or pickup, review and confirm.
+6. **Fulfil as operator.** Open the [admin link](http://localhost:8080/admin?k=auctionlab-demo-admin) → **Orders**. Advance the new order to *preparing → shipped*, with any carrier and tracking text.
+7. **Track as buyer.** Back as Bidder 1, open **Orders** and select the order. The timeline shows each step.
+8. **Review analytics.** In the admin area, open **Analytics** and switch between events.
+9. **Run a brand-new auction (optional).** In admin → **Auctions**, open the draft *The Listening Room*. Set the opening a few minutes ahead and short closing times, then publish it and bid with both accounts. The server closes each lot on schedule and creates the winner's order automatically.
+
+> The snapshot was recorded on 15 Nov 2026. *Objects of Time* stays open for
+> bidding until **22 Nov 2026**. After that its lots close automatically when
+> the server starts, and bidding works best on a newly published event (step 9)
+> or with `make demo-fresh`.
+
+---
+
+## 7. Running tests
+
+Tests that use the database need a **separate, disposable test database**.
+Each test creates its own throwaway schema and drops it afterwards.
+
+```sh
+createdb auctionlab_test
+export TEST_DATABASE_URL='postgres://<you>@localhost:5432/auctionlab_test?sslmode=disable'
+
+make test        # Go tests + frontend tests (Vitest) + lint
+make test-race   # Go tests with the race detector
+```
+
+Database tests fail with a clear message if `TEST_DATABASE_URL` is missing.
+They are never skipped silently.
+
+---
+
+## 8. Project structure and further docs
+
+| Document | Contents |
+|---|---|
+| [docs/operations.md](docs/operations.md) | Detailed operator notes: closing and recovery rules, checkout edge cases, demo reset |
+| [docs/postgresql.md](docs/postgresql.md) | Database roles, migrations and upgrades, backups, demo schema preparation and reset |
+| [web/README.md](web/README.md) | Frontend structure and the full API contracts |
+| [docs/advanced-features-design.md](docs/advanced-features-design.md) | Designs for currency, soft close, proxy bidding and analytics v2 |
+| [ROADMAP.md](ROADMAP.md) | Planned work |
+| `internal/*/README.md` | Per-module rules (accounts, auctions, orders, analytics, recommendations) |
+| `openspec/changes/archive/` | Specifications and verification reports for each delivered change |
+
+---
+
+## 9. Limitations and scope
+
+- **Payments and delivery are simulated.** No payment gateway or carrier is connected.
+- **Recommendations are rule-based**, not trained machine learning.
+- **One server process per database schema.** Horizontal scaling is out of scope.
+- Feature labs (multi-currency, soft close, proxy bidding, forecasting) are **prototypes only** and are not active in real auctions.
+- Two accessibility checks (exact 200% browser zoom and reduced-motion) are recorded as still open in the verification reports.

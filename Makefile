@@ -7,7 +7,7 @@ VITE_PORT   ?= 5173
 DATABASE_SCHEMA ?= auctionlab
 IMAGES_DIR  ?= ./image
 
-.PHONY: dev dev-go dev-web build run tunnel loadtest loadtest-20 loadtest-race loadtest-tunnel test test-go test-web test-race test-lint clean
+.PHONY: dev dev-go dev-web build run tunnel demo demo-restore demo-fresh loadtest loadtest-20 loadtest-race loadtest-tunnel test test-go test-web test-race test-lint clean
 
 # One command, two processes, zero extra dependencies. `kill 0` reaps the whole
 # process group — including the binary `go run` spawns, which a PID-based kill
@@ -40,6 +40,31 @@ run: build
 
 tunnel: build
 	IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DATABASE_SCHEMA) ./$(BIN) --port $(SERVER_PORT) --tunnel
+
+# --- Submission demo -------------------------------------------------------
+# `make demo-restore` loads the pre-played snapshot (demo/auctionlab_demo.dump)
+# into schema auctionlab_demo_submission; `make demo` serves it with a fixed,
+# demo-only admin link: http://localhost:8080/admin?k=$(DEMO_ADMIN_KEY).
+# `make demo-fresh` instead seeds a new demo schema (draft events, three demo
+# accounts, no history) for a from-scratch rehearsal. These passwords are
+# demo-only and exist only in the demo schemas these targets create.
+DEMO_SCHEMA              ?= auctionlab_demo_submission
+DEMO_FRESH_SCHEMA        ?= auctionlab_demo_fresh
+DEMO_ADMIN_KEY           ?= auctionlab-demo-admin
+DEMO_BIDDER_ONE_PASSWORD ?= bidder-one-demo-2026
+DEMO_BIDDER_TWO_PASSWORD ?= bidder-two-demo-2026
+DEMO_ADMIN_PASSWORD      ?= operator-demo-2026
+
+demo-restore:
+	./scripts/demo-restore.sh
+
+demo: build
+	ADMIN_KEY=$(DEMO_ADMIN_KEY) IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DEMO_SCHEMA) ./$(BIN) --port $(SERVER_PORT)
+
+demo-fresh: build
+	DEMO_BIDDER_ONE_PASSWORD=$(DEMO_BIDDER_ONE_PASSWORD) DEMO_BIDDER_TWO_PASSWORD=$(DEMO_BIDDER_TWO_PASSWORD) DEMO_ADMIN_PASSWORD=$(DEMO_ADMIN_PASSWORD) \
+		./$(BIN) --prepare-demo --demo-schema $(DEMO_FRESH_SCHEMA) --seed-at $$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	ADMIN_KEY=$(DEMO_ADMIN_KEY) IMAGES_DIR=$(IMAGES_DIR) DATABASE_SCHEMA=$(DEMO_FRESH_SCHEMA) ./$(BIN) --port $(SERVER_PORT)
 
 loadtest:
 	$(GO) build -o bin/auctionlab-loadtest ./cmd/server
